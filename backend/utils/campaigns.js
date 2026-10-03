@@ -135,10 +135,7 @@ async function advance(mobile, id) {
 
     const nextIdx = campaign.contacts.findIndex((c) => c.status === "pending");
     if (nextIdx === -1) {
-      update(mobile, id, (c) => {
-        c.status = "completed";
-        c.nextSendAt = null;
-      });
+      markCompleted(mobile, id);
       return;
     }
 
@@ -200,14 +197,69 @@ async function advance(mobile, id) {
       update(mobile, id, (c) => (c.nextSendAt = Date.now() + gap * 1000));
       armTimer(mobile, id, gap * 1000);
     } else {
-      update(mobile, id, (c) => {
-        c.status = "completed";
-        c.nextSendAt = null;
-      });
+      markCompleted(mobile, id);
     }
   } finally {
     locks.delete(k);
   }
+}
+
+// ---------- Repeating campaigns ----------
+function daysInMonth(date) {
+  return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+}
+
+/** The next daily / weekly / monthly slot after `fromMs` that is still in the future (0 if not repeating). */
+function nextOccurrence(fromMs, mode, anchorDay = new Date(fromMs).getDate()) {
+  const date = new Date(fromMs);
+  do {
+    if (mode === "daily") date.setDate(date.getDate() + 1);
+    else if (mode === "weekly") date.setDate(date.getDate() + 7);
+    else if (mode === "monthly") {
+      date.setDate(1); // step months from the 1st, or the 31st would skip a month
+      date.setMonth(date.getMonth() + 1);
+      date.setDate(Math.min(anchorDay, daysInMonth(date)));
+    } else return 0;
+  } while (date.getTime() <= Date.now());
+  return date.getTime();
+}
+
+/** Marks a campaign completed and, if it repeats, queues the next run as a fresh copy (kept in history). */
+function markCompleted(mobile, id) {
+  update(mobile, id, (c) => {
+    c.status = "completed";
+    c.nextSendAt = null;
+  });
+  const campaign = find(mobile, id);
+  const mode = campaign?.repeat?.mode;
+  if (!campaign || !mode || mode === "none") return;
+
+  const base = campaign.scheduleAt || campaign.createdAt || Date.now();
+  const anchorDay = campaign.repeat.anchorDay || new Date(base).getDate();
+  const nextAt = nextOccurrence(base, mode, anchorDay);
+  if (!nextAt || (campaign.repeat.until && nextAt > campaign.repeat.until)) return;
+
+  const newId = crypto.randomUUID();
+  if (campaign.attachment) {
+    const media = loadMedia(mobile, id);
+    if (media) saveMedia(mobile, newId, media);
+  }
+  const next = {
+    ...campaign,
+    id: newId,
+    seriesId: campaign.seriesId || campaign.id,
+    repeat: { ...campaign.repeat, anchorDay },
+    runNumber: (campaign.runNumber || 1) + 1,
+    scheduleAt: nextAt,
+    status: "scheduled",
+    createdAt: Date.now(),
+    nextSendAt: nextAt,
+    sentCount: 0,
+    failedCount: 0,
+    contacts: campaign.contacts.map(({ status, failReason, sentAt, ...c }) => ({ ...c, status: "pending" })),
+  };
+  saveAll(mobile, [next, ...loadAll(mobile)]);
+  armTimer(mobile, newId, nextAt - Date.now());
 }
 
 // ---------- Public API ----------
@@ -249,12 +301,15 @@ function create(mobile, input = {}) {
   if (hasAttachment) saveMedia(mobile, id, { dataUrl: att.dataUrl, name: att.name || "file", mimeType: att.mimeType || "application/octet-stream" });
 
   const scheduleAt = Number(input.scheduleAt) > Date.now() ? Number(input.scheduleAt) : null;
+  const repeatMode = ["daily", "weekly", "monthly"].includes(input.repeat?.mode) ? input.repeat.mode : "none";
+  const repeatBase = scheduleAt || Date.now();
   const campaign = {
     id,
     name: String(input.name || "Campaign").trim() || "Campaign",
     messageTemplate: String(input.messageTemplate || ""),
     footer: input.footer || { enabled: false, text: "" },
     attachment: hasAttachment ? { name: att.name || "file", mimeType: att.mimeType || "application/octet-stream" } : null,
+    repeat: { mode: repeatMode, anchorDay: new Date(repeatBase).getDate(), until: Number(input.repeat?.until) || null },
     gapSeconds: Math.max(Number(input.gapSeconds) || 15, MIN_GAP_SECONDS),
     scheduleAt,
     status: scheduleAt ? "scheduled" : "running",

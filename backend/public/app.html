@@ -3,27 +3,179 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="theme-color" content="#101c18" />
+  <meta name="theme-color" content="#075e54" />
   <title>Starshift WA Sender</title>
   <link rel="stylesheet" href="app.css" />
 </head>
-<body>
-  <header class="topbar"><a class="brand" href="/app"><span class="mark">S</span><span>starshift <b>wa sender</b></span></a><div class="account"><span id="account-label"></span><button id="logout" class="quiet hidden">Log out</button></div></header>
-  <main>
-    <section id="login-view" class="login card">
-      <p class="eyebrow">CUSTOMER PORTAL</p><h1>Welcome back</h1><p class="muted">Sign in with the mobile number and password provided by your seller.</p>
-      <form id="login-form"><label for="mobile">Mobile number (with country code)</label><input id="mobile" inputmode="tel" autocomplete="username" placeholder="919876543210" required><label for="password">Password</label><input id="password" type="password" autocomplete="current-password" required><button class="primary">Sign in <span>→</span></button><p id="login-error" class="error" role="alert"></p></form>
-    </section>
-    <section id="app-view" class="hidden">
-      <div class="intro"><div><p class="eyebrow">CAMPAIGN WORKSPACE</p><h1>Send a campaign</h1><p class="muted">Connect your WhatsApp, add recipients, and send with a steady gap.</p></div><div class="status-pill"><i id="status-dot"></i><span id="status-text">Checking WhatsApp</span></div></div>
-      <div class="workspace">
-        <aside class="card connection"><div class="step">01 <span>CONNECTION</span></div><h2>Link WhatsApp</h2><p class="muted">Scan once with WhatsApp on your phone. Your linked session is saved on the server.</p><div id="connection-state" class="connection-state">Checking connection…</div><img id="qr" class="qr hidden" alt="WhatsApp pairing QR code"><button id="connect" class="secondary hidden">Show pairing QR</button><button id="unlink" class="quiet hidden">Unlink WhatsApp</button></aside>
-        <section class="card composer"><div class="step">02 <span>RECIPIENTS & MESSAGE</span></div><h2>Prepare your message</h2><p class="muted">Upload an Excel file, or enter one recipient per line: <code>name,number</code> (include country code), or just a number.</p><div class="upload-row"><label for="excel" class="file-btn">Upload Excel</label><input id="excel" type="file" accept=".xlsx,.xls,.csv" class="hidden"><span id="excel-info" class="muted"></span></div><label for="recipients">Recipients</label><textarea id="recipients" rows="6" placeholder="Asha,919876543210&#10;919812345678"></textarea><label for="message">Message</label><textarea id="message" rows="5" placeholder="Hi {{name}}, your update is ready."></textarea><div class="upload-row"><label for="attach" class="file-btn">Attach file</label><input id="attach" type="file" accept="image/*,video/*,application/pdf,.doc,.docx,.xls,.xlsx" class="hidden"><span id="attach-info" class="muted">Optional — photo, video, PDF or document. The message above is sent as its caption.</span><button id="attach-clear" type="button" class="quiet hidden">Remove</button></div><div class="send-row"><label for="gap">Gap between messages</label><div class="gap-input"><input id="gap" type="number" min="15" max="3600" value="20"><span>seconds</span></div></div><button id="send" class="primary" disabled>Start campaign <span>→</span></button><p class="fineprint">Keep this page open while sending. Message only people who agreed to hear from you.</p></section>
+<body class="locked">
+  <header class="topbar">
+    <div class="brand"><span class="logo">SWAS</span><h1>Starshift WA Sender</h1></div>
+    <div class="topbar-actions">
+      <span class="logged-in-as" id="account-label"></span>
+      <a class="topbar-link" href="https://wa.me/917028080364" target="_blank" rel="noopener">Support</a>
+      <button id="logout" class="topbar-link hidden">Log out</button>
+    </div>
+  </header>
+
+  <!-- ---------- Login ---------- -->
+  <section id="login-view" class="login-wrap">
+    <div class="login-card">
+      <p class="eyebrow">CUSTOMER PORTAL</p>
+      <h2>Welcome back</h2>
+      <p class="hint">Sign in with the mobile number and password given to you by your seller.</p>
+      <form id="login-form">
+        <label for="mobile">Mobile number (with country code)</label>
+        <input id="mobile" type="text" inputmode="tel" autocomplete="username" placeholder="919876543210" required />
+        <label for="password">Password</label>
+        <input id="password" type="password" autocomplete="current-password" required />
+        <button class="primary" type="submit">Sign in</button>
+        <p id="login-error" class="error" role="alert"></p>
+      </form>
+    </div>
+  </section>
+
+  <!-- ---------- Navigation ---------- -->
+  <nav class="navrow">
+    <div class="nav">
+      <button class="nav-tab" data-page="campaign" aria-selected="true">New Campaign</button>
+      <button class="nav-tab" data-page="reports">Reports</button>
+    </div>
+    <div class="wa-chip">
+      <button id="wa-chip-btn" class="wa-chip-btn"><i id="status-dot" class="wa-dot"></i><span id="status-text">Checking WhatsApp…</span></button>
+      <button id="connect" class="wa-chip-action hidden">Link WhatsApp</button>
+    </div>
+  </nav>
+
+  <!-- ---------- Server WhatsApp panel (QR) ---------- -->
+  <div id="wa-panel" class="wa-panel hidden">
+    <h2>Server WhatsApp</h2>
+    <p class="hint" id="connection-state">Checking connection…</p>
+    <img id="qr" class="qr hidden" alt="WhatsApp pairing QR code" />
+    <div class="wa-panel-actions">
+      <button id="unlink" class="btn-secondary danger hidden">Unlink WhatsApp</button>
+    </div>
+  </div>
+
+  <main class="layout">
+    <!-- ================= New Campaign ================= -->
+    <section id="page-campaign" class="page">
+      <div class="campaign-grid">
+        <!-- Column 1 -->
+        <div class="cg-col">
+          <div class="card">
+            <h2>1. Recipients</h2>
+            <p class="hint">Upload an Excel file, or type one per line: <code>name,number</code> (with country code), or just a number.</p>
+            <div class="upload-row">
+              <label for="excel" class="file-btn">Upload Excel</label>
+              <input id="excel" type="file" accept=".xlsx,.xls,.csv" class="hidden" />
+              <span id="excel-info" class="hint" style="margin:0"></span>
+            </div>
+            <label for="recipients">Recipients</label>
+            <textarea id="recipients" rows="7" placeholder="Asha,919876543210&#10;919812345678"></textarea>
+            <p class="hint" id="recipient-count" style="margin-top:8px"></p>
+          </div>
+
+          <div class="card">
+            <h2>Unsubscribe footer</h2>
+            <label class="switch"><input type="checkbox" id="footer-enabled" /> Add it to every message <span class="rec">(Recommended)</span></label>
+            <label for="footer-text">Unsubscribe message</label>
+            <textarea id="footer-text" rows="2">Reply STOP to unsubscribe</textarea>
+            <p class="hint">Added at the end of every message so recipients can opt out.</p>
+          </div>
+        </div>
+
+        <!-- Column 2 -->
+        <div class="cg-col">
+          <div class="card">
+            <h2>2. Compose Message</h2>
+            <label for="message">Message</label>
+            <textarea id="message" rows="6" placeholder="Hi {{name}}, your update is ready."></textarea>
+            <p class="hint" style="margin-top:8px">Placeholders (click to insert):
+              <span class="chips">
+                <button type="button" class="chip" data-ph="{{name}}">{{name}}</button>
+                <button type="button" class="chip" data-ph="{{custom1}}">{{custom1}}</button>
+                <button type="button" class="chip" data-ph="{{custom2}}">{{custom2}}</button>
+              </span>
+            </p>
+          </div>
+
+          <div class="card">
+            <h2>Sending pace</h2>
+            <div class="opt opt-gap">
+              <p class="opt-title">Time gap between messages</p>
+              <div class="slider-row">
+                <input type="range" id="gap-range" min="15" max="180" value="20" />
+                <input type="number" id="gap" min="15" max="3600" value="20" />
+                <span>sec</span>
+              </div>
+              <p class="hint" style="margin:6px 0 0">Keep 15s+ to reduce the chance of WhatsApp flagging the number.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Column 3 -->
+        <div class="cg-col">
+          <div class="card">
+            <h2>3. Attachment (optional)</h2>
+            <div class="upload-row">
+              <label for="attach" class="file-btn">Attach file</label>
+              <input id="attach" type="file" accept="image/*,video/*,application/pdf,.doc,.docx,.xls,.xlsx" class="hidden" />
+              <button id="attach-clear" type="button" class="btn-secondary danger hidden">Remove</button>
+            </div>
+            <p class="hint" id="attach-info">Photo, video, PDF or document. The message above is sent as its caption.</p>
+          </div>
+
+          <div class="card">
+            <h2>4. Schedule</h2>
+            <div class="schedule-choice row">
+              <label><input type="radio" name="when" value="now" checked /> Send now</label>
+              <label><input type="radio" name="when" value="later" /> Schedule for later</label>
+            </div>
+            <div id="schedule-opts" class="schedule-opts hidden">
+              <div><label for="schedule-at">Date &amp; time</label><input id="schedule-at" type="datetime-local" /></div>
+              <div><label for="repeat">Repeat</label>
+                <select id="repeat">
+                  <option value="none">Does not repeat</option>
+                  <option value="daily">Daily</option>
+                  <option value="weekly">Weekly</option>
+                  <option value="monthly">Monthly</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <h2>5. Campaign</h2>
+            <label for="campaign-name">Campaign name</label>
+            <input id="campaign-name" type="text" placeholder="e.g. Diwali Offer Blast" />
+            <button id="send" class="primary" disabled>Start / Schedule Campaign</button>
+            <div class="campaign-live">
+              <div class="progress-actions">
+                <span id="progress-count" class="hint" style="margin:0">Nothing sending right now.</span>
+                <button id="cancel" class="btn-secondary danger hidden">Cancel</button>
+              </div>
+              <div id="countdown" class="countdown hidden"></div>
+              <div class="progress-bar"><div id="progress-bar" class="fill"></div></div>
+              <div id="activity" class="activity"></div>
+            </div>
+          </div>
+        </div>
       </div>
-      <section class="card progress-card"><div class="progress-heading"><div><div class="step">03 <span>CAMPAIGN PROGRESS</span></div><h2>Activity</h2></div><div class="progress-actions"><span id="progress-count" class="muted">No campaign started</span><button id="cancel" class="quiet hidden">Cancel campaign</button></div></div><div id="countdown" class="countdown hidden"></div><div class="progress-track"><div id="progress-bar"></div></div><div id="activity" class="activity muted">Your campaign status will appear here.</div></section>
+    </section>
+
+    <!-- ================= Reports ================= -->
+    <section id="page-reports" class="page hidden">
+      <div class="card">
+        <h2>Overview</h2>
+        <div class="stats" id="reports-stats"></div>
+      </div>
+      <div class="card">
+        <h2>Campaigns</h2>
+        <div id="reports-list" class="campaigns-list"><p class="hint">No campaigns yet.</p></div>
+      </div>
     </section>
   </main>
-  <footer><a href="/terms">Terms</a><a href="/privacy">Privacy</a></footer>
+
   <script src="xlsx.full.min.js"></script>
   <script src="app.js"></script>
 </body>
