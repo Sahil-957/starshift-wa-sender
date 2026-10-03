@@ -9,10 +9,11 @@
 </head>
 <body class="locked">
   <header class="topbar">
-    <div class="brand"><span class="logo">SWAS</span><h1>Starshift WA Sender</h1></div>
+    <div class="brand"><span class="logo">SWAS</span><h1>Starshift WA Sender Dashboard</h1></div>
     <div class="topbar-actions">
       <span class="logged-in-as" id="account-label"></span>
       <a class="topbar-link" href="https://wa.me/917028080364" target="_blank" rel="noopener">Support</a>
+      <a class="topbar-link hidden" id="admin-link" href="/admin" target="_blank" rel="noopener">Admin Panel</a>
       <button id="logout" class="topbar-link hidden">Log out</button>
     </div>
   </header>
@@ -43,6 +44,7 @@
     <div class="wa-chip">
       <button id="wa-chip-btn" class="wa-chip-btn"><i id="status-dot" class="wa-dot"></i><span id="status-text">Checking WhatsApp…</span></button>
       <button id="connect" class="wa-chip-action hidden">Link WhatsApp</button>
+      <button id="unlink" class="wa-chip-action hidden">Unlink</button>
     </div>
   </nav>
 
@@ -51,9 +53,6 @@
     <h2>Server WhatsApp</h2>
     <p class="hint" id="connection-state">Checking connection…</p>
     <img id="qr" class="qr hidden" alt="WhatsApp pairing QR code" />
-    <div class="wa-panel-actions">
-      <button id="unlink" class="btn-secondary danger hidden">Unlink WhatsApp</button>
-    </div>
   </div>
 
   <main class="layout">
@@ -80,6 +79,8 @@
             <label class="switch"><input type="checkbox" id="footer-enabled" /> Add it to every message <span class="rec">(Recommended)</span></label>
             <label for="footer-text">Unsubscribe message</label>
             <textarea id="footer-text" rows="2">Reply STOP to unsubscribe</textarea>
+            <label for="footer-keyword">Keyword</label>
+            <input type="text" id="footer-keyword" value="STOP" />
             <p class="hint">Added at the end of every message so recipients can opt out.</p>
           </div>
         </div>
@@ -89,6 +90,17 @@
           <div class="card">
             <h2>2. Compose Message</h2>
             <label for="message">Message</label>
+            <div class="toolbar">
+              <button type="button" data-wrap="*"><b>B</b></button>
+              <button type="button" data-wrap="_"><i>I</i></button>
+              <button type="button" data-wrap="~"><s>S</s></button>
+              <button type="button" data-wrap="```">{ }</button>
+              <button type="button" data-prefix="• ">• List</button>
+              <button type="button" data-prefix="1. ">1. List</button>
+              <button type="button" data-prefix="&gt; ">❝ Quote</button>
+              <button type="button" id="emoji-btn">😊</button>
+            </div>
+            <div id="emoji-picker" class="emoji-picker hidden"></div>
             <textarea id="message" rows="6" placeholder="Hi {{name}}, your update is ready."></textarea>
             <p class="hint" style="margin-top:8px">Placeholders (click to insert):
               <span class="chips">
@@ -97,18 +109,25 @@
                 <button type="button" class="chip" data-ph="{{custom2}}">{{custom2}}</button>
               </span>
             </p>
+            <div class="preview"><p class="hint">Preview</p><div class="bubble" id="preview-bubble"><span class="muted">Your message appears here.</span></div></div>
           </div>
 
           <div class="card">
             <h2>Sending pace</h2>
             <div class="opt opt-gap">
               <p class="opt-title">Time gap between messages</p>
-              <div class="slider-row">
-                <input type="range" id="gap-range" min="15" max="180" value="20" />
-                <input type="number" id="gap" min="15" max="3600" value="20" />
-                <span>sec</span>
-              </div>
+              <label class="choice"><input type="radio" name="pace" value="fixed" /> Fixed</label>
+              <div class="slider-row"><input type="range" id="gap-range" min="15" max="180" value="20" /><input type="number" id="gap" min="15" max="3600" value="20" /><span>sec</span></div>
+              <label class="choice"><input type="radio" name="pace" value="random" checked /> Random between <span class="rec">(Recommended)</span></label>
+              <div class="slider-row">From <input type="number" id="min-gap" min="15" value="20" /> to <input type="number" id="max-gap" min="15" value="60" /> <span>sec</span></div>
               <p class="hint" style="margin:6px 0 0">Keep 15s+ to reduce the chance of WhatsApp flagging the number.</p>
+            </div>
+            <div class="opt opt-batch">
+              <label class="choice opt-title"><input type="checkbox" id="batch-enabled" checked /> Add batching <span class="rec">(Recommended)</span></label>
+              <span class="opt-label">Send in batches of</span>
+              <div class="slider-row"><input type="range" id="batch-size-range" min="5" max="100" value="25" /><input type="number" id="batch-size" min="1" value="25" /><span>messages</span></div>
+              <span class="opt-label">Pause between batches</span>
+              <div class="slider-row"><input type="range" id="batch-pause-range" min="30" max="600" value="180" /><input type="number" id="batch-pause" min="1" value="180" /><span>sec</span></div>
             </div>
           </div>
         </div>
@@ -122,7 +141,9 @@
               <input id="attach" type="file" accept="image/*,video/*,application/pdf,.doc,.docx,.xls,.xlsx" class="hidden" />
               <button id="attach-clear" type="button" class="btn-secondary danger hidden">Remove</button>
             </div>
-            <p class="hint" id="attach-info">Photo, video, PDF or document. The message above is sent as its caption.</p>
+            <p class="hint" id="attach-info">Photo, video, PDF or document.</p>
+            <label for="caption">Caption for attachment</label>
+            <textarea id="caption" rows="2" placeholder="Optional — placeholders like {{name}} work here too. Left blank, the message is used."></textarea>
           </div>
 
           <div class="card">
@@ -148,7 +169,11 @@
             <h2>5. Campaign</h2>
             <label for="campaign-name">Campaign name</label>
             <input id="campaign-name" type="text" placeholder="e.g. Diwali Offer Blast" />
-            <button id="send" class="primary" disabled>Start / Schedule Campaign</button>
+            <div class="campaign-buttons">
+              <button id="send" class="primary" disabled>Save &amp; Start / Schedule</button>
+              <button id="direct-send" class="btn-direct" disabled>⚡ Direct Send</button>
+            </div>
+            <p class="hint" id="campaign-summary" style="margin-top:10px"></p>
             <div class="campaign-live">
               <div class="progress-actions">
                 <span id="progress-count" class="hint" style="margin:0">Nothing sending right now.</span>

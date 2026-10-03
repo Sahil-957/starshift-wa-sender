@@ -157,9 +157,11 @@ async function advance(mobile, id) {
 
     const contact = campaign.contacts[nextIdx];
     const message = withFooter(personalize(campaign.messageTemplate, contact), campaign.footer);
-    // The attachment (if any) is the same for every recipient; its caption is the personalized message.
+    // The attachment (if any) is the same for every recipient; its caption is the campaign caption
+    // (or the message when no separate caption was given), personalized per recipient.
     const media = campaign.attachment ? loadMedia(mobile, id) : null;
-    const attachment = media ? { ...media, caption: message } : null;
+    const caption = withFooter(personalize(campaign.caption || campaign.messageTemplate, contact), campaign.footer);
+    const attachment = media ? { ...media, caption } : null;
 
     let result;
     try {
@@ -193,15 +195,27 @@ async function advance(mobile, id) {
     if (!campaign || !["scheduled", "running"].includes(campaign.status)) return;
 
     if (campaign.contacts.some((c) => c.status === "pending")) {
-      const gap = Math.max(Number(campaign.gapSeconds) || MIN_GAP_SECONDS, MIN_GAP_SECONDS);
-      update(mobile, id, (c) => (c.nextSendAt = Date.now() + gap * 1000));
-      armTimer(mobile, id, gap * 1000);
+      const delaySeconds = nextDelaySeconds(campaign);
+      update(mobile, id, (c) => (c.nextSendAt = Date.now() + delaySeconds * 1000));
+      armTimer(mobile, id, delaySeconds * 1000);
     } else {
       markCompleted(mobile, id);
     }
   } finally {
     locks.delete(k);
   }
+}
+
+/** Seconds before the next message: fixed or random gap, or the longer pause after a full batch. */
+function nextDelaySeconds(campaign) {
+  const pacing = campaign.pacing || { mode: "fixed", gapSeconds: campaign.gapSeconds };
+  const gap =
+    pacing.mode === "random" && pacing.maxGap > pacing.minGap
+      ? pacing.minGap + Math.random() * (pacing.maxGap - pacing.minGap)
+      : pacing.gapSeconds || campaign.gapSeconds || 15;
+  const attempted = campaign.contacts.filter((c) => c.status === "sent" || c.status === "failed").length;
+  const batchDone = pacing.batchEnabled && pacing.batchSize > 0 && attempted > 0 && attempted % pacing.batchSize === 0;
+  return Math.max(batchDone ? pacing.batchPauseSeconds : gap, MIN_GAP_SECONDS);
 }
 
 // ---------- Repeating campaigns ----------
@@ -303,14 +317,37 @@ function create(mobile, input = {}) {
   const scheduleAt = Number(input.scheduleAt) > Date.now() ? Number(input.scheduleAt) : null;
   const repeatMode = ["daily", "weekly", "monthly"].includes(input.repeat?.mode) ? input.repeat.mode : "none";
   const repeatBase = scheduleAt || Date.now();
+
+  // pacing: { mode: "fixed"|"random", gapSeconds, minGap, maxGap, batchEnabled, batchSize, batchPauseSeconds }
+  const p = input.pacing || {};
+  const pacing =
+    p.mode === "random"
+      ? {
+          mode: "random",
+          minGap: Math.max(Number(p.minGap) || 20, MIN_GAP_SECONDS),
+          maxGap: Math.max(Number(p.maxGap) || 60, Number(p.minGap) || 20),
+          batchEnabled: !!p.batchEnabled,
+          batchSize: Math.max(Number(p.batchSize) || 25, 1),
+          batchPauseSeconds: Math.max(Number(p.batchPauseSeconds) || 180, 1),
+        }
+      : {
+          mode: "fixed",
+          gapSeconds: Math.max(Number(p.gapSeconds || input.gapSeconds) || 15, MIN_GAP_SECONDS),
+          batchEnabled: !!p.batchEnabled,
+          batchSize: Math.max(Number(p.batchSize) || 25, 1),
+          batchPauseSeconds: Math.max(Number(p.batchPauseSeconds) || 180, 1),
+        };
+
   const campaign = {
     id,
     name: String(input.name || "Campaign").trim() || "Campaign",
     messageTemplate: String(input.messageTemplate || ""),
+    caption: String(input.caption || ""),
     footer: input.footer || { enabled: false, text: "" },
     attachment: hasAttachment ? { name: att.name || "file", mimeType: att.mimeType || "application/octet-stream" } : null,
     repeat: { mode: repeatMode, anchorDay: new Date(repeatBase).getDate(), until: Number(input.repeat?.until) || null },
-    gapSeconds: Math.max(Number(input.gapSeconds) || 15, MIN_GAP_SECONDS),
+    pacing,
+    gapSeconds: pacing.mode === "random" ? pacing.minGap : pacing.gapSeconds,
     scheduleAt,
     status: scheduleAt ? "scheduled" : "running",
     contacts,
