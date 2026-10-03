@@ -4,6 +4,7 @@
  */
 const fs = require("fs");
 const path = require("path");
+const { writeJsonAtomic } = require("./atomicWrite");
 
 const DIR = path.join(__dirname, "..", "data", "lists");
 
@@ -20,8 +21,7 @@ function load(mobile) {
 }
 
 function save(mobile, lists) {
-  fs.mkdirSync(DIR, { recursive: true });
-  fs.writeFileSync(file(mobile), JSON.stringify(lists));
+  writeJsonAtomic(file(mobile), lists);
 }
 
 function cleanRecipients(recipients) {

@@ -15,6 +15,7 @@ const {
   fetchLatestBaileysVersion,
 } = require("@whiskeysockets/baileys");
 const waBot = require("./waBot");
+const { writeJsonAtomic } = require("./atomicWrite");
 
 const SESSIONS_DIR = path.join(__dirname, "..", "data", "wa-sessions");
 const logger = pino({ level: "silent" });
@@ -38,7 +39,7 @@ function loadContacts(mobile) {
 
 function saveContacts(mobile, contacts) {
   try {
-    fs.writeFileSync(contactsFile(mobile), JSON.stringify(contacts));
+    writeJsonAtomic(contactsFile(mobile), contacts);
   } catch {
     /* session folder removed by an unlink in the meantime */
   }
@@ -57,7 +58,7 @@ function loadNames(mobile) {
 }
 function saveNames(mobile, names) {
   try {
-    fs.writeFileSync(namesFile(mobile), JSON.stringify(names));
+    writeJsonAtomic(namesFile(mobile), names);
   } catch {
     /* session folder removed */
   }
@@ -249,12 +250,25 @@ async function groups(mobile) {
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
-/** Reconnects every account that was linked before the server restarted. */
+// On restart every linked account has to reconnect. Firing all of them at once (100+ Baileys
+// handshakes in the same tick) spikes CPU and gets the connections throttled by WhatsApp, so they
+// are brought up a few at a time with a gap between batches. The server is usable immediately;
+// the later accounts just come online over the next minute or two.
+const RESTORE_BATCH = 5;
+const RESTORE_GAP_MS = 4000;
+
+/** Reconnects every account that was linked before the server restarted, in small staggered batches. */
 function restoreAll() {
   if (!fs.existsSync(SESSIONS_DIR)) return;
-  for (const mobile of fs.readdirSync(SESSIONS_DIR)) {
-    if (fs.existsSync(path.join(authDir(mobile), "creds.json"))) connect(mobile).catch(() => {});
-  }
+  const pending = fs
+    .readdirSync(SESSIONS_DIR)
+    .filter((mobile) => fs.existsSync(path.join(authDir(mobile), "creds.json")));
+
+  const startBatch = () => {
+    for (const mobile of pending.splice(0, RESTORE_BATCH)) connect(mobile).catch(() => {});
+    if (pending.length) setTimeout(startBatch, RESTORE_GAP_MS);
+  };
+  startBatch();
 }
 
 module.exports = { connect, status, logout, send, contacts, groups, restoreAll };

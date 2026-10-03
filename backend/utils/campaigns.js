@@ -14,6 +14,7 @@ const path = require("path");
 const wa = require("./waSessions");
 const userStore = require("./userStore");
 const { personalize, withFooter } = require("./messaging");
+const { writeJsonAtomic } = require("./atomicWrite");
 
 const DIR = path.join(__dirname, "..", "data", "campaigns");
 const MEDIA_DIR = path.join(DIR, "media");
@@ -41,8 +42,7 @@ function loadAll(mobile) {
 }
 
 function saveAll(mobile, campaigns) {
-  fs.mkdirSync(DIR, { recursive: true });
-  fs.writeFileSync(file(mobile), JSON.stringify(campaigns));
+  writeJsonAtomic(file(mobile), campaigns);
 }
 
 // The attachment's base64 data URL is large, so it lives in its own file and is loaded only when sending -
@@ -52,8 +52,7 @@ function mediaFile(mobile, id) {
 }
 
 function saveMedia(mobile, id, media) {
-  fs.mkdirSync(MEDIA_DIR, { recursive: true });
-  fs.writeFileSync(mediaFile(mobile, id), JSON.stringify(media));
+  writeJsonAtomic(mediaFile(mobile, id), media);
 }
 
 function loadMedia(mobile, id) {

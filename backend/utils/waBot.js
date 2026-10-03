@@ -10,6 +10,7 @@
  */
 const fs = require("fs");
 const path = require("path");
+const { writeJsonAtomic } = require("./atomicWrite");
 const { normalizeMessageContent, isJidGroup, isJidBroadcast, isJidNewsletter } = require("@whiskeysockets/baileys");
 
 require(path.join(__dirname, "..", "..", "extension", "common", "chatbot.js")); // defines globalThis.SwasBot
@@ -43,8 +44,7 @@ function load(mobile) {
 }
 
 function save(mobile) {
-  fs.mkdirSync(BOTS_DIR, { recursive: true });
-  fs.writeFileSync(botFile(mobile), JSON.stringify(bots.get(mobile)));
+  writeJsonAtomic(botFile(mobile), bots.get(mobile));
 }
 
 function runtime(mobile) {
