@@ -22,8 +22,8 @@ const app = express();
 app.use(cors());
 // Sends carry the attachment inline, so this route takes far bigger bodies than the rest.
 app.use("/api/wa", express.json({ limit: "70mb" }), requireAuth, waRoutes);
-// Creating a campaign posts the whole contact list, so this route also takes a larger body than default.
-app.use("/api/campaigns", express.json({ limit: "20mb" }), requireAuth, campaignRoutes);
+// Creating a campaign posts the whole contact list plus any attachment, so this route takes a larger body.
+app.use("/api/campaigns", express.json({ limit: "60mb" }), requireAuth, campaignRoutes);
 app.use(express.json());
 
 app.use("/api/auth", authRoutes);

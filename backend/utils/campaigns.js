@@ -16,6 +16,7 @@ const userStore = require("./userStore");
 const { personalize, withFooter } = require("./messaging");
 
 const DIR = path.join(__dirname, "..", "data", "campaigns");
+const MEDIA_DIR = path.join(DIR, "media");
 const MIN_GAP_SECONDS = 1;
 // When the account's WhatsApp isn't linked/open yet, wait and re-check instead of failing the campaign.
 const WAIT_FOR_WA_MS = 30 * 1000;
@@ -42,6 +43,25 @@ function loadAll(mobile) {
 function saveAll(mobile, campaigns) {
   fs.mkdirSync(DIR, { recursive: true });
   fs.writeFileSync(file(mobile), JSON.stringify(campaigns));
+}
+
+// The attachment's base64 data URL is large, so it lives in its own file and is loaded only when sending -
+// keeping the per-account campaigns JSON small and quick to rewrite after every message.
+function mediaFile(mobile, id) {
+  return path.join(MEDIA_DIR, `${String(mobile).replace(/\D/g, "")}-${id}.json`);
+}
+
+function saveMedia(mobile, id, media) {
+  fs.mkdirSync(MEDIA_DIR, { recursive: true });
+  fs.writeFileSync(mediaFile(mobile, id), JSON.stringify(media));
+}
+
+function loadMedia(mobile, id) {
+  try {
+    return JSON.parse(fs.readFileSync(mediaFile(mobile, id), "utf8"));
+  } catch {
+    return null;
+  }
 }
 
 function find(mobile, id) {
@@ -140,10 +160,13 @@ async function advance(mobile, id) {
 
     const contact = campaign.contacts[nextIdx];
     const message = withFooter(personalize(campaign.messageTemplate, contact), campaign.footer);
+    // The attachment (if any) is the same for every recipient; its caption is the personalized message.
+    const media = campaign.attachment ? loadMedia(mobile, id) : null;
+    const attachment = media ? { ...media, caption: message } : null;
 
     let result;
     try {
-      await wa.send(mobile, { target: { type: "number", phone: contact.mobile }, message });
+      await wa.send(mobile, { target: { type: "number", phone: contact.mobile }, message, attachment });
       result = { success: true };
     } catch (err) {
       // A drop mid-send (WhatsApp reconnecting) shouldn't burn the recipient: keep them pending and retry.
@@ -214,16 +237,24 @@ function create(mobile, input = {}) {
     .filter((c) => c.mobile.length >= 7);
 
   if (!contacts.length) throw Object.assign(new Error("No valid mobile numbers in the list."), { status: 400 });
-  if (!String(input.messageTemplate || "").trim() && !input.footer?.enabled) {
-    throw Object.assign(new Error("Write a message to send."), { status: 400 });
+
+  // attachment: { dataUrl, name, mimeType }. With a file attached, the message may be empty (it becomes the caption).
+  const att = input.attachment;
+  const hasAttachment = !!(att && att.dataUrl);
+  if (!String(input.messageTemplate || "").trim() && !input.footer?.enabled && !hasAttachment) {
+    throw Object.assign(new Error("Write a message or attach a file to send."), { status: 400 });
   }
+
+  const id = crypto.randomUUID();
+  if (hasAttachment) saveMedia(mobile, id, { dataUrl: att.dataUrl, name: att.name || "file", mimeType: att.mimeType || "application/octet-stream" });
 
   const scheduleAt = Number(input.scheduleAt) > Date.now() ? Number(input.scheduleAt) : null;
   const campaign = {
-    id: crypto.randomUUID(),
+    id,
     name: String(input.name || "Campaign").trim() || "Campaign",
     messageTemplate: String(input.messageTemplate || ""),
     footer: input.footer || { enabled: false, text: "" },
+    attachment: hasAttachment ? { name: att.name || "file", mimeType: att.mimeType || "application/octet-stream" } : null,
     gapSeconds: Math.max(Number(input.gapSeconds) || 15, MIN_GAP_SECONDS),
     scheduleAt,
     status: scheduleAt ? "scheduled" : "running",

@@ -6,6 +6,8 @@ let progressPoller;
 let countdownTimer;
 let activeCampaignId = null;
 let excelContacts = null; // set when a spreadsheet is uploaded; cleared when the textarea is edited by hand
+let attachment = null; // { dataUrl, name, mimeType } when a file is attached
+const MAX_ATTACH_MB = 45;
 
 const api = async (path, method = "GET", body) => {
   const response = await fetch(`/api${path}`, {
@@ -182,13 +184,48 @@ function buildContacts() {
   return excelContacts && excelContacts.length ? excelContacts : parseTextarea($("recipients").value);
 }
 
+// ---------- Attachment ----------
+const readAsDataUrl = (file) =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error("Could not read that file."));
+    reader.readAsDataURL(file);
+  });
+
+$("attach").addEventListener("change", async (event) => {
+  const file = event.target.files[0];
+  if (!file) return;
+  if (file.size > MAX_ATTACH_MB * 1024 * 1024) {
+    $("attach-info").textContent = `That file is too big (max ${MAX_ATTACH_MB} MB).`;
+    event.target.value = "";
+    return;
+  }
+  try {
+    const dataUrl = await readAsDataUrl(file);
+    attachment = { dataUrl, name: file.name, mimeType: file.type || "application/octet-stream" };
+    $("attach-info").textContent = `📎 ${file.name} (${Math.round(file.size / 1024)} KB)`;
+    $("attach-clear").classList.remove("hidden");
+  } catch (error) {
+    attachment = null;
+    $("attach-info").textContent = error.message;
+  }
+});
+
+$("attach-clear").addEventListener("click", () => {
+  attachment = null;
+  $("attach").value = "";
+  $("attach-info").textContent = "Optional — photo, video, PDF or document. The message above is sent as its caption.";
+  $("attach-clear").classList.add("hidden");
+});
+
 // ---------- Campaign (server-side) ----------
 $("send").addEventListener("click", async () => {
   const contacts = buildContacts();
   const template = $("message").value.trim();
   const gap = Math.max(15, Math.min(3600, Number($("gap").value) || 20));
   if (!contacts.length) return alert("Add at least one valid phone number.");
-  if (!template) return alert("Write a message first.");
+  if (!template && !attachment) return alert("Write a message or attach a file first.");
 
   $("send").disabled = true;
   try {
@@ -196,6 +233,7 @@ $("send").addEventListener("click", async () => {
       name: `Campaign ${new Date().toLocaleString()}`,
       messageTemplate: template,
       gapSeconds: gap,
+      attachment,
       contacts,
     });
     activeCampaignId = campaign.id;
