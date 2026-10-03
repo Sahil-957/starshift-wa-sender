@@ -1,0 +1,135 @@
+<!doctype html>
+<!--
+  Served at /terms. The {{...}} placeholders are filled in by backend/server.js from .env:
+  BUSINESS_NAME, SUPPORT_EMAIL, SUPPORT_MOBILE, POLICY_EFFECTIVE_DATE, JURISDICTION.
+  Set those before you publish this URL.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Terms of Service - Starshift WA Sender</title>
+  <link rel="stylesheet" href="/policy.css" />
+</head>
+<body>
+  <header class="topbar">
+    <span class="logo">SWAS</span>
+    <h1>Starshift WA Sender</h1>
+    <nav>
+      <a href="/privacy">Privacy</a>
+      <a href="/terms">Terms</a>
+    </nav>
+  </header>
+
+  <main>
+    <h2>Terms of Service</h2>
+    <p class="meta">Last updated: {{POLICY_EFFECTIVE_DATE}}</p>
+    <p class="meta">Between you ("you") and {{BUSINESS_NAME}} ("we", "us").</p>
+
+    <div class="callout warn">
+      <p>
+        <b>Read this before you send anything.</b> This tool automates your own WhatsApp account. WhatsApp's
+        own rules do not allow bulk or unsolicited messaging, and WhatsApp can restrict or ban a number that
+        breaks them. That risk is yours, not ours. Message only people who asked to hear from you, keep
+        volumes modest, and leave a real gap between messages.
+      </p>
+    </div>
+
+    <h3>1. What you are buying</h3>
+    <p>
+      You are buying a time-limited licence to use the extension for the plan you paid for (1, 3, 6 or 12
+      months). You do not own the software, and you may not resell, sublicense, copy, decompile or
+      redistribute it. The licence is for one business - not for sharing with other companies.
+    </p>
+
+    <h3>2. Your account</h3>
+    <ul>
+      <li>Your account is your mobile number plus a password, or the activation link we send you.</li>
+      <li><b>Treat the activation link like a password.</b> Anyone who opens it can use your plan.</li>
+      <li>You are responsible for everything done through your account.</li>
+      <li>Tell us at once if you think someone else has your link or password, and we will issue a new one.</li>
+    </ul>
+
+    <h3>3. How you may use it</h3>
+    <p>You agree that you will:</p>
+    <ul>
+      <li>Message only people who have agreed to receive messages from you</li>
+      <li>Honour every opt-out request promptly - the extension's unsubscribe list is there for that</li>
+      <li>Follow WhatsApp's Terms of Service and all laws that apply to you, including consumer and data-protection law</li>
+      <li>Keep a sensible gap between messages and not attempt to defeat WhatsApp's own limits</li>
+    </ul>
+    <p>You agree that you will not use it to send spam, scams, phishing, hate speech, adult content, or anything illegal.</p>
+
+    <h3>4. Bans and blocks are your risk</h3>
+    <p>
+      WhatsApp decides who may use its service. Your number can be restricted or banned, with or without
+      warning, and we have no control over that and no way to reverse it. We do not compensate for a banned
+      number, lost contacts or lost business. If that risk is not acceptable to you, do not use this tool.
+    </p>
+
+    <h3>5. No affiliation</h3>
+    <p>
+      We are independent. Starshift WA Sender is not made, endorsed, sponsored or supported by WhatsApp LLC,
+      Meta Platforms, Inc. or Google LLC. All trademarks belong to their owners.
+    </p>
+
+    <h3>6. Availability</h3>
+    <p>
+      The extension works by driving the WhatsApp Web page. WhatsApp changes that page whenever it likes, and
+      a change can stop parts of the extension working until we update it. We will fix breakages as quickly
+      as we reasonably can, but we cannot promise uninterrupted service. Your Chrome browser must be running
+      for scheduled campaigns to go out.
+    </p>
+
+    <h3>7. Payment, renewal and refunds</h3>
+    <ul>
+      <li>Your plan starts the day we activate your account and ends on the date shown in the extension.</li>
+      <li>Plans do not renew automatically. Contact us before the end date to renew.</li>
+      <li>Because this is digital software delivered immediately, <b>fees are non-refundable</b> once your account has been activated.</li>
+      <li>If the extension is unusable because of a fault on our side and we cannot fix it, we will extend your plan for the lost days.</li>
+    </ul>
+
+    <h3>8. Suspension and termination</h3>
+    <p>
+      We may suspend or end your access without refund if you break these terms, if you share your licence,
+      or if your use puts our service or other customers at risk. You may stop using the extension at any
+      time; uninstalling it removes all of your data from your computer.
+    </p>
+
+    <h3>9. Support</h3>
+    <p>
+      Support is over WhatsApp at <a href="https://wa.me/{{SUPPORT_MOBILE}}">{{SUPPORT_MOBILE_LABEL}}</a> or by
+      email at <a href="mailto:{{SUPPORT_EMAIL}}">{{SUPPORT_EMAIL}}</a>, during normal business hours. We help
+      with installation, activation and faults in the extension. We do not write your message campaigns, supply
+      contact lists, or deal with WhatsApp on your behalf.
+    </p>
+
+    <h3>10. Limitation of liability</h3>
+    <p>
+      The extension is provided "as is". To the extent the law allows, we are not liable for lost profits,
+      lost data, lost contacts, banned accounts, or any indirect or consequential loss. Where liability
+      cannot be excluded, it is limited to the amount you paid us in the twelve months before the claim.
+    </p>
+
+    <h3>11. Changes to these terms</h3>
+    <p>
+      We may update these terms; the date at the top will change. If an update materially reduces what you
+      get, you may stop using the extension and ask for a pro-rata refund of the unused part of your plan.
+    </p>
+
+    <h3>12. Governing law</h3>
+    <p>
+      These terms are governed by the laws of India. The courts at {{JURISDICTION}} have exclusive
+      jurisdiction over any dispute.
+    </p>
+
+    <h3>13. Contact</h3>
+    <p>
+      {{BUSINESS_NAME}} - WhatsApp <a href="https://wa.me/{{SUPPORT_MOBILE}}">{{SUPPORT_MOBILE_LABEL}}</a>,
+      email <a href="mailto:{{SUPPORT_EMAIL}}">{{SUPPORT_EMAIL}}</a>.
+    </p>
+  </main>
+
+  <footer>{{BUSINESS_NAME}} - <a href="/privacy">Privacy Policy</a></footer>
+</body>
+</html>

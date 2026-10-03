@@ -1,0 +1,16 @@
+# Secrets & runtime state — must never be published
+backend/.env
+backend/data/
+
+# Dependencies
+node_modules/
+
+# Logs
+logs/
+*.log
+scripts/*.log
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.kilo/worktrees/

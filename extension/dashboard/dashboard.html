@@ -1,0 +1,588 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Starshift WA Sender - Dashboard</title>
+  <link rel="stylesheet" href="dashboard.css" />
+</head>
+<body class="locked">
+  <header class="topbar">
+    <div class="brand"><span class="logo">SWAS</span><h1>Starshift WA Sender Dashboard</h1></div>
+    <div class="topbar-actions">
+      <span id="logged-in-as" class="logged-in-as"></span>
+      <a id="support-link" class="topbar-link" target="_blank" rel="noopener">Support</a>
+      <a href="../admin/admin.html" id="link-admin" class="topbar-link hidden">Admin Panel</a>
+    </div>
+  </header>
+
+  <!-- Tabs on the left, the server WhatsApp status on the right: both are "where am I / can I send" info. -->
+  <div class="navrow">
+    <nav class="nav" role="tablist" aria-label="Dashboard sections">
+      <button type="button" class="nav-tab" data-page="campaign" aria-selected="true">New Campaign</button>
+      <button type="button" class="nav-tab" data-page="reports" aria-selected="false">Reports</button>
+      <button type="button" class="nav-tab" data-page="extract" aria-selected="false">Extract</button>
+      <button type="button" class="nav-tab nav-tab-bot" data-page="chatbot" aria-selected="false" title="Chatbot - conditions apply">
+        <span>&#129302; Chatbot<sup class="tc-mark" aria-hidden="true">*</sup></span>
+        <small class="tab-note">Conditions Apply</small>
+      </button>
+      <button type="button" class="nav-tab" data-page="quick" aria-selected="false">Quick Replies</button>
+      <button type="button" class="nav-tab" data-page="unsub" aria-selected="false">Unsubscribers</button>
+    </nav>
+
+    <div class="wa-chip hidden" id="server-wa-chip">
+      <button type="button" class="wa-chip-btn" id="btn-server-wa-panel" aria-expanded="false"
+              title="Server WhatsApp - click for details">
+        <span class="wa-dot" id="server-wa-dot"></span>
+        <span id="server-wa-label">Checking...</span>
+      </button>
+      <button type="button" id="btn-server-wa-connect" class="wa-chip-action hidden">Link WhatsApp</button>
+      <button type="button" id="btn-server-wa-logout" class="wa-chip-action hidden">Unlink</button>
+    </div>
+  </div>
+
+  <!-- Detail and QR for the chip above; opens on click, and by itself whenever a QR is waiting to be scanned. -->
+  <section class="wa-panel hidden" id="server-wa">
+    <h2>Server WhatsApp</h2>
+    <p id="server-wa-status" class="hint">Checking...</p>
+    <img id="server-wa-qr" class="hidden" alt="WhatsApp link QR code" width="220" height="220" />
+  </section>
+
+  <main class="layout">
+    <!-- Shown instead of the dashboard until an active account is confirmed (see initAuth). -->
+    <section class="card hidden" id="license-lock">
+      <h2>Login required</h2>
+      <p id="license-reason" class="hint"></p>
+    </section>
+
+    <!-- Shown when a saved list's folder needs Chrome's permission again (usually after a restart). -->
+    <div class="auto-banner hidden" id="auto-banner" role="alert">
+      <span id="auto-banner-text"></span>
+      <button type="button" id="btn-auto-allow" class="btn-secondary">&#128193; Allow folder access</button>
+    </div>
+
+    <!-- ================= New Campaign ================= -->
+    <div class="page" id="page-campaign">
+      <!-- All six steps in one grid: three cards a row on a wide screen, fewer as it narrows. -->
+      <div class="campaign-grid">
+      <div class="cg-col">
+      <section class="card">
+        <h2>1. Recipients</h2>
+
+        <div class="recipients-split">
+        <div class="recipients-pick">
+        <div class="recipient-tabs" role="tablist" aria-label="Recipient source">
+          <button type="button" class="rtab" data-tab="contact" aria-selected="true">Contact</button>
+          <button type="button" class="rtab" data-tab="group" aria-selected="false">Group</button>
+          <button type="button" class="rtab" data-tab="numbers" aria-selected="false">Numbers</button>
+          <button type="button" class="rtab" data-tab="lists" aria-selected="false">Saved Lists</button>
+        </div>
+
+        <!-- ---- Contact tab: synced individual chats ---- -->
+        <div class="rpanel" id="rpanel-contact">
+          <p class="hint">Reads your open WhatsApp Web chats and lets you pick individuals to message.</p>
+          <div class="sync-row">
+            <button type="button" id="btn-sync-contacts" class="btn-secondary">Sync from WhatsApp</button>
+            <input type="text" id="search-contact" placeholder="Search by name or number" />
+          </div>
+          <p id="sync-contact-status" class="hint"></p>
+          <div class="pick-list" id="list-contact"></div>
+        </div>
+
+        <!-- ---- Group tab: synced groups ---- -->
+        <div class="rpanel hidden" id="rpanel-group">
+          <p class="hint">
+            All WhatsApp groups you're part of (from your open WhatsApp Web session).
+            "Members to Excel" on a group opens it and exports everyone in it.
+          </p>
+          <div class="sync-row">
+            <button type="button" id="btn-sync-groups" class="btn-secondary">Sync from WhatsApp</button>
+            <button type="button" id="btn-export-groups" class="btn-secondary">Download Excel</button>
+            <input type="text" id="search-group" placeholder="Search group by name" />
+          </div>
+          <p id="sync-group-status" class="hint"></p>
+          <div class="pick-list" id="list-group"></div>
+        </div>
+
+        <!-- ---- Numbers tab: manual add + Excel + Google Sheets ---- -->
+        <div class="rpanel hidden" id="rpanel-numbers">
+          <p class="hint">Add a single number (no need to save it in your phone), or import a list.</p>
+
+          <div class="add-number-row">
+            <select id="new-number-cc">
+              <option value="91" selected>+91</option>
+              <option value="1">+1</option>
+              <option value="44">+44</option>
+              <option value="971">+971</option>
+            </select>
+            <input type="text" id="new-number-name" placeholder="Name (optional)" />
+            <input type="tel" id="new-number-mobile" placeholder="e.g. 8873520027" maxlength="10" />
+            <button type="button" id="btn-add-number" class="btn-secondary">+ Add New</button>
+          </div>
+
+          <div class="divider"><span>or upload Excel / CSV</span></div>
+
+          <p class="hint">
+            Columns: <b>Sr No, Name, Mobile Number, Country Code, Group Name, Custom1, Custom2</b>.
+            Fill <b>Mobile Number</b> for individuals, or <b>Group Name</b> for a WhatsApp group (leave mobile blank).
+            Any extra column (e.g. <b>Email</b>, <b>Order Number</b>) can be used in the message as
+            <code>{{email}}</code>, <code>{{order_number}}</code>.
+            <a id="download-template" href="#">Download sample template</a>.
+          </p>
+          <input type="file" id="excel-file" accept=".xlsx,.xls,.csv" />
+          <p id="excel-status" class="hint"></p>
+
+          <div class="divider"><span>or import from Google Sheets</span></div>
+
+          <p class="hint">
+            Same columns as the Excel template. In Google Sheets click <b>Share &rarr; Anyone with the link &rarr; Viewer</b>
+            (or be signed in to Google in this Chrome with access to the sheet), then paste its link.
+          </p>
+          <div class="sheet-row">
+            <input type="text" id="sheet-link" placeholder="https://docs.google.com/spreadsheets/d/..." />
+            <button type="button" id="btn-import-sheet" class="btn-secondary">Import</button>
+          </div>
+          <p id="sheet-status" class="hint"></p>
+        </div>
+
+        <!-- ---- Saved Lists tab: people you message regularly ---- -->
+        <div class="rpanel hidden" id="rpanel-lists">
+          <p class="hint">
+            Put people in lists with <b>+ Add to list</b> next to each selected recipient, or <b>Save as list</b> for
+            everyone selected. One person can be in many lists. <b>Add all</b> selects a list's people;
+            <b>Send</b> sends the message, attachment and schedule set in steps 2-4 to that list only.
+            <b>&#128193; Folder</b>: the newest image in that folder goes to the list by itself at 10:00, 12:00, 14:00,
+            16:00 and 18:00 - swap the file to change what goes (keep Chrome and this dashboard open).
+          </p>
+          <div class="lists-bar">
+            <button type="button" id="btn-send-lists" class="btn-secondary">Send to ticked lists</button>
+            <span class="hint">Tick several lists to send them together; anyone in more than one list gets the message once.</span>
+          </div>
+          <div class="pick-list tall" id="list-saved"></div>
+        </div>
+
+        </div><!-- /.recipients-pick -->
+
+        <!-- ---- Selected recipients: the right-hand column on a wide screen ---- -->
+        <div class="selected-block">
+          <div class="selected-head">
+            <h3>Selected recipients (<span id="selected-count">0</span>)</h3>
+            <div class="selected-actions">
+              <button type="button" id="btn-save-list" class="btn-link">Save as list</button>
+              <button type="button" id="btn-clear-selected" class="btn-link">Clear all</button>
+            </div>
+          </div>
+          <p id="list-status" class="hint"></p>
+          <div class="table-wrap">
+            <table id="contacts-table" class="hidden">
+              <thead>
+                <tr><th>#</th><th>Name</th><th>Target</th><th>Source</th><th>Fields</th><th>Lists</th><th></th></tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+        </div><!-- /.recipients-split -->
+      </section>
+
+      <section class="card">
+        <h2>Unsubscribe footer</h2>
+
+        <div class="opt opt-unsub">
+          <label class="choice opt-title"><input type="checkbox" id="footer-enabled" checked /> Add it to every message <span class="rec">(Recommended)</span></label>
+          <label for="footer-text" class="opt-label">Unsubscribe message</label>
+          <textarea id="footer-text" rows="2">Reply STOP to unsubscribe</textarea>
+          <label for="footer-keyword" class="opt-label">Keyword</label>
+          <input type="text" id="footer-keyword" value="STOP" />
+          <p class="hint">
+            Added at the end of every message. Anyone who replies with the keyword is moved to Unsubscribers and gets the
+            reply set on the Chatbot page (keep a WhatsApp Web tab open).
+          </p>
+        </div>
+      </section>
+
+      </div>
+      <div class="cg-col">
+      <section class="card">
+        <h2>2. Compose Message</h2>
+
+        <div class="template-bar">
+          <select id="template-select" aria-label="Saved templates"></select>
+          <button type="button" id="btn-save-template" class="btn-secondary">Save as template</button>
+          <button type="button" id="btn-delete-template" class="btn-secondary">Delete template</button>
+        </div>
+
+        <label for="message-template">Message</label>
+        <div class="toolbar" role="toolbar" aria-label="Formatting">
+          <button type="button" data-format="bold" title="Bold"><b>B</b></button>
+          <button type="button" data-format="italic" title="Italic"><i>I</i></button>
+          <button type="button" data-format="strike" title="Strikethrough"><s>S</s></button>
+          <button type="button" data-format="mono" title="Monospace"><code>{ }</code></button>
+          <button type="button" data-format="bullet" title="Bulleted list">&bull; List</button>
+          <button type="button" data-format="number" title="Numbered list">1. List</button>
+          <button type="button" data-format="quote" title="Quote">&#10077; Quote</button>
+          <button type="button" id="btn-emoji" title="Emoji" aria-expanded="false">&#128512;</button>
+        </div>
+        <div id="emoji-picker" class="emoji-picker hidden"></div>
+        <textarea id="message-template" rows="6" placeholder="Hi {{name}}, greetings from ABC Company! Your order {{order_number}} is ready."></textarea>
+        <div class="hint">Placeholders (click to insert): <span id="placeholder-chips" class="chips"></span></div>
+
+        <div class="translate-row">
+          <select id="translate-lang" aria-label="Translate to">
+            <option value="hi" selected>Hindi</option>
+            <option value="mr">Marathi</option>
+            <option value="en">English</option>
+            <option value="gu">Gujarati</option>
+            <option value="bn">Bengali</option>
+            <option value="kn">Kannada</option>
+            <option value="ta">Tamil</option>
+            <option value="te">Telugu</option>
+            <option value="ml">Malayalam</option>
+            <option value="pa">Punjabi</option>
+            <option value="ur">Urdu</option>
+            <option value="ar">Arabic</option>
+            <option value="es">Spanish</option>
+            <option value="fr">French</option>
+            <option value="de">German</option>
+          </select>
+          <button type="button" id="btn-translate" class="btn-secondary">Translate message</button>
+          <span id="translate-status" class="hint"></span>
+        </div>
+
+        <div class="preview">
+          <div id="preview-to" class="hint"></div>
+          <div id="preview-bubble" class="bubble"></div>
+        </div>
+        <p id="compose-status" class="hint"></p>
+      </section>
+
+      <section class="card">
+        <h2>Sending pace</h2>
+
+        <div class="opt opt-gap">
+          <div class="opt-title">Time gap between messages</div>
+          <label class="choice"><input type="radio" name="gap-mode" value="fixed" /> Fixed</label>
+          <div class="slider-row">
+            <input type="range" id="gap-range" min="3" max="300" value="15" aria-label="Fixed gap" />
+            <input type="number" id="gap-seconds" min="3" max="3600" value="15" aria-label="Fixed gap in seconds" /> sec
+          </div>
+          <label class="choice"><input type="radio" name="gap-mode" value="random" checked /> Random between <span class="rec">(Recommended)</span></label>
+          <div class="slider-row">
+            From <input type="number" id="gap-min" min="3" max="3600" value="20" aria-label="Minimum gap in seconds" />
+            To <input type="number" id="gap-max" min="3" max="3600" value="60" aria-label="Maximum gap in seconds" /> sec
+          </div>
+        </div>
+        <div class="opt opt-batch">
+          <label class="choice opt-title"><input type="checkbox" id="batch-enabled" checked /> Add batching <span class="rec">(Recommended)</span></label>
+          <div class="opt-label">Send in batches of</div>
+          <div class="slider-row">
+            <input type="range" id="batch-size-range" min="5" max="200" value="25" aria-label="Batch size" />
+            <input type="number" id="batch-size" min="1" max="1000" value="25" aria-label="Messages per batch" /> messages
+          </div>
+          <div class="opt-label">Pause between batches</div>
+          <div class="slider-row">
+            <input type="range" id="batch-pause-range" min="30" max="1800" step="10" value="180" aria-label="Pause between batches" />
+            <input type="number" id="batch-pause" min="10" max="7200" value="180" aria-label="Pause between batches in seconds" /> sec
+          </div>
+        </div>
+      </section>
+
+      </div>
+      <div class="cg-col">
+      <section class="card">
+        <h2>3. Attachment (optional)</h2>
+        <input type="file" id="attachment-file" accept="image/*,video/*,audio/*,application/pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip" />
+        <label for="attachment-caption">Caption for attachment</label>
+        <textarea id="attachment-caption" rows="5" placeholder="Optional caption, placeholders like {{name}} work here too"></textarea>
+        <div id="attachment-row" class="attach-row hidden">
+          <span id="attachment-preview" class="hint"></span>
+          <button type="button" id="btn-remove-attachment" class="btn-secondary danger">Remove attachment</button>
+        </div>
+
+        <div class="preset-bar">
+          <button type="button" id="btn-save-preset" class="btn-secondary">&#128190; Save attachment + caption</button>
+          <span class="hint">Saved (<span id="preset-count">0</span>/5) - <b>Use</b> puts both back in one click.</span>
+        </div>
+        <p id="preset-status" class="hint"></p>
+        <div class="pick-list" id="preset-list"></div>
+      </section>
+
+      <section class="card">
+        <h2>4. Schedule</h2>
+        <div class="row schedule-choice">
+          <label><input type="radio" name="when" value="now" checked /> Send Now</label>
+          <label><input type="radio" name="when" value="later" /> Schedule for later</label>
+        </div>
+        <div class="row hidden" id="schedule-fields">
+          <div class="field">
+            <label for="schedule-date">Date</label>
+            <input type="date" id="schedule-date" />
+          </div>
+          <div class="field">
+            <label for="schedule-time">Time</label>
+            <input type="time" id="schedule-time" />
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="field">
+            <label for="repeat-mode">Repeat</label>
+            <select id="repeat-mode">
+              <option value="none" selected>Does not repeat</option>
+              <option value="daily">Every day</option>
+              <option value="weekly">Every week</option>
+              <option value="monthly">Every month</option>
+            </select>
+          </div>
+          <div class="field hidden" id="repeat-until-field">
+            <label for="repeat-until">Repeat until (optional)</label>
+            <input type="date" id="repeat-until" />
+          </div>
+        </div>
+        <p class="hint" id="repeat-hint">
+          A repeating campaign schedules its next run to the same people once the current one finishes.
+          To stop the series, Cancel the scheduled run in Reports.
+        </p>
+      </section>
+
+      <section class="card">
+        <h2>5. Campaign</h2>
+        <label for="campaign-name">Campaign name</label>
+        <input type="text" id="campaign-name" placeholder="e.g. Diwali Offer Blast" />
+        <p class="hint">Recipients on the Unsubscribers list are skipped automatically.</p>
+        <div class="campaign-buttons">
+          <button id="btn-start-campaign" class="primary">Save &amp; Start / Schedule Campaign</button>
+          <button type="button" id="btn-direct-send" class="btn-direct">&#9889; Direct Send</button>
+        </div>
+        <p class="hint">Direct Send sends right now - no campaign name, schedule or repeat needed. It still shows in Reports.</p>
+        <p id="campaign-error" class="error hidden"></p>
+
+        <div id="campaign-live" class="campaign-live"></div>
+      </section>
+
+      </div>
+      </div><!-- /.campaign-grid -->
+    </div>
+
+    <!-- ================= Reports ================= -->
+    <!-- ================= Extract ================= -->
+    <div class="page hidden" id="page-extract">
+      <section class="card">
+        <h2>Extract to Excel</h2>
+        <p class="hint">
+          Pulls data out of WhatsApp without sending anything. <b>Extract chats</b> downloads the
+          conversations themselves for the period you choose; <b>Extract numbers</b> downloads a
+          name-and-number list, opening the chats whose number WhatsApp hides. Both run in the
+          background once you untick <b>Show WhatsApp while it works</b> - though Chrome only draws a
+          window that is on screen, and WhatsApp only fills its lists once they are drawn, so reading
+          usually needs the tab visible. Sending a campaign does not.
+        </p>
+
+        <div class="extract-bar">
+          <label for="chat-range" class="inline-label">Messages from</label>
+          <select id="chat-range">
+            <option value="0">Today</option>
+            <option value="2">Last 3 days</option>
+            <option value="6" selected>Last 7 days</option>
+            <option value="29">Last 30 days</option>
+            <option value="all">Everything in the chat</option>
+            <option value="custom">Custom dates</option>
+          </select>
+          <input type="date" id="chat-from" class="hidden" aria-label="From date" />
+          <input type="date" id="chat-to" class="hidden" aria-label="To date" />
+          <button type="button" id="btn-export-chats" class="btn-secondary">Extract chats</button>
+          <button type="button" id="btn-export-numbers" class="btn-secondary">Extract numbers</button>
+          <button type="button" id="btn-stop-extract" class="btn-secondary danger hidden">Stop</button>
+          <label class="switch" title="Saves the pictures WhatsApp has drawn in those chats, one file each">
+            <input type="checkbox" id="extract-images" /> Also save images
+          </label>
+          <label class="switch" title="Only tick this if a background run comes back empty">
+            <input type="checkbox" id="extract-visible" checked /> Show WhatsApp while it works
+          </label>
+          <p id="extract-status" class="hint extract-status"></p>
+        </div>
+
+        <div class="sync-row">
+          <button type="button" id="btn-sync-extract" class="btn-secondary">Sync from WhatsApp</button>
+          <button type="button" id="btn-extract-all" class="btn-link">Tick all</button>
+          <button type="button" id="btn-extract-none" class="btn-link">Clear</button>
+          <input type="text" id="search-extract" placeholder="Search chats and groups" />
+        </div>
+        <p class="hint" id="extract-count"></p>
+        <div class="pick-list tall" id="list-extract"></div>
+      </section>
+    </div>
+
+    <div class="page hidden" id="page-reports">
+      <section class="card">
+        <h2>Overview</h2>
+        <div class="stats">
+          <div class="stat"><span id="stat-campaigns">0</span><small>Campaigns</small></div>
+          <div class="stat"><span id="stat-sent">0</span><small>Messages sent</small></div>
+          <div class="stat"><span id="stat-failed">0</span><small>Failed</small></div>
+          <div class="stat"><span id="stat-skipped">0</span><small>Skipped (unsubscribed)</small></div>
+          <div class="stat"><span id="stat-rate">-</span><small>Success rate</small></div>
+        </div>
+        <div id="active-now" class="active-strip"></div>
+      </section>
+      <section class="card">
+        <h2>Campaigns</h2>
+        <div class="report-filters" id="report-filters" role="tablist">
+          <button type="button" data-filter="all" aria-selected="true">All</button>
+          <button type="button" data-filter="running" aria-selected="false">Running</button>
+          <button type="button" data-filter="scheduled" aria-selected="false">Scheduled</button>
+          <button type="button" data-filter="paused" aria-selected="false">Paused</button>
+          <button type="button" data-filter="completed" aria-selected="false">Completed</button>
+          <button type="button" data-filter="cancelled" aria-selected="false">Cancelled</button>
+          <button type="button" id="btn-clear-completed" class="btn-secondary danger">Delete all completed</button>
+        </div>
+        <div id="campaigns-list" class="campaigns-list"></div>
+      </section>
+    </div>
+
+    <!-- ================= Chatbot ================= -->
+    <div class="page hidden" id="page-chatbot">
+      <section class="card">
+        <h2>Chatbot auto-replies<sup class="tc-mark" aria-hidden="true">*</sup></h2>
+        <p class="hint">
+          When a customer's message matches the welcome keywords or a rule, the bot replies automatically. With the server
+          WhatsApp linked (top right) the reply goes from the server the moment the message arrives; otherwise it goes from
+          your WhatsApp Web tab. Groups are ignored and each message is answered only once.
+        </p>
+        <label class="switch bot-master"><input type="checkbox" id="bot-enabled" /> Enable chatbot</label>
+        <p id="bot-engine" class="bot-engine"></p>
+      </section>
+
+      <section class="card">
+        <h2>Welcome menu</h2>
+        <p class="hint">Sent when a customer greets you. Clear the keywords to turn it off.</p>
+        <label for="bot-welcome-keywords">Welcome keywords <span class="muted">(comma separated)</span></label>
+        <input type="text" id="bot-welcome-keywords" placeholder="hi, hello, namaskar" />
+        <label for="bot-welcome-message">Welcome message</label>
+        <textarea id="bot-welcome-message" rows="12"></textarea>
+
+        <label class="switch bot-fallback"><input type="checkbox" id="bot-fallback-enabled" checked /> Wrong option? Send the menu again</label>
+        <label for="bot-fallback-message">Line sent above the menu</label>
+        <input type="text" id="bot-fallback-message" placeholder="❌ माफ करा, हा पर्याय उपलब्ध नाही." />
+        <p class="hint">
+          For a customer the bot has answered in the last 24 hours: whatever they send - even "ok", a sticker or a photo -
+          gets a reply, the menu again when nothing else matches. Chats that never talked to the bot get nothing.
+        </p>
+      </section>
+
+      <section class="card">
+        <h2>Keyword rules</h2>
+        <p class="hint">
+          Checked top to bottom; the first match replies. Put several keywords in one rule with commas.
+          <b>Contains</b> matches whole words ("hi" never fires on "this"); a number keyword such as a menu option
+          <b>1</b> must always be the whole message.
+        </p>
+        <div class="row">
+          <div class="field">
+            <label for="rule-keyword">Keyword</label>
+            <input type="text" id="rule-keyword" placeholder="e.g. 4, price, pricing" />
+          </div>
+          <div class="field field-narrow">
+            <label for="rule-match">Match type</label>
+            <select id="rule-match">
+              <option value="contains">Contains</option>
+              <option value="exact">Exactly</option>
+            </select>
+          </div>
+        </div>
+        <label for="rule-reply">Automatic reply</label>
+        <textarea id="rule-reply" rows="5" placeholder="💰 Our plans: ..."></textarea>
+        <div class="rule-form-actions">
+          <button type="button" id="btn-add-rule" class="primary">Add keyword</button>
+          <button type="button" id="btn-cancel-rule" class="btn-secondary hidden">Cancel edit</button>
+          <button type="button" id="btn-seed-menu" class="btn-link" title="Adds any of the default menu rules (1-5) that are missing">
+            Restore Starshift menu rules
+          </button>
+        </div>
+        <p id="rule-status" class="error"></p>
+        <div class="pick-list tall" id="rules-list"></div>
+      </section>
+
+      <section class="card">
+        <h2>STOP / Unsubscribe</h2>
+        <label class="switch"><input type="checkbox" id="bot-auto-unsub" checked /> Add people who send a STOP keyword to the Unsubscribers list</label>
+        <div class="row">
+          <div class="field">
+            <label for="bot-stop-keywords">STOP keywords <span class="muted">(whole message)</span></label>
+            <input type="text" id="bot-stop-keywords" placeholder="6, stop, unsubscribe" />
+          </div>
+          <div class="field">
+            <label for="bot-start-keywords">START keywords <span class="muted">(re-subscribe)</span></label>
+            <input type="text" id="bot-start-keywords" placeholder="start, hi" />
+          </div>
+        </div>
+        <label for="bot-unsub-reply">Reply sent after someone unsubscribes</label>
+        <textarea id="bot-unsub-reply" rows="3"></textarea>
+        <p class="hint">
+          An unsubscribed contact gets no chatbot replies until they send a START keyword - that takes them off the
+          Unsubscribers list and sends the welcome menu. Keywords from campaign unsubscribe footers always work, even with the chatbot off.
+        </p>
+      </section>
+
+      <section class="card">
+        <h2>Test reply</h2>
+        <p class="hint">Type what a customer might send to see the reply the bot would pick. Nothing is sent.</p>
+        <div class="sheet-row">
+          <input type="text" id="test-message" placeholder="e.g. Hi, 4, price, STOP" />
+          <button type="button" id="btn-test-reply" class="btn-secondary">Test reply</button>
+        </div>
+        <label class="switch"><input type="checkbox" id="test-in-session" /> Customer talked to the bot in the last 24 hours</label>
+        <label class="switch"><input type="checkbox" id="test-unsubscribed" /> Test as an unsubscribed contact</label>
+        <div id="test-result" class="preview hidden">
+          <div id="test-label" class="hint"></div>
+          <div id="test-bubble" class="bubble bot-bubble"></div>
+        </div>
+      </section>
+
+      <p class="conditions-note">
+        <sup class="tc-mark">*</sup> <b>Conditions apply:</b> the chatbot works only while WhatsApp Web is open and logged in
+        in this Chrome, answers one-to-one chats only, pauses during campaigns, and replies from your own WhatsApp number -
+        so follow WhatsApp's Business and Commerce policies. WhatsApp Web updates can occasionally interrupt auto-replies.
+      </p>
+    </div>
+
+    <!-- ================= Quick Replies ================= -->
+    <div class="page hidden" id="page-quick">
+      <section class="card">
+        <h2>Quick replies</h2>
+        <p class="hint">
+          Saved answers for common questions, prices, catalog or support steps. On WhatsApp Web, open a chat and click the
+          green &#9889; button (bottom right) to insert one into the message box.
+        </p>
+        <label for="quick-title">Title</label>
+        <input type="text" id="quick-title" placeholder="e.g. Price list" />
+        <label for="quick-text">Reply text</label>
+        <textarea id="quick-text" rows="4" placeholder="Here is our latest price list: ..."></textarea>
+        <button type="button" id="btn-add-quick" class="primary">Save quick reply</button>
+        <p id="quick-status" class="error"></p>
+        <div class="pick-list tall" id="quick-list"></div>
+      </section>
+    </div>
+
+    <!-- ================= Unsubscribers ================= -->
+    <div class="page hidden" id="page-unsub">
+      <section class="card">
+        <h2>Unsubscribers (<span id="unsub-count">0</span>)</h2>
+        <p class="hint">
+          People on this list are never messaged by a campaign. Enter one per line: a mobile number with country code
+          (e.g. 918873520027) or a chat / group name.
+        </p>
+        <textarea id="unsub-input" rows="3" placeholder="918873520027"></textarea>
+        <button type="button" id="btn-add-unsub" class="primary">Add to list</button>
+        <div class="pick-list tall" id="unsub-list"></div>
+      </section>
+    </div>
+  </main>
+
+  <script src="../lib/xlsx.full.min.js"></script>
+  <script src="../common/shared.js"></script>
+  <script src="../common/chatbot.js"></script>
+  <script src="../common/config.js"></script>
+  <script src="../common/auth.js"></script>
+  <script src="dashboard.js"></script>
+</body>
+</html>

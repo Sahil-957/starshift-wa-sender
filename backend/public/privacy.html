@@ -1,0 +1,171 @@
+<!doctype html>
+<!--
+  Served at /privacy. The {{...}} placeholders are filled in by backend/server.js from .env:
+  BUSINESS_NAME, SUPPORT_EMAIL, SUPPORT_MOBILE, POLICY_EFFECTIVE_DATE, PUBLIC_BASE_URL.
+  Set those before you publish this URL on the Chrome Web Store.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Privacy Policy - Starshift WA Sender</title>
+  <link rel="stylesheet" href="/policy.css" />
+</head>
+<body>
+  <header class="topbar">
+    <span class="logo">SWAS</span>
+    <h1>Starshift WA Sender</h1>
+    <nav>
+      <a href="/privacy">Privacy</a>
+      <a href="/terms">Terms</a>
+    </nav>
+  </header>
+
+  <main>
+    <h2>Privacy Policy</h2>
+    <p class="meta">Last updated: {{POLICY_EFFECTIVE_DATE}}</p>
+    <p class="meta">Applies to the Starshift WA Sender Chrome extension, published by {{BUSINESS_NAME}}.</p>
+
+    <div class="callout">
+      <p><b>The short version.</b> Your contacts, your messages and everything you send stay on your own
+      computer. They are never uploaded to us. The only thing our server ever sees is your mobile number
+      and whether your subscription is still active.</p>
+    </div>
+
+    <h3>1. Who we are</h3>
+    <p>
+      Starshift WA Sender ("the extension") is provided by {{BUSINESS_NAME}} ("we", "us"). You can reach
+      us on WhatsApp at <a href="https://wa.me/{{SUPPORT_MOBILE}}">{{SUPPORT_MOBILE_LABEL}}</a> or by email
+      at <a href="mailto:{{SUPPORT_EMAIL}}">{{SUPPORT_EMAIL}}</a>.
+    </p>
+
+    <h3>2. What the extension does</h3>
+    <p>
+      The extension runs inside your own Chrome browser and automates the WhatsApp Web page that you are
+      already logged in to. It reads your chat list so you can pick who to message, and it types and sends
+      the messages you compose. It is not connected to WhatsApp's official Business API, and it never has
+      access to your WhatsApp account outside your own browser.
+    </p>
+
+    <h3>3. What stays on your computer</h3>
+    <p>
+      All of the following is stored only in Chrome's local extension storage on your device. It is never
+      sent to us, and we cannot read it:
+    </p>
+    <ul>
+      <li>Chat and group names, and any phone numbers, read from your WhatsApp Web session</li>
+      <li>Recipients you add, and any saved recipient lists</li>
+      <li>Message text, templates, placeholders and emoji</li>
+      <li>Files you attach, and their captions</li>
+      <li>Contacts imported from an Excel file or a Google Sheet</li>
+      <li>Campaign settings, schedules, progress and reports</li>
+      <li>Your unsubscribers list, chatbot rules and quick replies</li>
+    </ul>
+    <p>
+      Uninstalling the extension, or clearing its data from <code>chrome://extensions</code>, deletes all of it.
+    </p>
+
+    <h3>4. What our licence server receives</h3>
+    <p>
+      The extension talks to our server only to check that your subscription is valid. That server stores:
+    </p>
+    <table>
+      <thead><tr><th>Data</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr><td>Your mobile number</td><td>It is your account name</td></tr>
+        <tr><td>Your name (if your seller entered one)</td><td>So we can identify your account for support</td></tr>
+        <tr><td>Your password, stored only as a salted hash</td><td>To log you in. We cannot read your actual password.</td></tr>
+        <tr><td>Your plan length and expiry date</td><td>To know when your subscription ends</td></tr>
+        <tr><td>Your activation code</td><td>So your activation link can sign you in</td></tr>
+        <tr><td>The time you last logged in</td><td>Support and abuse checks</td></tr>
+      </tbody>
+    </table>
+    <p>
+      That is the complete list. Your contacts, your recipients, your message text and your attachments are
+      never sent to this server.
+    </p>
+
+    <h3>5. Third parties</h3>
+    <ul>
+      <li>
+        <b>WhatsApp.</b> Your messages go out through your own WhatsApp Web session, so WhatsApp handles them
+        exactly as it handles messages you type by hand. WhatsApp's own privacy policy applies to them.
+      </li>
+      <li>
+        <b>Google Sheets</b> - only if you use it. When you paste a Google Sheets link, your browser fetches
+        that sheet directly from Google. We never see the link or the sheet.
+      </li>
+      <li>
+        <b>Translation.</b> The Translate button uses Chrome's built-in on-device translator. Your message
+        text does not leave your computer.
+      </li>
+      <li>
+        <b>SMS.</b> If you reset your password, a one-time code is sent to your mobile number through an SMS
+        provider. Only your number and the code are shared with them.
+      </li>
+    </ul>
+
+    <h3>6. What we never do</h3>
+    <ul>
+      <li>We do not sell, rent or share your data with anyone for advertising</li>
+      <li>We do not read, store or forward the content of your WhatsApp messages</li>
+      <li>We do not upload your contact list anywhere</li>
+      <li>The extension contains no analytics, trackers or advertising code</li>
+    </ul>
+
+    <h3>7. Why the extension asks for each permission</h3>
+    <table>
+      <thead><tr><th>Permission</th><th>Reason</th></tr></thead>
+      <tbody>
+        <tr><td>Access to web.whatsapp.com</td><td>To read your chat list and send the messages you compose</td></tr>
+        <tr><td>Storage</td><td>To keep your contacts, campaigns and reports on your own device</td></tr>
+        <tr><td>Alarms</td><td>To send scheduled campaigns at the time you chose</td></tr>
+        <tr><td>Tabs and scripting</td><td>To find or open the WhatsApp Web tab and run the sending steps in it</td></tr>
+        <tr><td>Notifications</td><td>To tell you when a campaign finishes or stops</td></tr>
+        <tr><td>Access to docs.google.com</td><td>Only to read a Google Sheet whose link you paste yourself</td></tr>
+        <tr><td>Access to our licence server</td><td>To check your subscription is active</td></tr>
+      </tbody>
+    </table>
+
+    <h3>8. How long we keep your account data</h3>
+    <p>
+      We keep your account record for as long as your subscription is active, and for a reasonable period
+      afterwards so that renewing is easy. Ask us and we will delete it - write to
+      <a href="mailto:{{SUPPORT_EMAIL}}">{{SUPPORT_EMAIL}}</a> from your registered number or email. Deleting
+      your account ends your access to the extension.
+    </p>
+
+    <h3>9. Security</h3>
+    <p>
+      Passwords are stored only as salted scrypt hashes, never in plain text. Logins use a signed token that
+      expires. We re-check your subscription on every use, so access can be withdrawn immediately. No system
+      is perfectly secure, so please use a password you do not use anywhere else.
+    </p>
+
+    <h3>10. Children</h3>
+    <p>The extension is a business tool and is not intended for anyone under 18.</p>
+
+    <h3>11. Changes to this policy</h3>
+    <p>
+      If this policy changes we will update this page and the date at the top. Continuing to use the
+      extension after a change means you accept the updated policy.
+    </p>
+
+    <h3>12. Contact</h3>
+    <p>
+      Questions about your data? WhatsApp <a href="https://wa.me/{{SUPPORT_MOBILE}}">{{SUPPORT_MOBILE_LABEL}}</a>
+      or email <a href="mailto:{{SUPPORT_EMAIL}}">{{SUPPORT_EMAIL}}</a>.
+    </p>
+
+    <div class="callout warn">
+      <p>
+        <b>Not affiliated with WhatsApp.</b> Starshift WA Sender is an independent tool. It is not made,
+        endorsed or supported by WhatsApp LLC, Meta Platforms, Inc. or Google LLC. WhatsApp is a trademark
+        of its owner.
+      </p>
+    </div>
+  </main>
+
+  <footer>{{BUSINESS_NAME}} - <a href="/terms">Terms of Service</a></footer>
+</body>
+</html>

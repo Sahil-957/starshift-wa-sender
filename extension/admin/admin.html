@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Starshift WA Sender - Admin</title>
+  <link rel="stylesheet" href="../dashboard/dashboard.css" />
+  <link rel="stylesheet" href="admin.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><span class="logo">SWAS</span><h1>Starshift WA Sender Admin</h1></div>
+    <div class="topbar-actions">
+      <span id="admin-as" class="logged-in-as"></span>
+      <a href="../dashboard/dashboard.html" class="topbar-link">Dashboard</a>
+      <button type="button" id="btn-logout" class="topbar-link">Logout</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="card page hidden" id="locked">
+      <h2>Admin only</h2>
+      <p id="locked-reason" class="hint"></p>
+    </section>
+
+    <div class="page hidden" id="admin-content">
+      <section class="card">
+        <h2>Add customer</h2>
+        <p class="hint">
+          Adding a customer creates their <b>activation link</b> - send them that and one click signs them in,
+          no typing. The password below is their backup way in; it is shown only once (use
+          <b>Reset password</b> if it's lost).
+        </p>
+        <div class="row">
+          <div class="field">
+            <label for="new-name">Name</label>
+            <input type="text" id="new-name" placeholder="Customer name" />
+          </div>
+          <div class="field">
+            <label for="new-mobile">Mobile with country code</label>
+            <input type="text" id="new-mobile" placeholder="919876543210" />
+          </div>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label for="new-plan">Validity</label>
+            <select id="new-plan">
+              <option value="1" selected>1 month</option>
+              <option value="3">3 months</option>
+              <option value="6">6 months</option>
+              <option value="12">12 months</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="new-password">Password (optional)</label>
+            <input type="text" id="new-password" placeholder="Leave blank to generate one" autocomplete="off" />
+          </div>
+        </div>
+        <button type="button" id="btn-add-customer" class="primary">Add customer</button>
+        <p id="admin-error" class="error"></p>
+
+        <div id="password-box" class="password-box hidden">
+          <span>Password for <b id="password-for"></b>:</span>
+          <code id="password-value"></code>
+          <button type="button" id="btn-copy-password" class="btn-secondary">Copy</button>
+        </div>
+
+        <div id="activation-box" class="password-box hidden">
+          <span>Activation link for <b id="activation-for"></b>:</span>
+          <code id="activation-value" class="link-code"></code>
+          <button type="button" id="btn-copy-activation" class="btn-secondary">Copy link</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Customers (<span id="customer-count">0</span>)</h2>
+        <input type="text" id="search-customers" placeholder="Search by name or number" />
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Name</th><th>Mobile</th><th>Status</th><th>Valid till</th><th>Last login</th><th>Actions</th></tr>
+            </thead>
+            <tbody id="customers-body"></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script src="../common/config.js"></script>
+  <script src="../common/auth.js"></script>
+  <script src="admin.js"></script>
+</body>
+</html>

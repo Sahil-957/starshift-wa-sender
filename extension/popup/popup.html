@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Starshift WA Sender</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <header class="brand">
+    <span class="logo">SWAS</span>
+    <h1>Starshift WA Sender</h1>
+  </header>
+
+  <main id="view-login" class="view">
+    <h2>Login</h2>
+    <p class="hint">Use the mobile number and password given to you by your seller.</p>
+
+    <form id="login-form">
+      <label for="mobile">Mobile Number</label>
+      <div class="row">
+        <select id="country-code">
+          <option value="91" selected>+91 (IN)</option>
+          <option value="1">+1 (US)</option>
+          <option value="44">+44 (UK)</option>
+          <option value="971">+971 (UAE)</option>
+        </select>
+        <input id="mobile" type="tel" placeholder="e.g. 8873520027" maxlength="10" autocomplete="username" />
+      </div>
+      <label for="password">Password</label>
+      <input id="password" type="password" autocomplete="current-password" />
+      <button id="btn-login" type="submit" class="primary">Login</button>
+    </form>
+
+    <button type="button" id="go-activate" class="link">I have an activation code</button>
+    <button type="button" id="go-forgot" class="link">Forgot password?</button>
+    <p id="login-error" class="error hidden"></p>
+  </main>
+
+  <main id="view-activate" class="view hidden">
+    <h2>Activate Starshift WA Sender</h2>
+    <p class="hint">Paste the activation link (or just the code) your seller sent you.</p>
+    <input id="activate-code" type="text" placeholder="https://... or the code" autocomplete="off" />
+    <button type="button" id="btn-activate" class="primary">Activate</button>
+    <button type="button" id="back-from-activate" class="link">Back to login</button>
+    <p id="activate-error" class="error hidden"></p>
+  </main>
+
+  <main id="view-forgot" class="view hidden">
+    <h2>Reset your password</h2>
+    <p class="hint">We'll send a one-time code to your registered mobile number.</p>
+
+    <label for="forgot-mobile">Mobile Number</label>
+    <div class="row">
+      <select id="forgot-country-code">
+        <option value="91" selected>+91 (IN)</option>
+        <option value="1">+1 (US)</option>
+        <option value="44">+44 (UK)</option>
+        <option value="971">+971 (UAE)</option>
+      </select>
+      <input id="forgot-mobile" type="tel" placeholder="e.g. 8873520027" maxlength="10" />
+    </div>
+    <button type="button" id="btn-send-code" class="primary">Send code</button>
+
+    <div id="forgot-step2" class="hidden">
+      <label for="forgot-otp">Code from the SMS</label>
+      <input id="forgot-otp" type="text" inputmode="numeric" maxlength="6" autocomplete="one-time-code" />
+      <label for="forgot-password">New password</label>
+      <input id="forgot-password" type="password" autocomplete="new-password" />
+      <button type="button" id="btn-reset-password" class="primary">Set new password</button>
+    </div>
+
+    <button type="button" id="back-from-forgot" class="link">Back to login</button>
+    <p id="forgot-note" class="hint hidden"></p>
+    <p id="forgot-error" class="error hidden"></p>
+  </main>
+
+  <main id="view-home" class="view hidden">
+    <h2>Welcome, <span id="user-mobile"></span></h2>
+    <p class="hint">You're logged in. Open the dashboard to create a campaign.</p>
+    <p id="plan-info" class="hint hidden"></p>
+    <button id="btn-open-dashboard" class="primary">Open Dashboard</button>
+    <button id="btn-open-admin" class="primary dark hidden">Admin Panel</button>
+    <button id="btn-logout" class="link">Logout</button>
+  </main>
+
+  <footer class="support">
+    Need help? WhatsApp <a id="support-link" href="#" target="_blank" rel="noopener"></a>
+  </footer>
+
+  <script src="../common/config.js"></script>
+  <script src="../common/auth.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

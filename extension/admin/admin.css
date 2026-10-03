@@ -1,0 +1,31 @@
+/* Admin-only extras; the palette and base components come from dashboard.css. */
+.password-box {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 12px; padding: 12px 14px;
+  border-radius: 12px; background: var(--green-soft); border: 1px solid #a9eec1; font-size: 13px;
+  color: var(--green-ink); font-weight: 600;
+}
+.password-box code {
+  font-family: ui-monospace, Consolas, monospace; font-size: 18px; font-weight: 700; letter-spacing: 1px;
+  background: #fff; color: var(--ink); padding: 5px 12px; border-radius: 8px; user-select: all;
+  border: 1px solid #a9eec1;
+}
+
+/* The activation link is the thing the seller actually sends, so it gets its own colour. */
+#activation-box {
+  background: var(--brand-soft); border-color: #b9ded6; color: var(--brand-ink);
+}
+#activation-box code {
+  border-color: #b9ded6;
+  font-size: 13px; font-weight: 500; letter-spacing: 0; word-break: break-all; flex: 1; min-width: 200px;
+}
+
+#search-customers { margin-bottom: 8px; }
+td.actions { white-space: normal; }
+td.actions button, td.actions select { margin: 2px 4px 2px 0; }
+td.actions select.renew { padding: 6px 10px; font-size: 12.5px; border-radius: 999px; }
+.field select { width: 100%; }
+.days-left { color: var(--ink-soft); }
+.expiring { color: var(--amber-ink); font-weight: 700; }
+.ended { color: var(--red-ink); font-weight: 700; }
+.btn-secondary.danger { color: var(--red-ink); }
+.btn-secondary.danger:hover { background: var(--red-soft); border-color: #ffc9c6; }

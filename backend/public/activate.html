@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Activate Starshift WA Sender</title>
+  <style>
+    :root {
+      --brand: #128c7e; --brand-soft: #e2f4f1; --brand-ink: #075e54;
+      --green: #25d366; --green-ink: #12803f;
+      --red-ink: #b02020; --ink: #14211f; --ink-soft: #64756f; --line: #e2ece8;
+      --grad-header: linear-gradient(115deg, #075e54 0%, #128c7e 48%, #25d366 100%);
+      --grad-cta: linear-gradient(120deg, #25d366 0%, #0fb5ae 100%);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
+      padding: 24px; color: var(--ink);
+      font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+      background:
+        radial-gradient(760px 420px at 12% 8%, #128c7e 0%, transparent 60%),
+        radial-gradient(700px 400px at 88% 92%, #25d366 0%, transparent 58%),
+        #04231f;
+    }
+    .card {
+      width: 100%; max-width: 460px; background: #fff; border-radius: 20px; overflow: hidden;
+      box-shadow: 0 30px 70px -30px rgba(0, 0, 0, 0.75);
+    }
+    .head {
+      display: flex; align-items: center; gap: 11px; padding: 20px 28px;
+      background: var(--grad-header); color: #fff;
+    }
+    .logo {
+      background: rgba(255, 255, 255, 0.95); color: var(--brand-ink); font-weight: 800; font-size: 12px;
+      letter-spacing: 1px; padding: 7px 10px; border-radius: 9px;
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.25);
+    }
+    h1 { font-size: 17px; margin: 0; font-weight: 700; letter-spacing: 0.2px; }
+    .body { padding: 26px 28px 28px; }
+    h2 { font-size: 16px; margin: 0 0 8px; font-weight: 700; }
+    p { font-size: 13.5px; line-height: 1.55; color: #4b4763; margin: 0 0 14px; }
+    .state { display: none; }
+    .state.on { display: block; }
+    .ok h2 { color: var(--green-ink); }
+    .bad h2 { color: var(--red-ink); }
+    .dots { display: flex; gap: 6px; margin-bottom: 14px; }
+    .dots i {
+      width: 8px; height: 8px; border-radius: 50%; background: var(--brand); opacity: 0.35;
+      animation: pulse 1.1s infinite ease-in-out;
+    }
+    .dots i:nth-child(2) { animation-delay: 0.15s; background: #25d366; }
+    .dots i:nth-child(3) { animation-delay: 0.3s; background: #0fb5ae; }
+    @keyframes pulse { 0%, 100% { opacity: 0.25; transform: scale(1); } 50% { opacity: 1; transform: scale(1.35); } }
+    code {
+      display: block; user-select: all; word-break: break-all; margin: 12px 0 16px;
+      font-family: ui-monospace, Consolas, monospace; font-size: 13px; color: var(--brand-ink);
+      background: var(--brand-soft); border: 1px solid #b9ded6; border-radius: 10px; padding: 12px 14px;
+    }
+    button {
+      width: 100%; padding: 12px; border: none; border-radius: 11px; background: var(--grad-cta);
+      color: #fff; font-family: inherit; font-size: 14px; font-weight: 700; cursor: pointer;
+      box-shadow: 0 10px 22px -12px rgba(23, 201, 100, 0.95);
+    }
+    button:hover { filter: brightness(1.05); }
+    ol { font-size: 13.5px; line-height: 1.7; color: #4b4763; padding-left: 20px; margin: 0 0 12px; }
+    ol li::marker { color: var(--brand); font-weight: 700; }
+    .support {
+      margin: 18px 0 0; padding-top: 14px; border-top: 1px solid var(--line);
+      font-size: 12.5px; color: var(--ink-soft); text-align: center;
+    }
+    .support a { color: var(--brand-ink); font-weight: 700; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="head"><span class="logo">SWAS</span><h1>Starshift WA Sender</h1></div>
+    <div class="body">
+
+    <div id="state-working" class="state on">
+      <div class="dots"><i></i><i></i><i></i></div>
+      <h2>Activating...</h2>
+      <p>Checking your link with the Starshift WA Sender extension.</p>
+    </div>
+
+    <div id="state-done" class="state ok">
+      <h2>You're all set</h2>
+      <p id="done-text">Starshift WA Sender is activated on this browser. Click its icon in the Chrome toolbar to start sending.</p>
+    </div>
+
+    <div id="state-manual" class="state">
+      <h2>One more step</h2>
+      <p id="manual-why">The Starshift WA Sender extension didn't answer on this browser.</p>
+      <ol>
+        <li>Install / open Starshift WA Sender in Chrome on this computer.</li>
+        <li>Click the extension icon, then <b>I have an activation code</b>.</li>
+        <li>Paste the code below.</li>
+      </ol>
+      <code id="manual-code"></code>
+      <button type="button" id="btn-copy">Copy code</button>
+    </div>
+
+    <div id="state-error" class="state bad">
+      <h2>This link didn't work</h2>
+      <p id="error-text"></p>
+    </div>
+
+    <p class="support">
+      Stuck? WhatsApp <a id="support-link" target="_blank" rel="noopener"></a><br />
+      <a href="/privacy">Privacy Policy</a> &middot; <a href="/terms">Terms of Service</a>
+    </p>
+    </div>
+  </div>
+
+  <script>
+    const params = new URLSearchParams(location.search);
+    const token = params.get("t") || "";
+
+    function show(id) {
+      document.querySelectorAll(".state").forEach((node) => node.classList.toggle("on", node.id === id));
+    }
+
+    function manual(why) {
+      document.getElementById("manual-why").textContent = why;
+      document.getElementById("manual-code").textContent = token;
+      show("state-manual");
+    }
+
+    function fail(message) {
+      document.getElementById("error-text").textContent = message;
+      show("state-error");
+    }
+
+    document.getElementById("btn-copy").addEventListener("click", async (e) => {
+      await navigator.clipboard.writeText(token);
+      e.target.textContent = "Copied";
+    });
+
+    (async () => {
+      if (!token) return fail("The link is missing its code. Ask your seller to send it again.");
+
+      let extensionId = "";
+      let supportMobile = "917028080364";
+      try {
+        const config = await (await fetch("/api/public-config")).json();
+        extensionId = config.extensionId || "";
+        supportMobile = config.supportMobile || supportMobile;
+      } catch {
+        /* the manual path below still works */
+      }
+      const support = document.getElementById("support-link");
+      support.textContent = `+${supportMobile.slice(0, 2)} ${supportMobile.slice(2, 7)} ${supportMobile.slice(7)}`;
+      support.href = `https://wa.me/${supportMobile}`;
+
+      // The extension answers web pages only from the origins listed in its externally_connectable.
+      if (!extensionId || !window.chrome?.runtime?.sendMessage) {
+        return manual("This browser can't talk to the extension directly (it may not be Chrome, or the extension isn't installed yet).");
+      }
+
+      chrome.runtime.sendMessage(extensionId, { type: "ACTIVATE", token }, (response) => {
+        if (chrome.runtime.lastError || !response) {
+          return manual("The Starshift WA Sender extension didn't answer - it may not be installed in this browser yet.");
+        }
+        if (!response.success) return fail(response.reason || "Activation failed. Ask your seller for a new link.");
+        document.getElementById("done-text").textContent =
+          `Starshift WA Sender is activated for +${response.mobile}. Click its icon in the Chrome toolbar to start sending.`;
+        show("state-done");
+      });
+    })();
+  </script>
+</body>
+</html>
