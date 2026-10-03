@@ -148,8 +148,10 @@ async function answer(mobile, sock, bot, config, msg) {
   const contact = { name: msg.pushName || "", number: await phoneOf(sock, msg.key) };
   const who = contact.number || contact.name || jid;
   const unsubscribed = bot.unsubscribers.some((entry) => SwasBot.isSameContact(entry, contact));
-  const inSession = Date.now() - (bot.sessions[jid] || 0) < SwasBot.LIMITS.sessionMs;
-  const action = SwasBot.matchMessage(text, config, { unsubscribed, inSession });
+  const last = bot.sessions[jid] || 0;
+  const inSession = Date.now() - last < SwasBot.LIMITS.sessionMs;
+  const idleMs = last ? Date.now() - last : null; // time since the bot last answered this chat
+  const action = SwasBot.matchMessage(text, config, { unsubscribed, inSession, idleMs });
   if (!action) {
     console.log(`[bot ${mobile}] ${who}: "${text}" - no reply${unsubscribed ? " (unsubscribed)" : ""}`);
     return;

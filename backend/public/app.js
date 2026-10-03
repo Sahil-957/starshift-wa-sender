@@ -604,6 +604,7 @@ function renderBotUI() {
   $("bot-welcome-msg").value = s.welcomeMessage || "";
   $("bot-fallback-enabled").checked = !!s.fallbackEnabled;
   $("bot-fallback-msg").value = s.fallbackMessage || "";
+  $("bot-rewelcome").value = s.rewelcomeMinutes ?? 2;
   $("bot-auto-unsub").checked = !!s.autoUnsubscribe;
   $("bot-stop-kw").value = s.stopKeywords || "";
   $("bot-start-kw").value = s.startKeywords || "";
@@ -635,6 +636,7 @@ function readBotUI() {
     welcomeMessage: $("bot-welcome-msg").value,
     fallbackEnabled: $("bot-fallback-enabled").checked,
     fallbackMessage: $("bot-fallback-msg").value,
+    rewelcomeMinutes: Number($("bot-rewelcome").value) || 0,
     autoUnsubscribe: $("bot-auto-unsub").checked,
     stopKeywords: $("bot-stop-kw").value,
     startKeywords: $("bot-start-kw").value,

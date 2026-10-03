@@ -130,6 +130,9 @@ Your Business Growth Partner 🚀`,
     stopKeywords: "6, stop, unsubscribe",
     startKeywords: "start, hi",
     unsubscribeReply: UNSUBSCRIBE_REPLY,
+    // After this many minutes of silence, a returning customer's next message gets the welcome menu
+    // again (a fresh conversation). 0 turns it off.
+    rewelcomeMinutes: 0,
   };
 
   /**
@@ -187,6 +190,7 @@ Your Business Growth Partner 🚀`,
       fallbackEnabled: on && !!settings.fallbackEnabled,
       fallbackMessage: String(settings.fallbackMessage || "").trim(),
       unsubscribeReply: settings.unsubscribeReply,
+      rewelcomeMs: on ? (Number(settings.rewelcomeMinutes) || 0) * 60000 : 0,
     };
   }
 
@@ -201,8 +205,10 @@ Your Business Growth Partner 🚀`,
    * unsubscribed contact only gets an answer to START.
    * Returns { type: "unsubscribe" | "start" | "rule" | "welcome" | "fallback", label, reply, rule? }.
    */
-  function matchMessage(text, config, { unsubscribed = false, inSession = false } = {}) {
+  function matchMessage(text, config, { unsubscribed = false, inSession = false, idleMs = null } = {}) {
     const message = normalize(text);
+    // A returning customer who has been silent longer than rewelcomeMs is greeted fresh.
+    const afterGap = config.rewelcomeMs > 0 && idleMs != null && idleMs >= config.rewelcomeMs;
     const fallback =
       inSession && !unsubscribed && config.fallbackEnabled && config.welcomeMessage
         ? {
@@ -230,8 +236,8 @@ Your Business Growth Partner 🚀`,
         return { type: "rule", label: `Rule "${rule.keyword}"`, reply: rule.reply, rule };
       }
     }
-    if (config.welcomeMessage && config.welcomeKeywords.some((keyword) => keywordMatches(message, keyword, "contains"))) {
-      return { type: "welcome", label: "Welcome menu", reply: config.welcomeMessage };
+    if (config.welcomeMessage && (afterGap || config.welcomeKeywords.some((keyword) => keywordMatches(message, keyword, "contains")))) {
+      return { type: "welcome", label: afterGap ? "Welcome menu (after a gap)" : "Welcome menu", reply: config.welcomeMessage };
     }
     return fallback;
   }
