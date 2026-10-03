@@ -33,7 +33,13 @@ function signedIn(mobile, role) {
   updatePreview();
   loadSelected();
   renderSelected();
-  syncContacts(); // contacts load automatically, so a refresh doesn't empty the list
+  // Show cached contacts/groups instantly, then refresh them in the background - a refresh never empties them.
+  _contacts = cacheGet("starshiftContacts");
+  _groups = cacheGet("starshiftGroups");
+  renderContacts("");
+  renderGroups("");
+  syncContacts(false);
+  syncGroups(false);
 }
 
 function signOut() {
@@ -42,7 +48,7 @@ function signOut() {
   [statusPoller, progressPoller, reportsPoller].forEach(clearTimeout);
   clearInterval(countdownTimer);
   selected = [];
-  try { localStorage.removeItem("starshiftSelected"); } catch { /* private mode */ }
+  try { ["starshiftSelected", "starshiftContacts", "starshiftGroups"].forEach((k) => localStorage.removeItem(k)); } catch { /* private mode */ }
   document.body.classList.add("locked");
   $("login-view").classList.remove("hidden");
   $("logout").classList.add("hidden");
@@ -222,12 +228,19 @@ document.querySelectorAll(".rtab").forEach((t) =>
 
 function markAdded(btn) { btn.textContent = "Added"; btn.classList.add("added"); }
 
+// Cache the synced contact/group lists so a page refresh shows them instantly (then refreshes in the background).
+function cacheSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* private mode */ } }
+function cacheGet(k) { try { return JSON.parse(localStorage.getItem(k) || "[]"); } catch { return []; } }
+
 // Contact
 let _contacts = [];
-async function syncContacts() {
-  $("contact-list").innerHTML = `<p class="empty-note">Loading…</p>`;
-  try { _contacts = (await api("/wa/contacts")).contacts || []; renderContacts(""); }
-  catch (e) { $("contact-list").innerHTML = `<p class="empty-note">${esc(e.message)}</p>`; }
+async function syncContacts(showLoading) {
+  if (showLoading) $("contact-list").innerHTML = `<p class="empty-note">Loading…</p>`;
+  try {
+    _contacts = (await api("/wa/contacts")).contacts || [];
+    cacheSet("starshiftContacts", _contacts);
+    renderContacts($("contact-search").value.trim().toLowerCase());
+  } catch (e) { if (showLoading) $("contact-list").innerHTML = `<p class="empty-note">${esc(e.message)}</p>`; }
 }
 function renderContacts(q) {
   const list = _contacts.filter((c) => !q || c.name.toLowerCase().includes(q) || c.number.includes(q));
@@ -236,15 +249,18 @@ function renderContacts(q) {
     : `<p class="empty-note">No contacts found. Click “Sync contacts”.</p>`;
   $("contact-list").querySelectorAll("[data-add]").forEach((b) => b.addEventListener("click", () => { addRecipient({ source: "number", name: b.dataset.name, mobile: b.dataset.add }); markAdded(b); }));
 }
-$("sync-contacts").addEventListener("click", syncContacts);
+$("sync-contacts").addEventListener("click", () => syncContacts(true));
 $("contact-search").addEventListener("input", () => renderContacts($("contact-search").value.trim().toLowerCase()));
 
 // Group
 let _groups = [];
-async function syncGroups() {
-  $("group-list").innerHTML = `<p class="empty-note">Loading…</p>`;
-  try { _groups = (await api("/wa/groups")).groups || []; renderGroups(""); }
-  catch (e) { $("group-list").innerHTML = `<p class="empty-note">${esc(e.message)}</p>`; }
+async function syncGroups(showLoading) {
+  if (showLoading) $("group-list").innerHTML = `<p class="empty-note">Loading…</p>`;
+  try {
+    _groups = (await api("/wa/groups")).groups || [];
+    cacheSet("starshiftGroups", _groups);
+    renderGroups($("group-search").value.trim().toLowerCase());
+  } catch (e) { if (showLoading) $("group-list").innerHTML = `<p class="empty-note">${esc(e.message)}</p>`; }
 }
 function renderGroups(q) {
   const list = _groups.filter((g) => !q || g.name.toLowerCase().includes(q));
@@ -253,7 +269,7 @@ function renderGroups(q) {
     : `<p class="empty-note">No groups found. Click “Sync groups”.</p>`;
   $("group-list").querySelectorAll("[data-addg]").forEach((b) => b.addEventListener("click", () => { addRecipient({ source: "group", name: b.dataset.addg }); markAdded(b); }));
 }
-$("sync-groups").addEventListener("click", syncGroups);
+$("sync-groups").addEventListener("click", () => syncGroups(true));
 $("group-search").addEventListener("input", () => renderGroups($("group-search").value.trim().toLowerCase()));
 
 // Numbers (manual + Excel)
