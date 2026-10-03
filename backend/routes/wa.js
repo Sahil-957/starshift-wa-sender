@@ -39,6 +39,10 @@ router.post("/send", async (req, res) => {
   }
 });
 
+// Current stored chatbot config + unsubscribers, and the built-in defaults, for the web app's Chatbot page.
+router.get("/bot", (req, res) => res.json(bot.current(req.auth.mobile)));
+router.get("/bot/defaults", (_req, res) => res.json(bot.defaults()));
+
 // The extension's chatbot settings and Unsubscribers in; the bot's STOP / START changes back out.
 // `running` tells the extension the server is answering, so WhatsApp Web's own bot stands down.
 router.post("/bot/sync", (req, res) => {

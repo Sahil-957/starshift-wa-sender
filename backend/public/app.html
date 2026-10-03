@@ -13,7 +13,7 @@
     <div class="topbar-actions">
       <span class="logged-in-as" id="account-label"></span>
       <a class="topbar-link" href="https://wa.me/917028080364" target="_blank" rel="noopener">Support</a>
-      <a class="topbar-link hidden" id="admin-link" href="/admin" target="_blank" rel="noopener">Admin Panel</a>
+      <a class="topbar-link hidden" id="admin-link" href="/admin">Admin Panel</a>
       <button id="logout" class="topbar-link hidden">Log out</button>
     </div>
   </header>
@@ -30,8 +30,19 @@
         <label for="password">Password</label>
         <input id="password" type="password" autocomplete="current-password" required />
         <button class="primary" type="submit">Sign in</button>
+        <button type="button" id="forgot-open" class="btn-link">Forgot password?</button>
         <p id="login-error" class="error" role="alert"></p>
       </form>
+    </div>
+  </section>
+  <section id="forgot-view" class="login-wrap hidden">
+    <div class="login-card">
+      <p class="eyebrow">ACCOUNT RECOVERY</p><h2>Reset password</h2>
+      <p class="hint">A one-time code will be sent to your registered mobile number.</p>
+      <label for="forgot-mobile">Mobile number with country code</label><input id="forgot-mobile" inputmode="tel" placeholder="919876543210" />
+      <button id="send-code" class="secondary" type="button">Send code</button>
+      <div id="reset-fields" class="hidden"><label for="forgot-otp">One-time code</label><input id="forgot-otp" inputmode="numeric" maxlength="6" /><label for="forgot-password">New password</label><input id="forgot-password" type="password" autocomplete="new-password" /><button id="reset-password" class="primary" type="button">Set new password</button></div>
+      <p id="forgot-status" class="hint" role="status"></p><button type="button" id="forgot-back" class="btn-link">Back to sign in</button>
     </div>
   </section>
 
@@ -40,6 +51,9 @@
     <div class="nav">
       <button class="nav-tab" data-page="campaign" aria-selected="true">New Campaign</button>
       <button class="nav-tab" data-page="reports">Reports</button>
+      <button class="nav-tab" data-page="chatbot">Chatbot</button>
+      <button class="nav-tab" data-page="quick">Quick Replies</button>
+      <button class="nav-tab" data-page="unsub">Unsubscribers</button>
     </div>
     <div class="wa-chip">
       <button id="wa-chip-btn" class="wa-chip-btn"><i id="status-dot" class="wa-dot"></i><span id="status-text">Checking WhatsApp…</span></button>
@@ -257,6 +271,71 @@
       <div class="card">
         <h2>Campaigns</h2>
         <div id="reports-list" class="campaigns-list"><p class="hint">No campaigns yet.</p></div>
+      </div>
+    </section>
+
+    <!-- ================= Chatbot ================= -->
+    <section id="page-chatbot" class="page hidden">
+      <div class="card">
+        <h2>Chatbot auto-replies</h2>
+        <label class="switch"><input type="checkbox" id="bot-enabled" /> Enable chatbot</label>
+        <p class="hint">With the server WhatsApp linked, a reply goes out the moment a message arrives — nothing typed, browser closed is fine. Groups are ignored; each chat is answered at most a few times a minute.</p>
+        <div id="bot-engine" class="bot-engine"></div>
+      </div>
+      <div class="card">
+        <h2>Welcome menu</h2>
+        <p class="hint">Sent when a customer greets you. Clear the keywords to turn it off.</p>
+        <label>Welcome keywords (comma separated)</label>
+        <input type="text" id="bot-welcome-kw" />
+        <label>Welcome message</label>
+        <textarea id="bot-welcome-msg" rows="9"></textarea>
+        <label class="switch" style="margin-top:12px"><input type="checkbox" id="bot-fallback-enabled" /> Wrong option? Send the menu again</label>
+        <label>Line sent above the menu</label>
+        <input type="text" id="bot-fallback-msg" />
+      </div>
+      <div class="card">
+        <h2>Keyword rules</h2>
+        <p class="hint">Checked top to bottom; the first match replies. A number keyword (menu option) must be the whole message.</p>
+        <div id="rule-list" class="pick-list tall"></div>
+        <div class="row" style="margin-top:12px">
+          <div class="field"><label>Keyword(s)</label><input type="text" id="rule-kw" placeholder="e.g. 4, price, pricing" /></div>
+          <div class="field field-narrow"><label>Match type</label><select id="rule-match"><option value="contains">Contains</option><option value="exact">Exact</option></select></div>
+        </div>
+        <label>Reply</label>
+        <textarea id="rule-reply" rows="3"></textarea>
+        <button type="button" class="btn-secondary" id="rule-add" style="margin-top:10px">Add rule</button>
+      </div>
+      <div class="card">
+        <h2>Unsubscribe (STOP / START)</h2>
+        <label class="switch"><input type="checkbox" id="bot-auto-unsub" /> Move anyone who sends STOP to the Unsubscribers list</label>
+        <label>STOP keywords</label><input type="text" id="bot-stop-kw" />
+        <label>START keywords</label><input type="text" id="bot-start-kw" />
+        <label>STOP reply</label><textarea id="bot-unsub-reply" rows="3"></textarea>
+        <button type="button" class="primary" id="bot-save">Save chatbot</button>
+        <p class="hint" id="bot-status"></p>
+      </div>
+    </section>
+
+    <!-- ================= Quick Replies ================= -->
+    <section id="page-quick" class="page hidden">
+      <div class="card">
+        <h2>Quick replies</h2>
+        <p class="hint">Saved answers for common questions, prices or support steps. Click one to copy it.</p>
+        <label>Title</label><input type="text" id="qr-title" placeholder="e.g. Price list" />
+        <label>Reply text</label><textarea id="qr-text" rows="3"></textarea>
+        <button type="button" class="primary" id="qr-add">Save quick reply</button>
+        <div id="qr-list" class="pick-list tall" style="margin-top:14px"></div>
+      </div>
+    </section>
+
+    <!-- ================= Unsubscribers ================= -->
+    <section id="page-unsub" class="page hidden">
+      <div class="card">
+        <h2>Unsubscribers (<span id="unsub-count">0</span>)</h2>
+        <p class="hint">People on this list are never messaged by a campaign. One per line: a mobile number with country code, or a chat / group name. STOP replies from the chatbot are added here automatically.</p>
+        <textarea id="unsub-text" rows="8"></textarea>
+        <button type="button" class="primary" id="unsub-save">Save unsubscribers</button>
+        <p class="hint" id="unsub-status"></p>
       </div>
     </section>
   </main>

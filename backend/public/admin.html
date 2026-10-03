@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Starshift WA Sender · Admin</title>
+  <link rel="stylesheet" href="admin.css" />
+</head>
+<body>
+  <header><a href="/app" class="brand"><span class="logo">SWAS</span><b>Admin Panel</b></a><div><span id="admin-label"></span> <a href="/app">Back to app</a> <button id="logout">Log out</button></div></header>
+  <main>
+    <section id="denied" class="card hidden"><h1>Admin access required</h1><p>Sign in to the web app using the admin account.</p><a href="/app">Go to sign in</a></section>
+    <div id="admin-view" class="hidden">
+      <div class="heading"><div><p class="eyebrow">ACCOUNT MANAGEMENT</p><h1>Customers</h1></div><button id="refresh" class="secondary">Refresh list</button></div>
+      <section class="card">
+        <h2>Add a customer</h2>
+        <form id="create-form" class="create-form">
+          <label>Name<input id="new-name" autocomplete="name" /></label>
+          <label>Mobile with country code<input id="new-mobile" inputmode="tel" placeholder="919876543210" required /></label>
+          <label>Plan<select id="new-months"><option value="1">1 month</option><option value="3">3 months</option><option value="6">6 months</option><option value="12">12 months</option></select></label>
+          <button class="primary">Create account</button>
+        </form>
+        <p id="create-status" class="status" role="status"></p>
+        <div id="created-result" class="created hidden"></div>
+      </section>
+      <section class="card"><div class="table-heading"><h2>Customer accounts</h2><span id="customer-count" class="muted"></span></div><div class="table-wrap"><table><thead><tr><th>Customer</th><th>Plan ends</th><th>Status</th><th>Actions</th></tr></thead><tbody id="customers"><tr><td colspan="4">Loading…</td></tr></tbody></table></div></section>
+      <p id="page-error" class="error" role="alert"></p>
+    </div>
+  </main>
+  <script src="admin.js"></script>
+</body>
+</html>

@@ -24,6 +24,7 @@ const api = async (path, method = "GET", body) => {
 function signedIn(mobile, role) {
   document.body.classList.remove("locked");
   $("login-view").classList.add("hidden");
+  $("forgot-view").classList.add("hidden");
   $("logout").classList.remove("hidden");
   $("admin-link").classList.toggle("hidden", role !== "admin");
   $("account-label").textContent = mobile ? `Logged in as +${mobile}` : "";
@@ -69,15 +70,45 @@ $("login-form").addEventListener("submit", async (event) => {
   }
 });
 
+$("forgot-open").addEventListener("click", () => {
+  $("login-view").classList.add("hidden");
+  $("forgot-view").classList.remove("hidden");
+  $("forgot-mobile").value = $("mobile").value.replace(/\D/g, "");
+  $("forgot-status").textContent = "";
+});
+$("forgot-back").addEventListener("click", () => {
+  $("forgot-view").classList.add("hidden");
+  $("login-view").classList.remove("hidden");
+});
+$("send-code").addEventListener("click", async () => {
+  $("forgot-status").textContent = "Sending code…";
+  try {
+    const result = await api("/auth/forgot-password", "POST", { mobile: $("forgot-mobile").value.replace(/\D/g, "") });
+    $("forgot-status").textContent = result.message || "If that number has an account, a code has been sent.";
+    $("reset-fields").classList.remove("hidden");
+  } catch (error) { $("forgot-status").textContent = error.message; }
+});
+$("reset-password").addEventListener("click", async () => {
+  $("forgot-status").textContent = "Updating password…";
+  try {
+    await api("/auth/reset-password", "POST", { mobile: $("forgot-mobile").value.replace(/\D/g, ""), otp: $("forgot-otp").value.trim(), password: $("forgot-password").value });
+    $("forgot-status").textContent = "Password updated. Sign in with your new password.";
+    $("forgot-view").classList.add("hidden"); $("login-view").classList.remove("hidden");
+  } catch (error) { $("forgot-status").textContent = error.message; }
+});
+
 $("logout").addEventListener("click", signOut);
 
 // ---------- Navigation ----------
+const PAGES = ["campaign", "reports", "chatbot", "quick", "unsub"];
 function showPage(page) {
   document.querySelectorAll(".nav-tab").forEach((tab) => tab.setAttribute("aria-selected", tab.dataset.page === page));
-  $("page-campaign").classList.toggle("hidden", page !== "campaign");
-  $("page-reports").classList.toggle("hidden", page !== "reports");
+  PAGES.forEach((p) => { const sec = $("page-" + p); if (sec) sec.classList.toggle("hidden", p !== page); });
   clearTimeout(reportsPoller);
   if (page === "reports") loadReports();
+  if (page === "chatbot") loadBot();
+  if (page === "quick") renderQuick();
+  if (page === "unsub") loadUnsub();
 }
 document.querySelectorAll(".nav-tab").forEach((tab) => tab.addEventListener("click", () => showPage(tab.dataset.page)));
 
@@ -542,6 +573,135 @@ function renderCampaignRow(c) {
     ${actions ? `<div class="campaign-actions">${actions}</div>` : ""}
   </div>`;
 }
+
+// ---------- Chatbot ----------
+let botSettings = null, botRules = [], unsubscribers = [], botSyncSeq = 0, botLoaded = false;
+
+async function ensureBotState() {
+  if (botLoaded) return;
+  const data = await api("/wa/bot");
+  botSettings = data.settings;
+  botRules = data.rules || [];
+  unsubscribers = data.unsubscribers || [];
+  botSyncSeq = data.seq || 0;
+  if (!botSettings) {
+    const def = await api("/wa/bot/defaults");
+    botSettings = def.settings;
+    if (!botRules.length) botRules = def.rules || [];
+  }
+  botLoaded = true;
+}
+
+async function loadBot() {
+  try { await ensureBotState(); renderBotUI(); }
+  catch (e) { $("bot-status").textContent = e.message; }
+}
+
+function renderBotUI() {
+  const s = botSettings || {};
+  $("bot-enabled").checked = !!s.enabled;
+  $("bot-welcome-kw").value = s.welcomeKeywords || "";
+  $("bot-welcome-msg").value = s.welcomeMessage || "";
+  $("bot-fallback-enabled").checked = !!s.fallbackEnabled;
+  $("bot-fallback-msg").value = s.fallbackMessage || "";
+  $("bot-auto-unsub").checked = !!s.autoUnsubscribe;
+  $("bot-stop-kw").value = s.stopKeywords || "";
+  $("bot-start-kw").value = s.startKeywords || "";
+  $("bot-unsub-reply").value = s.unsubscribeReply || "";
+  renderRules();
+}
+
+function renderRules() {
+  $("rule-list").innerHTML = botRules.length
+    ? botRules.map((r, i) => `<div class="pick-row rule-row ${r.enabled === false ? "off" : ""}"><label class="rule-toggle"><input type="checkbox" data-rule-on="${i}" ${r.enabled === false ? "" : "checked"} /></label><div class="rule-body"><div class="pname">${esc(r.keyword)} <span class="match-badge">${esc(r.match || "contains")}</span></div><div class="ptext">${esc(r.reply)}</div></div><button data-rule-del="${i}">Delete</button></div>`).join("")
+    : `<p class="empty-note">No rules yet.</p>`;
+  $("rule-list").querySelectorAll("[data-rule-on]").forEach((c) => c.addEventListener("change", () => { botRules[c.dataset.ruleOn].enabled = c.checked; }));
+  $("rule-list").querySelectorAll("[data-rule-del]").forEach((b) => b.addEventListener("click", () => { botRules.splice(Number(b.dataset.ruleDel), 1); renderRules(); }));
+}
+
+$("rule-add").addEventListener("click", () => {
+  const keyword = $("rule-kw").value.trim(), reply = $("rule-reply").value.trim();
+  if (!keyword || !reply) return alert("Enter a keyword and a reply.");
+  botRules.push({ id: "r" + Date.now(), keyword, match: $("rule-match").value, enabled: true, reply });
+  $("rule-kw").value = ""; $("rule-reply").value = "";
+  renderRules();
+});
+
+function readBotUI() {
+  botSettings = {
+    ...(botSettings || {}),
+    enabled: $("bot-enabled").checked,
+    welcomeKeywords: $("bot-welcome-kw").value,
+    welcomeMessage: $("bot-welcome-msg").value,
+    fallbackEnabled: $("bot-fallback-enabled").checked,
+    fallbackMessage: $("bot-fallback-msg").value,
+    autoUnsubscribe: $("bot-auto-unsub").checked,
+    stopKeywords: $("bot-stop-kw").value,
+    startKeywords: $("bot-start-kw").value,
+    unsubscribeReply: $("bot-unsub-reply").value,
+  };
+}
+
+async function syncBot() {
+  const result = await api("/wa/bot/sync", "POST", {
+    config: { settings: botSettings, rules: botRules, footerKeywords: botSettings?.stopKeywords || "" },
+    unsubscribers,
+    since: botSyncSeq,
+  });
+  botSyncSeq = result.seq || 0;
+  if (result.changes?.length) {
+    for (const ch of result.changes) {
+      if (ch.op === "remove") unsubscribers = unsubscribers.filter((e) => !ch.entries.includes(e));
+      else { const have = new Set(unsubscribers.map((e) => e.toLowerCase())); unsubscribers.push(...ch.entries.filter((e) => !have.has(e.toLowerCase()))); }
+    }
+  }
+  return result;
+}
+
+$("bot-save").addEventListener("click", async () => {
+  readBotUI();
+  $("bot-save").disabled = true;
+  $("bot-status").textContent = "Saving…";
+  try {
+    const r = await syncBot();
+    $("bot-status").textContent = r.running ? "Saved. Replies go out from the server." : r.active ? "Saved. Will reply once WhatsApp is linked." : "Saved. Chatbot is off.";
+  } catch (e) { $("bot-status").textContent = e.message; } finally { $("bot-save").disabled = false; }
+});
+
+// ---------- Unsubscribers ----------
+async function loadUnsub() {
+  try {
+    await ensureBotState();
+    $("unsub-text").value = unsubscribers.join("\n");
+    $("unsub-count").textContent = unsubscribers.length;
+  } catch (e) { $("unsub-status").textContent = e.message; }
+}
+$("unsub-save").addEventListener("click", async () => {
+  unsubscribers = $("unsub-text").value.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  $("unsub-save").disabled = true;
+  $("unsub-status").textContent = "Saving…";
+  try { await syncBot(); $("unsub-count").textContent = unsubscribers.length; $("unsub-text").value = unsubscribers.join("\n"); $("unsub-status").textContent = "Saved."; }
+  catch (e) { $("unsub-status").textContent = e.message; } finally { $("unsub-save").disabled = false; }
+});
+
+// ---------- Quick replies (local) ----------
+function quickList() { try { return JSON.parse(localStorage.getItem("starshiftQuick") || "[]"); } catch { return []; } }
+function renderQuick() {
+  const list = quickList();
+  $("qr-list").innerHTML = list.length
+    ? list.map((q, i) => `<div class="pick-row"><div><div class="pname">${esc(q.title)}</div><div class="ptext">${esc(q.text)}</div></div><div class="row-actions"><button data-qr-copy="${i}">Copy</button><button data-qr-del="${i}">Delete</button></div></div>`).join("")
+    : `<p class="empty-note">No quick replies yet.</p>`;
+  $("qr-list").querySelectorAll("[data-qr-copy]").forEach((b) => b.addEventListener("click", () => { navigator.clipboard?.writeText(list[b.dataset.qrCopy].text); b.textContent = "Copied"; }));
+  $("qr-list").querySelectorAll("[data-qr-del]").forEach((b) => b.addEventListener("click", () => { const l = quickList(); l.splice(Number(b.dataset.qrDel), 1); localStorage.setItem("starshiftQuick", JSON.stringify(l)); renderQuick(); }));
+}
+$("qr-add").addEventListener("click", () => {
+  const title = $("qr-title").value.trim(), text = $("qr-text").value.trim();
+  if (!title || !text) return alert("Enter a title and reply text.");
+  const l = quickList(); l.unshift({ title, text });
+  try { localStorage.setItem("starshiftQuick", JSON.stringify(l)); } catch { /* private mode */ }
+  $("qr-title").value = ""; $("qr-text").value = "";
+  renderQuick();
+});
 
 // ---------- Boot ----------
 if (token) api("/auth/me").then((me) => signedIn(me.mobile, me.role)).catch(() => signOut());

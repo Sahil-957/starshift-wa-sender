@@ -78,6 +78,7 @@ app.get("/privacy", sendPage("privacy.html"));
 app.get("/terms", sendPage("terms.html"));
 app.get("/", (_req, res) => res.redirect("/app"));
 app.get("/app", (_req, res) => res.sendFile(path.join(PUBLIC_DIR, "app.html")));
+app.get("/admin", (_req, res) => res.sendFile(path.join(PUBLIC_DIR, "admin.html")));
 
 // The page a customer lands on when they open the activation link their seller sent them.
 app.get("/activate", (_req, res) => res.sendFile(path.join(PUBLIC_DIR, "activate.html")));

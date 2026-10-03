@@ -197,4 +197,21 @@ async function onMessages(mobile, sock, { messages, type }) {
   }
 }
 
-module.exports = { sync, onMessages };
+/** The stored chatbot config + unsubscribers for an account, so the web app can load and edit what's live. */
+function current(mobile) {
+  const bot = load(mobile);
+  return {
+    settings: bot.config?.settings || null,
+    rules: bot.config?.rules || null,
+    footerKeywords: bot.config?.footerKeywords || [],
+    unsubscribers: bot.unsubscribers || [],
+    seq: bot.seq || 0,
+  };
+}
+
+/** The built-in default settings and rules (the Marathi starter menu), for a first-time setup. */
+function defaults() {
+  return { settings: SwasBot.DEFAULT_SETTINGS, rules: SwasBot.DEFAULT_RULES };
+}
+
+module.exports = { sync, onMessages, current, defaults };
