@@ -314,6 +314,17 @@
         <button type="button" class="primary" id="bot-save">Save chatbot</button>
         <p class="hint" id="bot-status"></p>
       </div>
+      <div class="card">
+        <h2>Test reply</h2>
+        <p class="hint">Type what a customer might send to see the reply the bot would pick. Nothing is sent. (Tick “Enable chatbot” above for rules to apply.)</p>
+        <div class="sheet-row">
+          <input type="text" id="bot-test-input" placeholder="e.g. Hi, 4, price, STOP" />
+          <button type="button" class="btn-secondary" id="bot-test-btn">Test reply</button>
+        </div>
+        <label class="switch" style="margin-top:8px"><input type="checkbox" id="bot-test-session" /> Customer talked to the bot in the last 24 hours</label>
+        <label class="switch"><input type="checkbox" id="bot-test-unsub" /> Test as an unsubscribed contact</label>
+        <div id="bot-test-result" class="preview hidden" style="margin-top:12px"></div>
+      </div>
     </section>
 
     <!-- ================= Quick Replies ================= -->
@@ -341,6 +352,7 @@
   </main>
 
   <script src="xlsx.full.min.js"></script>
+  <script src="chatbot.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

@@ -668,6 +668,19 @@ $("bot-save").addEventListener("click", async () => {
   } catch (e) { $("bot-status").textContent = e.message; } finally { $("bot-save").disabled = false; }
 });
 
+// Test reply — same matching engine the server uses (chatbot.js), on the current (even unsaved) config.
+$("bot-test-btn").addEventListener("click", () => {
+  readBotUI();
+  if (!window.SwasBot) return alert("Chatbot engine not loaded — refresh the page.");
+  const config = SwasBot.buildConfig(botSettings, botRules, botSettings.stopKeywords || "");
+  const action = SwasBot.matchMessage($("bot-test-input").value, config, { inSession: $("bot-test-session").checked, unsubscribed: $("bot-test-unsub").checked });
+  const box = $("bot-test-result");
+  box.classList.remove("hidden");
+  box.innerHTML = action
+    ? `<p class="hint" style="margin:0 0 6px">${esc(action.label)}</p><div class="bubble">${esc(action.reply).replace(/\n/g, "<br>")}</div>`
+    : `<p class="hint" style="margin:0">No reply — the bot would stay silent for this message.</p>`;
+});
+
 // ---------- Unsubscribers ----------
 async function loadUnsub() {
   try {
