@@ -575,7 +575,7 @@ function renderCampaignRow(c) {
 }
 
 // ---------- Chatbot ----------
-let botSettings = null, botRules = [], unsubscribers = [], botSyncSeq = 0, botLoaded = false;
+let botSettings = null, botRules = [], unsubscribers = [], botSyncSeq = 0, botLoaded = false, editingRule = -1;
 
 async function ensureBotState() {
   if (botLoaded) return;
@@ -614,17 +614,36 @@ function renderBotUI() {
 
 function renderRules() {
   $("rule-list").innerHTML = botRules.length
-    ? botRules.map((r, i) => `<div class="pick-row rule-row ${r.enabled === false ? "off" : ""}"><label class="rule-toggle"><input type="checkbox" data-rule-on="${i}" ${r.enabled === false ? "" : "checked"} /></label><div class="rule-body"><div class="pname">${esc(r.keyword)} <span class="match-badge">${esc(r.match || "contains")}</span></div><div class="ptext">${esc(r.reply)}</div></div><button data-rule-del="${i}">Delete</button></div>`).join("")
+    ? botRules.map((r, i) => `<div class="pick-row rule-row ${r.enabled === false ? "off" : ""} ${i === editingRule ? "editing" : ""}"><label class="rule-toggle"><input type="checkbox" data-rule-on="${i}" ${r.enabled === false ? "" : "checked"} /></label><div class="rule-body"><div class="pname">${esc(r.keyword)} <span class="match-badge">${esc(r.match || "contains")}</span></div><div class="ptext">${esc(r.reply)}</div></div><div class="row-actions"><button data-rule-edit="${i}">Edit</button><button data-rule-del="${i}">Delete</button></div></div>`).join("")
     : `<p class="empty-note">No rules yet.</p>`;
   $("rule-list").querySelectorAll("[data-rule-on]").forEach((c) => c.addEventListener("change", () => { botRules[c.dataset.ruleOn].enabled = c.checked; }));
-  $("rule-list").querySelectorAll("[data-rule-del]").forEach((b) => b.addEventListener("click", () => { botRules.splice(Number(b.dataset.ruleDel), 1); renderRules(); }));
+  $("rule-list").querySelectorAll("[data-rule-del]").forEach((b) => b.addEventListener("click", () => { const i = Number(b.dataset.ruleDel); botRules.splice(i, 1); if (editingRule === i) resetRuleForm(); renderRules(); }));
+  $("rule-list").querySelectorAll("[data-rule-edit]").forEach((b) => b.addEventListener("click", () => {
+    const r = botRules[Number(b.dataset.ruleEdit)];
+    $("rule-kw").value = r.keyword; $("rule-match").value = r.match || "contains"; $("rule-reply").value = r.reply;
+    editingRule = Number(b.dataset.ruleEdit);
+    $("rule-add").textContent = "Update rule";
+    renderRules();
+    $("rule-kw").scrollIntoView({ behavior: "smooth", block: "center" }); $("rule-kw").focus();
+  }));
+}
+
+function resetRuleForm() {
+  editingRule = -1;
+  $("rule-kw").value = ""; $("rule-reply").value = ""; $("rule-match").value = "contains";
+  $("rule-add").textContent = "Add rule";
 }
 
 $("rule-add").addEventListener("click", () => {
   const keyword = $("rule-kw").value.trim(), reply = $("rule-reply").value.trim();
   if (!keyword || !reply) return alert("Enter a keyword and a reply.");
-  botRules.push({ id: "r" + Date.now(), keyword, match: $("rule-match").value, enabled: true, reply });
-  $("rule-kw").value = ""; $("rule-reply").value = "";
+  const match = $("rule-match").value;
+  if (editingRule >= 0) {
+    botRules[editingRule] = { ...botRules[editingRule], keyword, match, reply };
+  } else {
+    botRules.push({ id: "r" + Date.now(), keyword, match, enabled: true, reply });
+  }
+  resetRuleForm();
   renderRules();
 });
 
