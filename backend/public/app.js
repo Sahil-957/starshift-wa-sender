@@ -609,8 +609,21 @@ function renderBotUI() {
   $("bot-stop-kw").value = s.stopKeywords || "";
   $("bot-start-kw").value = s.startKeywords || "";
   $("bot-unsub-reply").value = s.unsubscribeReply || "";
+  $("bot-bilingual").checked = !!s.bilingual;
+  $("bot-lang-menu").value = s.languageMenu || "";
+  $("bot-welcome-msg-en").value = s.welcomeMessageEn || "";
+  $("bot-fallback-msg-en").value = s.fallbackMessageEn || "";
+  $("bot-unsub-reply-en").value = s.unsubscribeReplyEn || "";
+  toggleBilingual();
   renderRules();
 }
+
+function toggleBilingual() {
+  const on = $("bot-bilingual").checked;
+  $("bilingual-fields").classList.toggle("hidden", !on);
+  $("welcome-lang-note").textContent = on ? "(Marathi)" : "";
+}
+$("bot-bilingual").addEventListener("change", toggleBilingual);
 
 function renderRules() {
   $("rule-list").innerHTML = botRules.length
@@ -620,7 +633,7 @@ function renderRules() {
   $("rule-list").querySelectorAll("[data-rule-del]").forEach((b) => b.addEventListener("click", () => { const i = Number(b.dataset.ruleDel); botRules.splice(i, 1); if (editingRule === i) resetRuleForm(); renderRules(); }));
   $("rule-list").querySelectorAll("[data-rule-edit]").forEach((b) => b.addEventListener("click", () => {
     const r = botRules[Number(b.dataset.ruleEdit)];
-    $("rule-kw").value = r.keyword; $("rule-match").value = r.match || "contains"; $("rule-reply").value = r.reply;
+    $("rule-kw").value = r.keyword; $("rule-match").value = r.match || "contains"; $("rule-reply").value = r.reply; $("rule-reply-en").value = r.replyEn || "";
     editingRule = Number(b.dataset.ruleEdit);
     $("rule-add").textContent = "Update rule";
     renderRules();
@@ -630,18 +643,18 @@ function renderRules() {
 
 function resetRuleForm() {
   editingRule = -1;
-  $("rule-kw").value = ""; $("rule-reply").value = ""; $("rule-match").value = "contains";
+  $("rule-kw").value = ""; $("rule-reply").value = ""; $("rule-reply-en").value = ""; $("rule-match").value = "contains";
   $("rule-add").textContent = "Add rule";
 }
 
 $("rule-add").addEventListener("click", () => {
-  const keyword = $("rule-kw").value.trim(), reply = $("rule-reply").value.trim();
+  const keyword = $("rule-kw").value.trim(), reply = $("rule-reply").value.trim(), replyEn = $("rule-reply-en").value.trim();
   if (!keyword || !reply) return alert("Enter a keyword and a reply.");
   const match = $("rule-match").value;
   if (editingRule >= 0) {
-    botRules[editingRule] = { ...botRules[editingRule], keyword, match, reply };
+    botRules[editingRule] = { ...botRules[editingRule], keyword, match, reply, replyEn };
   } else {
-    botRules.push({ id: "r" + Date.now(), keyword, match, enabled: true, reply });
+    botRules.push({ id: "r" + Date.now(), keyword, match, enabled: true, reply, replyEn });
   }
   resetRuleForm();
   renderRules();
@@ -660,6 +673,11 @@ function readBotUI() {
     stopKeywords: $("bot-stop-kw").value,
     startKeywords: $("bot-start-kw").value,
     unsubscribeReply: $("bot-unsub-reply").value,
+    bilingual: $("bot-bilingual").checked,
+    languageMenu: $("bot-lang-menu").value,
+    welcomeMessageEn: $("bot-welcome-msg-en").value,
+    fallbackMessageEn: $("bot-fallback-msg-en").value,
+    unsubscribeReplyEn: $("bot-unsub-reply-en").value,
   };
 }
 

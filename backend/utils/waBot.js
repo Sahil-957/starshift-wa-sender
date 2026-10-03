@@ -37,7 +37,7 @@ function load(mobile) {
     } catch {
       /* first sync for this account */
     }
-    bots.set(mobile, { config: null, unsubscribers: [], changes: [], seq: 0, sessions: {}, ...saved });
+    bots.set(mobile, { config: null, unsubscribers: [], changes: [], seq: 0, sessions: {}, langs: {}, ...saved });
   }
   return bots.get(mobile);
 }
@@ -151,7 +151,8 @@ async function answer(mobile, sock, bot, config, msg) {
   const last = bot.sessions[jid] || 0;
   const inSession = Date.now() - last < SwasBot.LIMITS.sessionMs;
   const idleMs = last ? Date.now() - last : null; // time since the bot last answered this chat
-  const action = SwasBot.matchMessage(text, config, { unsubscribed, inSession, idleMs });
+  const lang = (bot.langs || (bot.langs = {}))[jid] || "";
+  const action = SwasBot.matchMessage(text, config, { unsubscribed, inSession, idleMs, lang });
   if (!action) {
     console.log(`[bot ${mobile}] ${who}: "${text}" - no reply${unsubscribed ? " (unsubscribed)" : ""}`);
     return;
@@ -171,6 +172,7 @@ async function answer(mobile, sock, bot, config, msg) {
   rt.sent.get(jid).push(Date.now());
   await sock.sendMessage(jid, { text: action.reply });
 
+  if (action.setLang) bot.langs[jid] = action.setLang; // remember the customer's chosen language
   if (action.type === "unsubscribe") delete bot.sessions[jid];
   else if (action.type !== "fallback") bot.sessions[jid] = Date.now();
   // Sessions older than a day are no use to anyone; drop them as the file is written.

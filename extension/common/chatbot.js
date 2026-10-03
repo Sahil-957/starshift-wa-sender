@@ -133,6 +133,28 @@ Your Business Growth Partner 🚀`,
     // After this many minutes of silence, a returning customer's next message gets the welcome menu
     // again (a fresh conversation). 0 turns it off.
     rewelcomeMinutes: 0,
+    // Ask the customer to pick a language first (1 Marathi / 2 English); replies then use that language.
+    bilingual: false,
+    languageMenu: `कृपया भाषा निवडा / Please choose your language 👇
+
+1️⃣ मराठी
+2️⃣ English`,
+    welcomeMessageEn: `👋 Welcome to Starshift WA Sender! 🚀
+
+Make WhatsApp marketing for your business simple and smart.
+
+Please send a number from 1 to 6 👇
+
+🎁 1️⃣ Free Demo
+🚀 2️⃣ Features
+⚙️ 3️⃣ How It Works
+💰 4️⃣ Pricing
+📞 5️⃣ Contact Us
+🛑 6️⃣ STOP`,
+    fallbackMessageEn: "❌ Sorry, that option isn't available.",
+    unsubscribeReplyEn: `🛑 You won't receive promotional messages anymore.
+
+Send "START" or "HI" to get updates again.`,
   };
 
   /**
@@ -191,6 +213,11 @@ Your Business Growth Partner 🚀`,
       fallbackMessage: String(settings.fallbackMessage || "").trim(),
       unsubscribeReply: settings.unsubscribeReply,
       rewelcomeMs: on ? (Number(settings.rewelcomeMinutes) || 0) * 60000 : 0,
+      bilingual: on && !!settings.bilingual,
+      languageMenu: String(settings.languageMenu || "").trim(),
+      welcomeMessageEn: String(settings.welcomeMessageEn || "").trim(),
+      fallbackMessageEn: String(settings.fallbackMessageEn || "").trim(),
+      unsubscribeReplyEn: settings.unsubscribeReplyEn || settings.unsubscribeReply,
     };
   }
 
@@ -205,39 +232,56 @@ Your Business Growth Partner 🚀`,
    * unsubscribed contact only gets an answer to START.
    * Returns { type: "unsubscribe" | "start" | "rule" | "welcome" | "fallback", label, reply, rule? }.
    */
-  function matchMessage(text, config, { unsubscribed = false, inSession = false, idleMs = null } = {}) {
+  function matchMessage(text, config, { unsubscribed = false, inSession = false, idleMs = null, lang = "" } = {}) {
     const message = normalize(text);
     // A returning customer who has been silent longer than rewelcomeMs is greeted fresh.
     const afterGap = config.rewelcomeMs > 0 && idleMs != null && idleMs >= config.rewelcomeMs;
+    const bi = config.bilingual;
+    // Pick the Marathi or English version, falling back to Marathi when an English one isn't set.
+    const L = (mr, en) => (lang === "en" ? en || mr : mr);
+    const welcome = L(config.welcomeMessage, config.welcomeMessageEn);
+    const greeted = (m) => config.welcomeKeywords.some((keyword) => keywordMatches(m, keyword, "contains"));
     const fallback =
-      inSession && !unsubscribed && config.fallbackEnabled && config.welcomeMessage
+      inSession && !unsubscribed && config.fallbackEnabled && welcome
         ? {
             type: "fallback",
             label: "Wrong option - menu sent again",
-            reply: [config.fallbackMessage, config.welcomeMessage].filter(Boolean).join("\n\n"),
+            reply: [L(config.fallbackMessage, config.fallbackMessageEn), welcome].filter(Boolean).join("\n\n"),
           }
         : null;
     if (!message) return fallback;
 
     if (config.stopKeywords.includes(message)) {
-      return unsubscribed ? null : { type: "unsubscribe", label: "STOP / Unsubscribe", reply: config.unsubscribeReply };
+      return unsubscribed ? null : { type: "unsubscribe", label: "STOP / Unsubscribe", reply: L(config.unsubscribeReply, config.unsubscribeReplyEn) };
     }
+
+    // Bilingual: until a language is chosen, only 1/2 (language pick) and the language menu happen.
+    if (bi && !lang) {
+      if (message === "1") return { type: "welcome", setLang: "mr", label: "Language chosen: Marathi", reply: config.welcomeMessage };
+      if (message === "2") return { type: "welcome", setLang: "en", label: "Language chosen: English", reply: config.welcomeMessageEn || config.welcomeMessage };
+      if (unsubscribed) return null;
+      if (config.languageMenu && (afterGap || inSession || greeted(message) || config.startKeywords.includes(message))) {
+        return { type: "langmenu", label: "Language menu", reply: config.languageMenu };
+      }
+      return fallback;
+    }
+
     if (config.startKeywords.includes(message)) {
       return {
         type: "start",
         label: unsubscribed ? "START - re-subscribes this contact" : "START / welcome menu",
-        reply: config.welcomeMessage || RESUBSCRIBED_REPLY,
+        reply: welcome || RESUBSCRIBED_REPLY,
       };
     }
     if (unsubscribed) return null;
 
     for (const rule of config.rules) {
       if (keywordList(rule.keyword).some((keyword) => keywordMatches(message, keyword, rule.match))) {
-        return { type: "rule", label: `Rule "${rule.keyword}"`, reply: rule.reply, rule };
+        return { type: "rule", label: `Rule "${rule.keyword}"`, reply: L(rule.reply, rule.replyEn), rule };
       }
     }
-    if (config.welcomeMessage && (afterGap || config.welcomeKeywords.some((keyword) => keywordMatches(message, keyword, "contains")))) {
-      return { type: "welcome", label: afterGap ? "Welcome menu (after a gap)" : "Welcome menu", reply: config.welcomeMessage };
+    if (welcome && (afterGap || greeted(message))) {
+      return { type: "welcome", label: afterGap ? "Welcome menu (after a gap)" : "Welcome menu", reply: welcome };
     }
     return fallback;
   }

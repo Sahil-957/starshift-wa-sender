@@ -287,8 +287,17 @@
         <p class="hint">Sent when a customer greets you. Clear the keywords to turn it off.</p>
         <label>Welcome keywords (comma separated)</label>
         <input type="text" id="bot-welcome-kw" />
-        <label>Welcome message</label>
+        <label>Welcome message <span class="muted" id="welcome-lang-note"></span></label>
         <textarea id="bot-welcome-msg" rows="9"></textarea>
+        <label class="switch" style="margin-top:12px"><input type="checkbox" id="bot-bilingual" /> Ask language first — 1️⃣ मराठी / 2️⃣ English</label>
+        <div id="bilingual-fields" class="hidden">
+          <label>Language menu (shown first)</label>
+          <textarea id="bot-lang-menu" rows="4"></textarea>
+          <label>Welcome message — English</label>
+          <textarea id="bot-welcome-msg-en" rows="8"></textarea>
+          <label>Wrong-option line — English</label>
+          <input type="text" id="bot-fallback-msg-en" />
+        </div>
         <label class="switch" style="margin-top:12px"><input type="checkbox" id="bot-fallback-enabled" /> Wrong option? Send the menu again</label>
         <label>Line sent above the menu</label>
         <input type="text" id="bot-fallback-msg" />
@@ -305,6 +314,8 @@
         </div>
         <label>Reply</label>
         <textarea id="rule-reply" rows="3"></textarea>
+        <label>Reply — English (for bilingual, optional)</label>
+        <textarea id="rule-reply-en" rows="3"></textarea>
         <button type="button" class="btn-secondary" id="rule-add" style="margin-top:10px">Add rule</button>
       </div>
       <div class="card">
@@ -313,6 +324,7 @@
         <label>STOP keywords</label><input type="text" id="bot-stop-kw" />
         <label>START keywords</label><input type="text" id="bot-start-kw" />
         <label>STOP reply</label><textarea id="bot-unsub-reply" rows="3"></textarea>
+        <label>STOP reply — English (for bilingual)</label><textarea id="bot-unsub-reply-en" rows="3"></textarea>
         <button type="button" class="primary" id="bot-save">Save chatbot</button>
         <p class="hint" id="bot-status"></p>
       </div>
