@@ -3,6 +3,7 @@ const tokenKey = "starshiftToken";
 let token = sessionStorage.getItem(tokenKey) || "";
 let statusPoller;
 let progressPoller;
+let countdownTimer;
 let activeCampaignId = null;
 let excelContacts = null; // set when a spreadsheet is uploaded; cleared when the textarea is edited by hand
 
@@ -35,6 +36,7 @@ function signOut() {
   token = "";
   clearTimeout(statusPoller);
   clearTimeout(progressPoller);
+  clearInterval(countdownTimer);
   $("app-view").classList.add("hidden");
   $("login-view").classList.remove("hidden");
   $("logout").classList.add("hidden");
@@ -250,6 +252,33 @@ function renderProgress(campaign) {
   $("cancel").classList.toggle("hidden", !active);
   $("send").disabled = active || $("send").disabled; // re-enabled by refreshStatus once connected and idle
   if (!active) $("send").disabled = false;
+
+  startCountdown(campaign);
+}
+
+/** Shows a live "next message in Ns" ticker between sends, driven by the server's nextSendAt. */
+function startCountdown(campaign) {
+  clearInterval(countdownTimer);
+  const box = $("countdown");
+  const pending = campaign.contacts.length - (campaign.sentCount || 0) - (campaign.failedCount || 0);
+  const active = ["scheduled", "running"].includes(campaign.status) && pending > 0;
+  if (!active) {
+    box.classList.add("hidden");
+    return;
+  }
+  const tick = () => {
+    const left = Math.max(0, Math.round(((campaign.nextSendAt || Date.now()) - Date.now()) / 1000));
+    box.classList.remove("hidden");
+    box.textContent = campaign.waitingReason
+      ? `⏳ ${campaign.waitingReason}`
+      : campaign.status === "scheduled"
+        ? `⏳ Starts in ${left}s`
+        : left > 0
+          ? `⏳ Next message in ${left}s`
+          : "⏳ Sending…";
+  };
+  tick();
+  countdownTimer = setInterval(tick, 1000);
 }
 
 /** Polls the active campaign until it finishes. The campaign runs on the server, so closing this page is fine. */
