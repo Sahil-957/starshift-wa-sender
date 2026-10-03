@@ -31,6 +31,9 @@ function signedIn(mobile, role) {
   refreshStatus();
   loadActiveCampaign();
   updatePreview();
+  loadSelected();
+  renderSelected();
+  syncContacts(); // contacts load automatically, so a refresh doesn't empty the list
 }
 
 function signOut() {
@@ -38,6 +41,8 @@ function signOut() {
   token = "";
   [statusPoller, progressPoller, reportsPoller].forEach(clearTimeout);
   clearInterval(countdownTimer);
+  selected = [];
+  try { localStorage.removeItem("starshiftSelected"); } catch { /* private mode */ }
   document.body.classList.add("locked");
   $("login-view").classList.remove("hidden");
   $("logout").classList.add("hidden");
@@ -186,6 +191,8 @@ syncSlider("batch-pause-range", "batch-pause", 30, 600);
 let selected = [];
 const recKey = (r) => `${r.source}|${(r.mobile || r.name).toLowerCase()}`;
 function buildContacts() { return selected; }
+function saveSelected() { try { localStorage.setItem("starshiftSelected", JSON.stringify(selected)); } catch { /* private mode */ } }
+function loadSelected() { try { selected = JSON.parse(localStorage.getItem("starshiftSelected") || "[]"); } catch { selected = []; } }
 
 function renderSelected() {
   $("selected-count").textContent = selected.length;
@@ -195,6 +202,7 @@ function renderSelected() {
   $("selected-list").querySelectorAll("[data-rm]").forEach((b) =>
     b.addEventListener("click", () => { selected = selected.filter((r) => recKey(r) !== b.dataset.rm); renderSelected(); })
   );
+  saveSelected();
 }
 function addRecipient(r) {
   const rec = { source: r.source || "number", name: r.name || "", mobile: (r.mobile || "").replace(/\D/g, ""), custom1: r.custom1 || "", custom2: r.custom2 || "", fields: r.fields || {} };
