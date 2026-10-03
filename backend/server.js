@@ -8,6 +8,7 @@ const adminRoutes = require("./routes/admin");
 const waRoutes = require("./routes/wa");
 const campaignRoutes = require("./routes/campaigns");
 const listRoutes = require("./routes/lists");
+const importRoutes = require("./routes/import");
 const waSessions = require("./utils/waSessions");
 const campaigns = require("./utils/campaigns");
 
@@ -26,6 +27,7 @@ app.use("/api/wa", express.json({ limit: "70mb" }), requireAuth, waRoutes);
 // Creating a campaign posts the whole contact list plus any attachment, so this route takes a larger body.
 app.use("/api/campaigns", express.json({ limit: "60mb" }), requireAuth, campaignRoutes);
 app.use("/api/lists", express.json({ limit: "20mb" }), requireAuth, listRoutes);
+app.use("/api/import", express.json(), requireAuth, importRoutes);
 app.use(express.json());
 
 app.use("/api/auth", authRoutes);

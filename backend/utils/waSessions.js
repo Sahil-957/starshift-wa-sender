@@ -44,6 +44,26 @@ function saveContacts(mobile, contacts) {
   }
 }
 
+// Best display name per jid, in original case (the label->jid map above is lowercased for matching).
+function namesFile(mobile) {
+  return path.join(authDir(mobile), "names.json");
+}
+function loadNames(mobile) {
+  try {
+    return JSON.parse(fs.readFileSync(namesFile(mobile), "utf8"));
+  } catch {
+    return {};
+  }
+}
+function saveNames(mobile, names) {
+  try {
+    fs.writeFileSync(namesFile(mobile), JSON.stringify(names));
+  } catch {
+    /* session folder removed */
+  }
+}
+const looksNumeric = (s) => /^\+?[\d\s()-]+$/.test(s);
+
 function notFound(message) {
   return Object.assign(new Error(message), { status: 404 });
 }
@@ -72,18 +92,28 @@ async function connect(mobile) {
   // Saved contacts' names arrive with the history sync and later updates; kept so a campaign can pick a
   // contact by the name WhatsApp Web shows.
   session.contacts = session.contacts || loadContacts(mobile);
+  session.names = session.names || loadNames(mobile);
   const remember = (list) => {
     let changed = false;
+    let namesChanged = false;
     for (const c of list || []) {
+      if (!c.id || c.id.endsWith("@g.us")) continue;
       for (const label of [c.name, c.notify, c.verifiedName]) {
         const key = (label || "").trim().toLowerCase();
-        if (key && c.id && !c.id.endsWith("@g.us") && session.contacts[key] !== c.id) {
+        if (key && session.contacts[key] !== c.id) {
           session.contacts[key] = c.id;
           changed = true;
         }
       }
+      // The address-book name (name/verifiedName) over the phone-number notify, in original case.
+      const best = [c.name, c.verifiedName, c.notify].map((x) => (x || "").trim()).find((x) => x && !looksNumeric(x));
+      if (best && session.names[c.id] !== best) {
+        session.names[c.id] = best;
+        namesChanged = true;
+      }
     }
     if (changed) saveContacts(mobile, session.contacts);
+    if (namesChanged) saveNames(mobile, session.names);
   };
   sock.ev.on("messages.upsert", (event) => {
     if (session.sock === sock) waBot.onMessages(mobile, sock, event); // a superseded socket stays quiet
@@ -191,15 +221,21 @@ async function send(mobile, { target, message, attachment }) {
 /** Saved contacts the server's WhatsApp knows, as [{ name, number }] - for the dashboard's Contact picker. */
 function contacts(mobile) {
   const s = sessions.get(mobile);
-  const map = s?.contacts || loadContacts(mobile);
+  const names = s?.names || loadNames(mobile); // jid -> best original-case name
+  const map = s?.contacts || loadContacts(mobile); // lowercased label -> jid
   const byJid = {};
-  for (const [name, jid] of Object.entries(map)) {
+  for (const [label, jid] of Object.entries(map)) {
     if (jid.endsWith("@g.us")) continue;
-    if (!byJid[jid] || name.length > byJid[jid].length) byJid[jid] = name;
+    (byJid[jid] ||= []).push(label);
   }
-  return Object.entries(byJid)
-    .map(([jid, name]) => ({ name, number: jid.split("@")[0] }))
-    .sort((a, b) => a.name.localeCompare(b.name));
+  // Every jid that has a name (even if not in the label map) should appear too.
+  for (const jid of Object.keys(names)) byJid[jid] ||= [];
+  return Object.keys(byJid)
+    .map((jid) => ({
+      name: names[jid] || byJid[jid].filter((n) => !looksNumeric(n)).sort((a, b) => b.length - a.length)[0] || "",
+      number: jid.split("@")[0],
+    }))
+    .sort((a, b) => (b.name ? 1 : 0) - (a.name ? 1 : 0) || (a.name || a.number).localeCompare(b.name || b.number));
 }
 
 /** The groups this account's WhatsApp is in, as [{ name }] - for the dashboard's Group picker. */

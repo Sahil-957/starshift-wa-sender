@@ -89,20 +89,32 @@
             </div>
 
             <div class="rpanel hidden" data-rpanel="numbers">
-              <p class="hint">Add a single number (no need to save it in your phone), or upload an Excel/CSV.</p>
+              <p class="hint">Add a single number (no need to save it in your phone), or import a list.</p>
               <div class="add-number-row">
-                <input type="text" id="num-cc" value="91" style="flex:0 0 60px" />
+                <select id="num-cc">
+                  <option value="91">+91</option><option value="1">+1</option><option value="44">+44</option>
+                  <option value="971">+971</option><option value="61">+61</option><option value="65">+65</option>
+                  <option value="977">+977</option><option value="880">+880</option><option value="92">+92</option>
+                </select>
                 <input type="text" id="num-name" placeholder="Name (optional)" />
                 <input type="text" id="num-phone" placeholder="e.g. 8873520027" />
-                <button type="button" class="btn-secondary" id="num-add">+ Add</button>
               </div>
+              <button type="button" class="btn-secondary" id="num-add" style="margin-top:8px">+ Add New</button>
+
               <div class="divider">or upload Excel / CSV</div>
+              <p class="hint">Columns: <b>Name, Mobile Number, Country Code, Custom1, Custom2</b>. Any extra column (e.g. <b>Email, Order Number</b>) can be used in the message as <code>{{email}}</code>, <code>{{order_number}}</code>. <a href="/sample-template.xlsx" download>Download sample template</a>.</p>
               <div class="upload-row">
                 <label for="excel" class="file-btn">Upload Excel</label>
                 <input id="excel" type="file" accept=".xlsx,.xls,.csv" class="hidden" />
                 <span id="excel-info" class="hint" style="margin:0"></span>
               </div>
-              <p class="hint">Columns: <b>Name, Mobile Number, Country Code, Custom1, Custom2</b>. Leave Mobile blank for a group row (use the Group tab instead).</p>
+
+              <div class="divider">or import from Google Sheets</div>
+              <p class="hint">Same columns. In Google Sheets: <b>Share → Anyone with the link → Viewer</b>, then paste the link.</p>
+              <div class="sheet-row">
+                <input type="text" id="sheet-url" placeholder="https://docs.google.com/spreadsheets/d/..." />
+                <button type="button" class="btn-secondary" id="sheet-import">Import</button>
+              </div>
             </div>
 
             <div class="rpanel hidden" data-rpanel="lists">

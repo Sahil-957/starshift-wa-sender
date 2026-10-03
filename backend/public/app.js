@@ -197,7 +197,7 @@ function renderSelected() {
   );
 }
 function addRecipient(r) {
-  const rec = { source: r.source || "number", name: r.name || "", mobile: (r.mobile || "").replace(/\D/g, ""), custom1: r.custom1 || "", custom2: r.custom2 || "" };
+  const rec = { source: r.source || "number", name: r.name || "", mobile: (r.mobile || "").replace(/\D/g, ""), custom1: r.custom1 || "", custom2: r.custom2 || "", fields: r.fields || {} };
   if (!selected.some((x) => recKey(x) === recKey(rec))) selected.push(rec);
   renderSelected();
 }
@@ -255,17 +255,18 @@ $("num-add").addEventListener("click", () => {
   addRecipient({ source: "number", name: $("num-name").value.trim(), mobile: ph.length <= 10 && cc ? cc + ph : ph });
   $("num-phone").value = ""; $("num-name").value = "";
 });
+const fieldKey = (h) => h.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
 function parseExcel(rows) {
-  const pick = (row, ...names) => {
-    for (const key of Object.keys(row)) if (names.includes(key.trim().toLowerCase())) return String(row[key] ?? "").trim();
-    return "";
-  };
   const out = [];
   for (const row of rows) {
-    const num = pick(row, "mobile number", "mobile", "number", "phone").replace(/\D/g, "");
+    const entries = Object.entries(row);
+    const get = (...names) => { for (const [k, v] of entries) if (names.includes(k.trim().toLowerCase())) return String(v ?? "").trim(); return ""; };
+    const num = get("mobile number", "mobile", "number", "phone").replace(/\D/g, "");
     if (!num) continue;
-    const cc = pick(row, "country code", "code").replace(/\D/g, "");
-    out.push({ name: pick(row, "name"), mobile: cc && num.length <= 10 && !num.startsWith(cc) ? cc + num : num, custom1: pick(row, "custom1"), custom2: pick(row, "custom2") });
+    const cc = get("country code", "code").replace(/\D/g, "");
+    const fields = {};
+    for (const [k, v] of entries) { const fk = fieldKey(k); if (fk) fields[fk] = String(v ?? "").trim(); }
+    out.push({ name: get("name"), mobile: cc && num.length <= 10 && !num.startsWith(cc) ? cc + num : num, custom1: get("custom1"), custom2: get("custom2"), fields });
   }
   return out;
 }
@@ -281,19 +282,41 @@ $("excel").addEventListener("change", async (event) => {
   } catch (e) { $("excel-info").textContent = `Could not read: ${e.message}`; }
 });
 
+// Google Sheets import (server fetches the published CSV)
+$("sheet-import").addEventListener("click", async () => {
+  const url = $("sheet-url").value.trim();
+  if (!url) return;
+  $("sheet-import").disabled = true;
+  try {
+    const { csv } = await api("/import/sheets", "POST", { url });
+    const wb = XLSX.read(csv, { type: "string" });
+    const parsed = parseExcel(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: "" }));
+    if (!parsed.length) return alert("No valid numbers in that sheet.");
+    parsed.forEach((c) => addRecipient({ source: "number", ...c }));
+    alert(`${parsed.length} added from Google Sheets.`);
+  } catch (e) { alert(e.message); } finally { $("sheet-import").disabled = false; }
+});
+
 // Saved Lists
 async function loadLists() {
   try {
     const { lists = [] } = await api("/lists");
+    const byId = Object.fromEntries(lists.map((l) => [l.id, l]));
     $("lists-list").innerHTML = lists.length
-      ? lists.map((l) => `<div class="pick-row"><div><div class="pname">${esc(l.name)}</div><div class="ptarget">${l.recipients.length} recipient(s)</div></div><div class="row-actions"><button data-addlist="${l.id}">Add all</button><button data-dellist="${l.id}">Delete</button></div></div>`).join("")
+      ? `<div style="margin-bottom:10px"><button type="button" class="btn-secondary" id="send-ticked">Send to ticked lists</button></div>` +
+        lists.map((l) => `<div class="pick-row"><label class="list-pick" style="flex:1"><input type="checkbox" data-tick="${l.id}" /><div><div class="pname">${esc(l.name)}</div><div class="ptarget">${l.recipients.length} recipient(s)</div></div></label><div class="row-actions"><button data-addlist="${l.id}">Add all</button><button data-sendlist="${l.id}">Send</button><button data-dellist="${l.id}">Delete</button></div></div>`).join("")
       : `<p class="empty-note">No saved lists yet. Select recipients, then “Save as list”.</p>`;
-    $("lists-list").querySelectorAll("[data-addlist]").forEach((b) =>
-      b.addEventListener("click", () => { (lists.find((l) => l.id === b.dataset.addlist)?.recipients || []).forEach(addRecipient); markAdded(b); })
-    );
-    $("lists-list").querySelectorAll("[data-dellist]").forEach((b) =>
-      b.addEventListener("click", async () => { if (confirm("Delete this list?")) { await api(`/lists/${b.dataset.dellist}`, "DELETE"); loadLists(); } })
-    );
+    $("lists-list").querySelectorAll("[data-addlist]").forEach((b) => b.addEventListener("click", () => { (byId[b.dataset.addlist]?.recipients || []).forEach(addRecipient); markAdded(b); }));
+    $("lists-list").querySelectorAll("[data-sendlist]").forEach((b) => b.addEventListener("click", () => createCampaign(false, byId[b.dataset.sendlist]?.recipients || [])));
+    $("lists-list").querySelectorAll("[data-dellist]").forEach((b) => b.addEventListener("click", async () => { if (confirm("Delete this list?")) { await api(`/lists/${b.dataset.dellist}`, "DELETE"); loadLists(); } }));
+    const ticked = document.getElementById("send-ticked");
+    if (ticked) ticked.addEventListener("click", () => {
+      const ids = [...$("lists-list").querySelectorAll("[data-tick]:checked")].map((c) => c.dataset.tick);
+      if (!ids.length) return alert("Tick at least one list.");
+      const seen = new Set(), recs = [];
+      ids.forEach((id) => (byId[id]?.recipients || []).forEach((r) => { const k = recKey(r); if (!seen.has(k)) { seen.add(k); recs.push(r); } }));
+      createCampaign(false, recs);
+    });
   } catch (e) { $("lists-list").innerHTML = `<p class="empty-note">${esc(e.message)}</p>`; }
 }
 $("save-as-list").addEventListener("click", async () => {
@@ -345,10 +368,10 @@ function buildPacing() {
     : { mode: "fixed", gapSeconds: Math.max(15, Number($("gap").value) || 20), ...base };
 }
 
-async function createCampaign(forceNow) {
-  const contacts = buildContacts();
+async function createCampaign(forceNow, overrideRecipients) {
+  const contacts = overrideRecipients || buildContacts();
   const template = $("message").value.trim();
-  if (!contacts.length) return alert("Add at least one valid phone number.");
+  if (!contacts.length) return alert("Add at least one recipient.");
   if (!template && !attachment) return alert("Write a message or attach a file first.");
 
   let scheduleAt = null, repeat = { mode: "none" };
