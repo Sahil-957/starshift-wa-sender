@@ -6,7 +6,9 @@ const cors = require("cors");
 const { router: authRoutes, requireAuth, requireAdmin } = require("./routes/auth");
 const adminRoutes = require("./routes/admin");
 const waRoutes = require("./routes/wa");
+const campaignRoutes = require("./routes/campaigns");
 const waSessions = require("./utils/waSessions");
+const campaigns = require("./utils/campaigns");
 
 if (!process.env.JWT_SECRET) {
   console.warn("WARNING: JWT_SECRET not set in .env - using an insecure default for dev only.");
@@ -20,6 +22,8 @@ const app = express();
 app.use(cors());
 // Sends carry the attachment inline, so this route takes far bigger bodies than the rest.
 app.use("/api/wa", express.json({ limit: "70mb" }), requireAuth, waRoutes);
+// Creating a campaign posts the whole contact list, so this route also takes a larger body than default.
+app.use("/api/campaigns", express.json({ limit: "20mb" }), requireAuth, campaignRoutes);
 app.use(express.json());
 
 app.use("/api/auth", authRoutes);
@@ -68,6 +72,8 @@ function sendPage(file) {
 
 app.get("/privacy", sendPage("privacy.html"));
 app.get("/terms", sendPage("terms.html"));
+app.get("/", (_req, res) => res.redirect("/app"));
+app.get("/app", (_req, res) => res.sendFile(path.join(PUBLIC_DIR, "app.html")));
 
 // The page a customer lands on when they open the activation link their seller sent them.
 app.get("/activate", (_req, res) => res.sendFile(path.join(PUBLIC_DIR, "activate.html")));
@@ -79,3 +85,4 @@ app.use(express.static(PUBLIC_DIR, { index: false }));
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Starshift WA Sender backend listening on http://localhost:${PORT}`));
 waSessions.restoreAll();
+campaigns.restoreAll();

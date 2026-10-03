@@ -1,17 +1,18 @@
 {
   "manifest_version": 3,
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAoSP3Mi5wbbm1FZ3aKmKZZLag9TZlBquWx/p5SJUpIYMhB14AOqgA2ek3Cai2O+nDNDllk6cD1DUMvjx2F6i1sUbnocweutOC/KdOt+fJgWefHHANu0E0pOr+zeJRtqMomh8ZmaW1Vg6iKyvrLX8x36jWr1UchQjYoEnTxrkwmiJmb+QhUaAl/6E9RlV2CtKjCHhP65fDY/o7UFkexOvjWosHesJbRTwZ13aivJh/dPa51CBXrjIdsbWvcqO95Apc/M/5N/Puqckrzjd0v5+BPZcTDx4c8a3y2exR5tZ1L+hdAfEw15Ze2LEKARPEbbonh7mfsyMQA9CQH8mjRGi0iwIDAQAB",
   "name": "Starshift WA Sender",
   "version": "1.0.0",
   "description": "Starshift WA Sender - send WhatsApp messages in bulk to individuals and groups, with Excel import, scheduling and file attachments.",
   "permissions": ["storage", "unlimitedStorage", "alarms", "idle", "scripting", "tabs", "notifications"],
   "host_permissions": [
     "https://web.whatsapp.com/*",
-    "https://civic-facsimile-dimly.ngrok-free.dev/*",
+    "https://api.starshift.in/*",
     "https://docs.google.com/*",
     "https://*.googleusercontent.com/*"
   ],
   "externally_connectable": {
-    "matches": ["https://civic-facsimile-dimly.ngrok-free.dev/*"]
+    "matches": ["https://api.starshift.in/*"]
   },
   "background": {
     "service_worker": "background/background.js"

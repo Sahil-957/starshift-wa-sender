@@ -79,21 +79,20 @@
     <div id="state-working" class="state on">
       <div class="dots"><i></i><i></i><i></i></div>
       <h2>Activating...</h2>
-      <p>Checking your link with the Starshift WA Sender extension.</p>
+      <p>Checking your activation link.</p>
     </div>
 
     <div id="state-done" class="state ok">
       <h2>You're all set</h2>
-      <p id="done-text">Starshift WA Sender is activated on this browser. Click its icon in the Chrome toolbar to start sending.</p>
+      <p id="done-text">Your account is activated. Open Starshift WA Sender to start sending.</p>
     </div>
 
     <div id="state-manual" class="state">
       <h2>One more step</h2>
       <p id="manual-why">The Starshift WA Sender extension didn't answer on this browser.</p>
       <ol>
-        <li>Install / open Starshift WA Sender in Chrome on this computer.</li>
-        <li>Click the extension icon, then <b>I have an activation code</b>.</li>
-        <li>Paste the code below.</li>
+        <li>Open the Starshift web app on this computer.</li>
+        <li>Sign in with the account details from your seller.</li>
       </ol>
       <code id="manual-code"></code>
       <button type="button" id="btn-copy">Copy code</button>
@@ -130,6 +129,22 @@
       show("state-error");
     }
 
+    async function activateWeb() {
+      try {
+        const response = await fetch("/api/auth/activate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token }),
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) return fail(result.message || "Activation failed. Ask your seller for a new link.");
+        sessionStorage.setItem("starshiftToken", result.token);
+        location.replace("/app");
+      } catch {
+        manual("We couldn't reach the server. Open the web app and sign in, or ask your seller for help.");
+      }
+    }
+
     document.getElementById("btn-copy").addEventListener("click", async (e) => {
       await navigator.clipboard.writeText(token);
       e.target.textContent = "Copied";
@@ -152,17 +167,15 @@
       support.href = `https://wa.me/${supportMobile}`;
 
       // The extension answers web pages only from the origins listed in its externally_connectable.
-      if (!extensionId || !window.chrome?.runtime?.sendMessage) {
-        return manual("This browser can't talk to the extension directly (it may not be Chrome, or the extension isn't installed yet).");
-      }
+      if (!extensionId || !window.chrome?.runtime?.sendMessage) return activateWeb();
 
       chrome.runtime.sendMessage(extensionId, { type: "ACTIVATE", token }, (response) => {
         if (chrome.runtime.lastError || !response) {
-          return manual("The Starshift WA Sender extension didn't answer - it may not be installed in this browser yet.");
+          return activateWeb();
         }
         if (!response.success) return fail(response.reason || "Activation failed. Ask your seller for a new link.");
         document.getElementById("done-text").textContent =
-          `Starshift WA Sender is activated for +${response.mobile}. Click its icon in the Chrome toolbar to start sending.`;
+          `Account activated for +${response.mobile}. You can now open Starshift WA Sender.`;
         show("state-done");
       });
     })();

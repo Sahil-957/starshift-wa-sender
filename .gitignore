@@ -2,6 +2,9 @@
 backend/.env
 backend/data/
 
+# Extension signing key — the private half of manifest "key" (keep outside the repo)
+*.pem
+
 # Dependencies
 node_modules/
 

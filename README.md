@@ -1,10 +1,10 @@
 # Starshift WA Sender
 
-Chrome extension to send WhatsApp messages in bulk to individual numbers and
-groups, with Excel import, message personalization, file attachments, a
-time-gap between sends, and scheduling for a future date/time. Includes a
-small backend that handles licensing, one-click activation links and password
-resets, so the extension can be rented out to customers on monthly plans.
+WhatsApp messaging product with a Chrome extension and an initial browser-based
+portal. The existing extension supports Excel import, personalization, media,
+groups and scheduled campaigns. The web portal uses the same server-side
+WhatsApp connection and currently supports login, QR linking, and paced text
+campaigns to pasted phone numbers.
 
 **Important:** this automates the normal web.whatsapp.com UI (no official
 WhatsApp Business API). Only message people who've agreed to receive your
@@ -22,12 +22,12 @@ extension/     Chrome extension (Manifest V3)
   lib/         SheetJS (xlsx) bundled locally for Excel parsing
   assets/      Downloadable sample Excel template
 backend/       Node/Express licence server (login, activation links, resets)
-  public/      The page a customer's activation link opens
+  public/      Web portal, activation page, and policy pages
 templates/     Source copy of the sample Excel template
 scripts/       One-off generators (icons, template) - not needed at runtime
 ```
 
-## 1. Run the backend (licence server)
+## 1. Run the backend (licensing and WhatsApp server)
 
 ```
 cd backend
@@ -40,6 +40,13 @@ Runs on `http://localhost:5001`. Password-reset codes are printed to this
 console by default (see `backend/utils/sms.js`) so you can test without an SMS
 account. To send them for real, set `SMS_PROVIDER` in `.env` and fill in the
 provider code in `utils/sms.js` (Twilio/MSG91/2Factor/etc).
+
+The web portal is available at `http://localhost:5001/` or `/app`. It signs in
+with the same customer accounts, links WhatsApp by QR through the existing
+Baileys server connection, and sends plain-text campaigns while the page stays
+open. It does not use the official WhatsApp Business API. The portal is an
+initial version and does not yet include the extension's Excel imports, media,
+groups, saved lists, chatbot, or scheduled/resumable campaigns.
 
 `.env` settings that matter once you rent the extension out:
 

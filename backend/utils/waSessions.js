@@ -104,6 +104,7 @@ async function connect(mobile) {
     }
     if (connection === "close") {
       const code = lastDisconnect?.error?.output?.statusCode;
+      console.warn(`[wa ${mobile}] connection closed - code ${code} (${lastDisconnect?.error?.message || "?"})`);
       if (code === DisconnectReason.loggedOut) {
         // Unlinked from the phone: forget the login so the next connect shows a fresh QR.
         fs.rmSync(authDir(mobile), { recursive: true, force: true });

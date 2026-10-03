@@ -1,0 +1,294 @@
+/**
+ * Server-side campaign engine (Phase 1: text campaigns with a time-gap).
+ *
+ * The extension's background service worker (extension/background/background.js) used to run this
+ * loop in the customer's browser. Here it runs on the server instead, so a campaign keeps sending
+ * even when the customer's browser is closed. One account's campaigns are saved to
+ * data/campaigns/<mobile>.json and resumed after a server restart (restoreAll).
+ *
+ * Phase 1 scope: individual numbers, fixed gap between sends, Send Now or Schedule for later,
+ * pause / resume / cancel. Attachments, groups/contacts-by-name, batch pauses and repeat are Phase 2.
+ */
+const fs = require("fs");
+const path = require("path");
+const wa = require("./waSessions");
+const userStore = require("./userStore");
+const { personalize, withFooter } = require("./messaging");
+
+const DIR = path.join(__dirname, "..", "data", "campaigns");
+const MIN_GAP_SECONDS = 1;
+// When the account's WhatsApp isn't linked/open yet, wait and re-check instead of failing the campaign.
+const WAIT_FOR_WA_MS = 30 * 1000;
+
+const timers = new Map(); // "<mobile>:<id>" -> Timeout
+const locks = new Set(); // "<mobile>:<id>" currently mid-send
+
+function key(mobile, id) {
+  return `${mobile}:${id}`;
+}
+
+function file(mobile) {
+  return path.join(DIR, `${String(mobile).replace(/\D/g, "")}.json`);
+}
+
+function loadAll(mobile) {
+  try {
+    return JSON.parse(fs.readFileSync(file(mobile), "utf8"));
+  } catch {
+    return [];
+  }
+}
+
+function saveAll(mobile, campaigns) {
+  fs.mkdirSync(DIR, { recursive: true });
+  fs.writeFileSync(file(mobile), JSON.stringify(campaigns));
+}
+
+function find(mobile, id) {
+  return loadAll(mobile).find((c) => c.id === id) || null;
+}
+
+/** Applies a change to one campaign and saves; returns the updated campaign or null. */
+function update(mobile, id, mutator) {
+  const campaigns = loadAll(mobile);
+  const idx = campaigns.findIndex((c) => c.id === id);
+  if (idx === -1) return null;
+  mutator(campaigns[idx]);
+  saveAll(mobile, campaigns);
+  return campaigns[idx];
+}
+
+/** Why this account can't send right now (inactive or plan ended), or null if it can. Admin is always fine. */
+function accessProblem(mobile) {
+  if (mobile === process.env.ADMIN_MOBILE) return null;
+  const user = userStore.get(mobile);
+  if (!user?.active) return "Your account is not active. Please contact the seller.";
+  if (user.expiresAt && Date.parse(user.expiresAt) <= Date.now()) {
+    return `Your plan expired on ${new Date(user.expiresAt).toDateString()}. Please renew it with the seller.`;
+  }
+  return null;
+}
+
+function clearTimer(mobile, id) {
+  const k = key(mobile, id);
+  if (timers.has(k)) {
+    clearTimeout(timers.get(k));
+    timers.delete(k);
+  }
+}
+
+function armTimer(mobile, id, delayMs) {
+  clearTimer(mobile, id);
+  timers.set(
+    key(mobile, id),
+    setTimeout(() => {
+      timers.delete(key(mobile, id));
+      advance(mobile, id).catch((err) => console.warn(`[campaign ${mobile}/${id}]`, err.message || err));
+    }, Math.max(delayMs, 0))
+  );
+}
+
+/** Sends the next pending message, records the result, and queues the one after it. */
+async function advance(mobile, id) {
+  const k = key(mobile, id);
+  if (locks.has(k)) return;
+  locks.add(k);
+  try {
+    let campaign = find(mobile, id);
+    if (!campaign || !["scheduled", "running"].includes(campaign.status)) return;
+
+    // Honour a schedule that is still in the future.
+    if (campaign.scheduleAt && campaign.scheduleAt > Date.now()) {
+      armTimer(mobile, id, campaign.scheduleAt - Date.now());
+      return;
+    }
+
+    // Every message needs an active account; a deactivated / expired customer's campaign stops here.
+    const problem = accessProblem(mobile);
+    if (problem) {
+      update(mobile, id, (c) => {
+        c.status = "cancelled";
+        c.cancelReason = problem;
+      });
+      return;
+    }
+
+    const nextIdx = campaign.contacts.findIndex((c) => c.status === "pending");
+    if (nextIdx === -1) {
+      update(mobile, id, (c) => {
+        c.status = "completed";
+        c.nextSendAt = null;
+      });
+      return;
+    }
+
+    // The account's WhatsApp must be linked and open. If not, wait and re-check rather than fail.
+    if (wa.status(mobile).state !== "open") {
+      update(mobile, id, (c) => {
+        c.status = "running";
+        c.waitingReason = "Waiting for WhatsApp to be linked (Server WhatsApp).";
+        c.nextSendAt = Date.now() + WAIT_FOR_WA_MS;
+      });
+      armTimer(mobile, id, WAIT_FOR_WA_MS);
+      return;
+    }
+
+    update(mobile, id, (c) => {
+      c.status = "running";
+      c.waitingReason = null;
+    });
+
+    const contact = campaign.contacts[nextIdx];
+    const message = withFooter(personalize(campaign.messageTemplate, contact), campaign.footer);
+
+    let result;
+    try {
+      await wa.send(mobile, { target: { type: "number", phone: contact.mobile }, message });
+      result = { success: true };
+    } catch (err) {
+      // A drop mid-send (WhatsApp reconnecting) shouldn't burn the recipient: keep them pending and retry.
+      if (wa.status(mobile).state !== "open") {
+        update(mobile, id, (c) => {
+          c.status = "running";
+          c.waitingReason = "WhatsApp reconnecting — will retry shortly.";
+          c.nextSendAt = Date.now() + WAIT_FOR_WA_MS;
+        });
+        armTimer(mobile, id, WAIT_FOR_WA_MS);
+        return;
+      }
+      result = { success: false, reason: err.message || String(err) };
+    }
+
+    update(mobile, id, (c) => {
+      const target = c.contacts[nextIdx];
+      target.status = result.success ? "sent" : "failed";
+      target.failReason = result.success ? undefined : result.reason;
+      target.sentAt = Date.now();
+      if (result.success) c.sentCount = (c.sentCount || 0) + 1;
+      else c.failedCount = (c.failedCount || 0) + 1;
+    });
+
+    // A pause/cancel landing during that send stops the queue here.
+    campaign = find(mobile, id);
+    if (!campaign || !["scheduled", "running"].includes(campaign.status)) return;
+
+    if (campaign.contacts.some((c) => c.status === "pending")) {
+      const gap = Math.max(Number(campaign.gapSeconds) || MIN_GAP_SECONDS, MIN_GAP_SECONDS);
+      update(mobile, id, (c) => (c.nextSendAt = Date.now() + gap * 1000));
+      armTimer(mobile, id, gap * 1000);
+    } else {
+      update(mobile, id, (c) => {
+        c.status = "completed";
+        c.nextSendAt = null;
+      });
+    }
+  } finally {
+    locks.delete(k);
+  }
+}
+
+// ---------- Public API ----------
+
+function list(mobile) {
+  return loadAll(mobile).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+}
+
+function get(mobile, id) {
+  return find(mobile, id);
+}
+
+/**
+ * Creates a campaign and starts (or schedules) it.
+ * input: { name, messageTemplate, footer?, gapSeconds, scheduleAt?, contacts: [{ name, mobile, custom1?, custom2?, fields? }] }
+ */
+function create(mobile, input = {}) {
+  const contacts = (input.contacts || [])
+    .map((c) => ({
+      name: String(c.name || "").trim(),
+      mobile: String(c.mobile || "").replace(/\D/g, ""),
+      custom1: c.custom1 || "",
+      custom2: c.custom2 || "",
+      fields: c.fields || {},
+      status: "pending",
+    }))
+    .filter((c) => c.mobile.length >= 7);
+
+  if (!contacts.length) throw Object.assign(new Error("No valid mobile numbers in the list."), { status: 400 });
+  if (!String(input.messageTemplate || "").trim() && !input.footer?.enabled) {
+    throw Object.assign(new Error("Write a message to send."), { status: 400 });
+  }
+
+  const scheduleAt = Number(input.scheduleAt) > Date.now() ? Number(input.scheduleAt) : null;
+  const campaign = {
+    id: crypto.randomUUID(),
+    name: String(input.name || "Campaign").trim() || "Campaign",
+    messageTemplate: String(input.messageTemplate || ""),
+    footer: input.footer || { enabled: false, text: "" },
+    gapSeconds: Math.max(Number(input.gapSeconds) || 15, MIN_GAP_SECONDS),
+    scheduleAt,
+    status: scheduleAt ? "scheduled" : "running",
+    contacts,
+    sentCount: 0,
+    failedCount: 0,
+    createdAt: Date.now(),
+    nextSendAt: scheduleAt || Date.now(),
+  };
+
+  saveAll(mobile, [campaign, ...loadAll(mobile)]);
+  armTimer(mobile, campaign.id, scheduleAt ? scheduleAt - Date.now() : 0);
+  return campaign;
+}
+
+function pause(mobile, id) {
+  clearTimer(mobile, id);
+  return update(mobile, id, (c) => {
+    if (["completed", "cancelled"].includes(c.status)) return;
+    c.status = "paused";
+    c.nextSendAt = null;
+  });
+}
+
+function resume(mobile, id) {
+  const campaign = update(mobile, id, (c) => {
+    if (c.status !== "paused") return;
+    c.status = c.scheduleAt && c.scheduleAt > Date.now() ? "scheduled" : "running";
+  });
+  if (campaign && ["scheduled", "running"].includes(campaign.status)) {
+    armTimer(mobile, id, campaign.scheduleAt && campaign.scheduleAt > Date.now() ? campaign.scheduleAt - Date.now() : 0);
+  }
+  return campaign;
+}
+
+/** Drops any schedule and starts sending now. */
+function startNow(mobile, id) {
+  const campaign = update(mobile, id, (c) => {
+    if (["completed", "cancelled"].includes(c.status)) return;
+    c.scheduleAt = null;
+    c.status = "running";
+  });
+  if (campaign && campaign.status === "running") armTimer(mobile, id, 0);
+  return campaign;
+}
+
+function cancel(mobile, id) {
+  clearTimer(mobile, id);
+  return update(mobile, id, (c) => {
+    c.status = "cancelled";
+    c.nextSendAt = null;
+  });
+}
+
+/** Re-arms every campaign that was mid-flight or scheduled when the server last stopped. */
+function restoreAll() {
+  if (!fs.existsSync(DIR)) return;
+  for (const name of fs.readdirSync(DIR)) {
+    const mobile = name.replace(/\.json$/, "");
+    for (const c of loadAll(mobile)) {
+      if (!["scheduled", "running"].includes(c.status)) continue;
+      const delay = c.scheduleAt && c.scheduleAt > Date.now() ? c.scheduleAt - Date.now() : 0;
+      armTimer(mobile, c.id, delay);
+    }
+  }
+}
+
+module.exports = { list, get, create, pause, resume, startNow, cancel, restoreAll };
