@@ -3,7 +3,6 @@ const tokenKey = "starshiftToken";
 let token = sessionStorage.getItem(tokenKey) || "";
 let statusPoller, progressPoller, countdownTimer, reportsPoller;
 let activeCampaignId = null;
-let excelContacts = null; // set when a spreadsheet is uploaded; cleared when the textarea is edited by hand
 let attachment = null; // { dataUrl, name, mimeType } when a file is attached
 const MAX_ATTACH_MB = 45;
 
@@ -184,47 +183,125 @@ syncSlider("batch-size-range", "batch-size", 1, 100);
 syncSlider("batch-pause-range", "batch-pause", 30, 600);
 
 // ---------- Recipients ----------
-function parseTextarea(value) {
-  return value.split(/\r?\n/).map((l) => l.trim()).filter(Boolean).map((line) => {
-    const [first, second] = line.split(",").map((p) => (p || "").trim());
-    const mobile = (second || first).replace(/\D/g, "");
-    return { name: second ? first : "", mobile };
-  }).filter((e) => e.mobile.length >= 7);
-}
+let selected = [];
+const recKey = (r) => `${r.source}|${(r.mobile || r.name).toLowerCase()}`;
+function buildContacts() { return selected; }
 
+function renderSelected() {
+  $("selected-count").textContent = selected.length;
+  $("selected-list").innerHTML = selected.length
+    ? selected.map((r) => `<div class="pick-row"><div><div class="pname">${esc(r.name || r.mobile)}</div><div class="ptarget">${r.source === "group" ? "Group" : r.mobile || "contact"}</div></div><button data-rm="${esc(recKey(r))}">Remove</button></div>`).join("")
+    : `<p class="empty-note">Nobody selected yet.</p>`;
+  $("selected-list").querySelectorAll("[data-rm]").forEach((b) =>
+    b.addEventListener("click", () => { selected = selected.filter((r) => recKey(r) !== b.dataset.rm); renderSelected(); })
+  );
+}
+function addRecipient(r) {
+  const rec = { source: r.source || "number", name: r.name || "", mobile: (r.mobile || "").replace(/\D/g, ""), custom1: r.custom1 || "", custom2: r.custom2 || "" };
+  if (!selected.some((x) => recKey(x) === recKey(rec))) selected.push(rec);
+  renderSelected();
+}
+$("clear-selected").addEventListener("click", () => { selected = []; renderSelected(); });
+
+// Sub-tabs
+document.querySelectorAll(".rtab").forEach((t) =>
+  t.addEventListener("click", () => {
+    document.querySelectorAll(".rtab").forEach((x) => x.setAttribute("aria-selected", x === t));
+    document.querySelectorAll("[data-rpanel]").forEach((p) => p.classList.toggle("hidden", p.dataset.rpanel !== t.dataset.rtab));
+    if (t.dataset.rtab === "lists") loadLists();
+  })
+);
+
+function markAdded(btn) { btn.textContent = "Added"; btn.classList.add("added"); }
+
+// Contact
+let _contacts = [];
+async function syncContacts() {
+  $("contact-list").innerHTML = `<p class="empty-note">Loading…</p>`;
+  try { _contacts = (await api("/wa/contacts")).contacts || []; renderContacts(""); }
+  catch (e) { $("contact-list").innerHTML = `<p class="empty-note">${esc(e.message)}</p>`; }
+}
+function renderContacts(q) {
+  const list = _contacts.filter((c) => !q || c.name.toLowerCase().includes(q) || c.number.includes(q));
+  $("contact-list").innerHTML = list.length
+    ? list.slice(0, 800).map((c) => `<div class="pick-row"><div><div class="pname">${esc(c.name)}</div><div class="ptarget">${esc(c.number)}</div></div><button data-add="${esc(c.number)}" data-name="${esc(c.name)}">Add</button></div>`).join("")
+    : `<p class="empty-note">No contacts found. Click “Sync contacts”.</p>`;
+  $("contact-list").querySelectorAll("[data-add]").forEach((b) => b.addEventListener("click", () => { addRecipient({ source: "number", name: b.dataset.name, mobile: b.dataset.add }); markAdded(b); }));
+}
+$("sync-contacts").addEventListener("click", syncContacts);
+$("contact-search").addEventListener("input", () => renderContacts($("contact-search").value.trim().toLowerCase()));
+
+// Group
+let _groups = [];
+async function syncGroups() {
+  $("group-list").innerHTML = `<p class="empty-note">Loading…</p>`;
+  try { _groups = (await api("/wa/groups")).groups || []; renderGroups(""); }
+  catch (e) { $("group-list").innerHTML = `<p class="empty-note">${esc(e.message)}</p>`; }
+}
+function renderGroups(q) {
+  const list = _groups.filter((g) => !q || g.name.toLowerCase().includes(q));
+  $("group-list").innerHTML = list.length
+    ? list.map((g) => `<div class="pick-row"><span class="pname">${esc(g.name)}</span><button data-addg="${esc(g.name)}">Add</button></div>`).join("")
+    : `<p class="empty-note">No groups found. Click “Sync groups”.</p>`;
+  $("group-list").querySelectorAll("[data-addg]").forEach((b) => b.addEventListener("click", () => { addRecipient({ source: "group", name: b.dataset.addg }); markAdded(b); }));
+}
+$("sync-groups").addEventListener("click", syncGroups);
+$("group-search").addEventListener("input", () => renderGroups($("group-search").value.trim().toLowerCase()));
+
+// Numbers (manual + Excel)
+$("num-add").addEventListener("click", () => {
+  const cc = $("num-cc").value.replace(/\D/g, ""), ph = $("num-phone").value.replace(/\D/g, "");
+  if (!ph) return alert("Enter a number.");
+  addRecipient({ source: "number", name: $("num-name").value.trim(), mobile: ph.length <= 10 && cc ? cc + ph : ph });
+  $("num-phone").value = ""; $("num-name").value = "";
+});
 function parseExcel(rows) {
   const pick = (row, ...names) => {
     for (const key of Object.keys(row)) if (names.includes(key.trim().toLowerCase())) return String(row[key] ?? "").trim();
     return "";
   };
-  const contacts = [];
+  const out = [];
   for (const row of rows) {
     const num = pick(row, "mobile number", "mobile", "number", "phone").replace(/\D/g, "");
     if (!num) continue;
     const cc = pick(row, "country code", "code").replace(/\D/g, "");
-    const mobile = cc && num.length <= 10 && !num.startsWith(cc) ? cc + num : num;
-    contacts.push({ name: pick(row, "name"), mobile, custom1: pick(row, "custom1"), custom2: pick(row, "custom2") });
+    out.push({ name: pick(row, "name"), mobile: cc && num.length <= 10 && !num.startsWith(cc) ? cc + num : num, custom1: pick(row, "custom1"), custom2: pick(row, "custom2") });
   }
-  return contacts;
+  return out;
 }
-
 $("excel").addEventListener("change", async (event) => {
   const file = event.target.files[0];
   if (!file) return;
   try {
-    const workbook = XLSX.read(await file.arrayBuffer(), { type: "array" });
-    const rows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { defval: "" });
-    excelContacts = parseExcel(rows);
-    if (!excelContacts.length) { excelContacts = null; $("excel-info").textContent = "No valid numbers in that file."; return; }
-    $("recipients").value = excelContacts.map((c) => (c.name ? `${c.name},${c.mobile}` : c.mobile)).join("\n");
-    $("excel-info").textContent = `${excelContacts.length} loaded from ${file.name}`;
-    updateCount();
-  } catch (error) { excelContacts = null; $("excel-info").textContent = `Could not read: ${error.message}`; }
+    const wb = XLSX.read(await file.arrayBuffer(), { type: "array" });
+    const parsed = parseExcel(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: "" }));
+    if (!parsed.length) { $("excel-info").textContent = "No valid numbers in that file."; return; }
+    parsed.forEach((c) => addRecipient({ source: "number", ...c }));
+    $("excel-info").textContent = `${parsed.length} added from ${file.name}`;
+  } catch (e) { $("excel-info").textContent = `Could not read: ${e.message}`; }
 });
 
-$("recipients").addEventListener("input", () => { excelContacts = null; $("excel-info").textContent = ""; updateCount(); });
-function buildContacts() { return excelContacts && excelContacts.length ? excelContacts : parseTextarea($("recipients").value); }
-function updateCount() { const n = buildContacts().length; $("recipient-count").textContent = n ? `${n} valid recipient${n > 1 ? "s" : ""}` : ""; }
+// Saved Lists
+async function loadLists() {
+  try {
+    const { lists = [] } = await api("/lists");
+    $("lists-list").innerHTML = lists.length
+      ? lists.map((l) => `<div class="pick-row"><div><div class="pname">${esc(l.name)}</div><div class="ptarget">${l.recipients.length} recipient(s)</div></div><div class="row-actions"><button data-addlist="${l.id}">Add all</button><button data-dellist="${l.id}">Delete</button></div></div>`).join("")
+      : `<p class="empty-note">No saved lists yet. Select recipients, then “Save as list”.</p>`;
+    $("lists-list").querySelectorAll("[data-addlist]").forEach((b) =>
+      b.addEventListener("click", () => { (lists.find((l) => l.id === b.dataset.addlist)?.recipients || []).forEach(addRecipient); markAdded(b); })
+    );
+    $("lists-list").querySelectorAll("[data-dellist]").forEach((b) =>
+      b.addEventListener("click", async () => { if (confirm("Delete this list?")) { await api(`/lists/${b.dataset.dellist}`, "DELETE"); loadLists(); } })
+    );
+  } catch (e) { $("lists-list").innerHTML = `<p class="empty-note">${esc(e.message)}</p>`; }
+}
+$("save-as-list").addEventListener("click", async () => {
+  if (!selected.length) return alert("Select recipients first.");
+  const name = prompt("Name this list:");
+  if (!name) return;
+  try { await api("/lists", "POST", { name, recipients: selected }); alert("List saved."); } catch (e) { alert(e.message); }
+});
 
 // ---------- Attachment ----------
 const readAsDataUrl = (file) => new Promise((res, rej) => {

@@ -163,9 +163,14 @@ async function advance(mobile, id) {
     const caption = withFooter(personalize(campaign.caption || campaign.messageTemplate, contact), campaign.footer);
     const attachment = media ? { ...media, caption } : null;
 
+    const target =
+      contact.source === "group" ? { type: "group", name: contact.name }
+      : contact.source === "contact" ? { type: "contact", name: contact.name }
+      : { type: "number", phone: contact.mobile };
+
     let result;
     try {
-      await wa.send(mobile, { target: { type: "number", phone: contact.mobile }, message, attachment });
+      await wa.send(mobile, { target, message, attachment });
       result = { success: true };
     } catch (err) {
       // A drop mid-send (WhatsApp reconnecting) shouldn't burn the recipient: keep them pending and retry.
@@ -293,6 +298,7 @@ function get(mobile, id) {
 function create(mobile, input = {}) {
   const contacts = (input.contacts || [])
     .map((c) => ({
+      source: ["contact", "group", "number"].includes(c.source) ? c.source : "number",
       name: String(c.name || "").trim(),
       mobile: String(c.mobile || "").replace(/\D/g, ""),
       custom1: c.custom1 || "",
@@ -300,9 +306,9 @@ function create(mobile, input = {}) {
       fields: c.fields || {},
       status: "pending",
     }))
-    .filter((c) => c.mobile.length >= 7);
+    .filter((c) => (c.source === "number" ? c.mobile.length >= 7 : !!c.name));
 
-  if (!contacts.length) throw Object.assign(new Error("No valid mobile numbers in the list."), { status: 400 });
+  if (!contacts.length) throw Object.assign(new Error("No valid recipients in the list."), { status: 400 });
 
   // attachment: { dataUrl, name, mimeType }. With a file attached, the message may be empty (it becomes the caption).
   const att = input.attachment;

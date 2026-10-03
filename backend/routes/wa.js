@@ -7,6 +7,16 @@ const router = express.Router();
 
 router.get("/status", (req, res) => res.json(wa.status(req.auth.mobile)));
 
+// Saved contacts and groups from the server's own WhatsApp, for the Recipients picker.
+router.get("/contacts", (req, res) => res.json({ contacts: wa.contacts(req.auth.mobile) }));
+router.get("/groups", async (req, res) => {
+  try {
+    res.json({ groups: await wa.groups(req.auth.mobile) });
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+});
+
 router.post("/connect", async (req, res) => {
   try {
     res.json(await wa.connect(req.auth.mobile));

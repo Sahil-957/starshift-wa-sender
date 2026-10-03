@@ -63,15 +63,63 @@
         <div class="cg-col">
           <div class="card">
             <h2>1. Recipients</h2>
-            <p class="hint">Upload an Excel file, or type one per line: <code>name,number</code> (with country code), or just a number.</p>
-            <div class="upload-row">
-              <label for="excel" class="file-btn">Upload Excel</label>
-              <input id="excel" type="file" accept=".xlsx,.xls,.csv" class="hidden" />
-              <span id="excel-info" class="hint" style="margin:0"></span>
+            <div class="recipient-tabs">
+              <button type="button" class="rtab" data-rtab="contact" aria-selected="true">Contact</button>
+              <button type="button" class="rtab" data-rtab="group">Group</button>
+              <button type="button" class="rtab" data-rtab="numbers">Numbers</button>
+              <button type="button" class="rtab" data-rtab="lists">Saved Lists</button>
             </div>
-            <label for="recipients">Recipients</label>
-            <textarea id="recipients" rows="7" placeholder="Asha,919876543210&#10;919812345678"></textarea>
-            <p class="hint" id="recipient-count" style="margin-top:8px"></p>
+
+            <div class="rpanel" data-rpanel="contact">
+              <p class="hint">Contacts your server WhatsApp knows. Click Sync to refresh, then Add.</p>
+              <div class="sync-row">
+                <button type="button" class="btn-secondary" id="sync-contacts">Sync contacts</button>
+                <input type="text" id="contact-search" placeholder="Search by name or number" />
+              </div>
+              <div class="pick-list" id="contact-list"><p class="empty-note">Click “Sync contacts”.</p></div>
+            </div>
+
+            <div class="rpanel hidden" data-rpanel="group">
+              <p class="hint">Groups your server WhatsApp is in. Each row sends to the whole group.</p>
+              <div class="sync-row">
+                <button type="button" class="btn-secondary" id="sync-groups">Sync groups</button>
+                <input type="text" id="group-search" placeholder="Search group by name" />
+              </div>
+              <div class="pick-list" id="group-list"><p class="empty-note">Click “Sync groups”.</p></div>
+            </div>
+
+            <div class="rpanel hidden" data-rpanel="numbers">
+              <p class="hint">Add a single number (no need to save it in your phone), or upload an Excel/CSV.</p>
+              <div class="add-number-row">
+                <input type="text" id="num-cc" value="91" style="flex:0 0 60px" />
+                <input type="text" id="num-name" placeholder="Name (optional)" />
+                <input type="text" id="num-phone" placeholder="e.g. 8873520027" />
+                <button type="button" class="btn-secondary" id="num-add">+ Add</button>
+              </div>
+              <div class="divider">or upload Excel / CSV</div>
+              <div class="upload-row">
+                <label for="excel" class="file-btn">Upload Excel</label>
+                <input id="excel" type="file" accept=".xlsx,.xls,.csv" class="hidden" />
+                <span id="excel-info" class="hint" style="margin:0"></span>
+              </div>
+              <p class="hint">Columns: <b>Name, Mobile Number, Country Code, Custom1, Custom2</b>. Leave Mobile blank for a group row (use the Group tab instead).</p>
+            </div>
+
+            <div class="rpanel hidden" data-rpanel="lists">
+              <p class="hint">Save the selected recipients as a named list, then reuse it with “Add all”.</p>
+              <div class="pick-list" id="lists-list"><p class="empty-note">No saved lists yet.</p></div>
+            </div>
+
+            <div class="selected-block">
+              <div class="selected-head">
+                <h3>Selected recipients (<span id="selected-count">0</span>)</h3>
+                <div class="selected-actions">
+                  <button type="button" class="btn-link" id="save-as-list">Save as list</button>
+                  <button type="button" class="btn-link" id="clear-selected">Clear all</button>
+                </div>
+              </div>
+              <div class="pick-list" id="selected-list"><p class="empty-note">Nobody selected yet.</p></div>
+            </div>
           </div>
 
           <div class="card">

@@ -188,6 +188,31 @@ async function send(mobile, { target, message, attachment }) {
   }
 }
 
+/** Saved contacts the server's WhatsApp knows, as [{ name, number }] - for the dashboard's Contact picker. */
+function contacts(mobile) {
+  const s = sessions.get(mobile);
+  const map = s?.contacts || loadContacts(mobile);
+  const byJid = {};
+  for (const [name, jid] of Object.entries(map)) {
+    if (jid.endsWith("@g.us")) continue;
+    if (!byJid[jid] || name.length > byJid[jid].length) byJid[jid] = name;
+  }
+  return Object.entries(byJid)
+    .map(([jid, name]) => ({ name, number: jid.split("@")[0] }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/** The groups this account's WhatsApp is in, as [{ name }] - for the dashboard's Group picker. */
+async function groups(mobile) {
+  const s = sessions.get(mobile);
+  if (!s || s.state !== "open") throw new Error("Server WhatsApp is not connected. Link it first.");
+  const all = await s.sock.groupFetchAllParticipating();
+  return Object.values(all)
+    .map((g) => ({ name: g.subject || "" }))
+    .filter((g) => g.name)
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
 /** Reconnects every account that was linked before the server restarted. */
 function restoreAll() {
   if (!fs.existsSync(SESSIONS_DIR)) return;
@@ -196,4 +221,4 @@ function restoreAll() {
   }
 }
 
-module.exports = { connect, status, logout, send, restoreAll };
+module.exports = { connect, status, logout, send, contacts, groups, restoreAll };
