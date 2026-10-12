@@ -293,18 +293,54 @@ async function chatList(mobile) {
   }));
 }
 
+const DIGITS_JID = /^(\d{7,15})(?::\d+)?@(?:s\.whatsapp\.net|lid)$/;
+
 /** Flat export rows (oldest first) for one chat or all chats over a date range. opts: { jid, range }. */
 async function chatExport(mobile, opts) {
   const resolve = await chatNames(mobile);
-  return chatStore.messages(mobile, opts).map((r) => ({
-    at: r.t,
-    chat: displayChat(r.chatJid, r.group, r.chatNumber, resolve),
-    type: r.group ? "Group" : "Direct",
-    direction: r.fromMe ? "Sent" : "Received",
-    name: r.fromMe ? "" : r.senderName || (r.group ? "" : displayChat(r.chatJid, r.group, r.chatNumber, resolve)),
-    number: r.fromMe ? "" : r.senderNumber,
-    text: r.text,
-  }));
+  const s = sessions.get(mobile);
+  const lidToPhone = new Map(); // @lid jid -> phone, resolved once per export
+
+  /** The phone for a group sender, resolving an @lid id through the live session when needed. */
+  async function senderPhone(r) {
+    if (r.senderNumber) return r.senderNumber;
+    const sj = r.senderJid || "";
+    const direct = DIGITS_JID.exec(sj.endsWith("@s.whatsapp.net") ? sj : "")?.[1];
+    if (direct) return direct;
+    if (sj.endsWith("@lid") && s?.sock?.signalRepository?.lidMapping?.getPNForLID) {
+      if (!lidToPhone.has(sj)) {
+        const pn = await s.sock.signalRepository.lidMapping.getPNForLID(sj).catch(() => "");
+        lidToPhone.set(sj, /^(\d{7,15})/.exec((pn || "").split("@")[0])?.[1] || "");
+      }
+      return lidToPhone.get(sj);
+    }
+    return "";
+  }
+
+  const rows = chatStore.messages(mobile, opts);
+  const out = [];
+  for (const r of rows) {
+    if (r.fromMe) {
+      out.push({ at: r.t, chat: displayChat(r.chatJid, r.group, r.chatNumber, resolve), type: r.group ? "Group" : "Direct", direction: "Sent", name: "", number: "", text: r.text });
+      continue;
+    }
+    const number = r.group ? await senderPhone(r) : r.chatNumber || (await senderPhone(r));
+    const name =
+      r.senderName ||
+      resolve.names[r.senderJid] ||
+      (number ? resolve.names[`${number}@s.whatsapp.net`] : "") ||
+      (r.group ? "" : displayChat(r.chatJid, r.group, r.chatNumber, resolve));
+    out.push({
+      at: r.t,
+      chat: displayChat(r.chatJid, r.group, r.chatNumber, resolve),
+      type: r.group ? "Group" : "Direct",
+      direction: "Received",
+      name,
+      number,
+      text: r.text,
+    });
+  }
+  return out;
 }
 
 /**

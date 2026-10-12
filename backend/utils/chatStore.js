@@ -80,6 +80,7 @@ function toRecord(msg) {
     group,
     chatNumber: group ? "" : phoneFromJid(chatJid),
     fromMe,
+    senderJid, // kept raw (may be @lid) so the export can resolve name/number for group history messages
     senderNumber,
     senderName: fromMe ? "" : msg.pushName || "",
     text,
@@ -116,8 +117,10 @@ function readAll(mobile) {
   } catch {
     return [];
   }
-  const seen = new Set();
-  const out = [];
+  // Dedupe on message id keeping the LAST line written for it: a later copy (e.g. a re-sync that now
+  // carries the sender's jid) is more complete than the first one, so it should win.
+  const byId = new Map();
+  const noId = [];
   for (const line of raw.split("\n")) {
     if (!line.trim()) continue;
     let rec;
@@ -126,11 +129,10 @@ function readAll(mobile) {
     } catch {
       continue;
     }
-    if (rec.id && seen.has(rec.id)) continue;
-    if (rec.id) seen.add(rec.id);
-    out.push(rec);
+    if (rec.id) byId.set(rec.id, rec);
+    else noId.push(rec);
   }
-  return out.sort((a, b) => b.t - a.t);
+  return [...byId.values(), ...noId].sort((a, b) => b.t - a.t);
 }
 
 /** The chats we have at least one message for: [{ jid, group, number, count, lastAt }] - for the picker. */
