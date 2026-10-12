@@ -87,17 +87,20 @@ body {
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
   flex-wrap: wrap; padding: 0 24px; background: var(--grad-nav);
 }
-.nav { display: flex; flex-wrap: wrap; gap: 4px; }
+.nav { display: flex; flex-wrap: wrap; gap: 7px; padding: 9px 0; }
 .nav-tab {
-  font-size: 13px; font-weight: 600; padding: 11px 16px; border: none; border-bottom: 3px solid transparent;
-  background: transparent; color: rgba(255, 255, 255, 0.72); cursor: pointer; font-family: inherit;
+  font-size: 13px; font-weight: 700; letter-spacing: 0.2px; padding: 9px 18px;
+  border: 1px solid rgba(255, 255, 255, 0.22); border-radius: 999px;
+  background: rgba(255, 255, 255, 0.10); color: rgba(255, 255, 255, 0.88);
+  cursor: pointer; font-family: inherit; transition: transform 0.16s ease, background 0.16s ease, box-shadow 0.16s ease, color 0.16s ease;
 }
-.nav-tab:hover { color: #fff; }
+.nav-tab:hover { color: #fff; background: rgba(255, 255, 255, 0.24); transform: translateY(-1px); }
 .nav-tab[aria-selected="true"] {
   color: #fff;
-  border-bottom-color: var(--green);
-  background: rgba(255, 255, 255, 0.12);
-  border-radius: 8px 8px 0 0;
+  background: linear-gradient(135deg, var(--green), var(--teal));
+  border-color: rgba(255, 255, 255, 0.55);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.22);
+  transform: translateY(-1px);
 }
 /* ---------- Server WhatsApp chip, sitting in the nav row ---------- */
 .wa-chip { display: flex; align-items: center; gap: 6px; padding: 5px 0; margin-left: auto; }
