@@ -359,7 +359,6 @@ async function fetchHistory(mobile, { jid, count = 50 } = {}) {
     );
   }
   const key = { remoteJid: anchor.chatJid, id: anchor.id, fromMe: !!anchor.fromMe };
-  globalThis.__chatDbg = 10; // TEMP: log the next few group messages' keys to find the sender field
   await session.sock.fetchMessageHistory(Math.min(Math.max(Number(count) || 50, 1), 50), key, anchor.t);
   return { requested: true, from: anchor.t };
 }
