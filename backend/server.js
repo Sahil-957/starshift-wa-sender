@@ -10,9 +10,11 @@ const campaignRoutes = require("./routes/campaigns");
 const listRoutes = require("./routes/lists");
 const importRoutes = require("./routes/import");
 const sheetJobRoutes = require("./routes/sheetJobs");
+const broadcastRoutes = require("./routes/broadcasts");
 const waSessions = require("./utils/waSessions");
 const campaigns = require("./utils/campaigns");
 const sheetJobs = require("./utils/sheetJobs");
+const broadcasts = require("./utils/broadcasts");
 
 if (!process.env.JWT_SECRET) {
   console.warn("WARNING: JWT_SECRET not set in .env - using an insecure default for dev only.");
@@ -31,6 +33,8 @@ app.use("/api/campaigns", express.json({ limit: "60mb" }), requireAuth, campaign
 app.use("/api/lists", express.json({ limit: "20mb" }), requireAuth, listRoutes);
 // Upload mode posts every parsed row, so this route takes a larger body than the rest.
 app.use("/api/sheet-jobs", express.json({ limit: "30mb" }), requireAuth, sheetJobRoutes);
+// File uploads (the current broadcast image/pdf) come inline, so this route takes a larger body.
+app.use("/api/broadcasts", express.json({ limit: "60mb" }), requireAuth, broadcastRoutes);
 app.use("/api/import", express.json(), requireAuth, importRoutes);
 app.use(express.json());
 
@@ -96,3 +100,4 @@ app.listen(PORT, () => console.log(`Starshift WA Sender backend listening on htt
 waSessions.restoreAll();
 campaigns.restoreAll();
 sheetJobs.start();
+broadcasts.start();

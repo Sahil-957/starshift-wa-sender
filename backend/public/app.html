@@ -51,6 +51,7 @@
     <div class="nav">
       <button class="nav-tab" data-page="campaign" aria-selected="true">New Campaign</button>
       <button class="nav-tab" data-page="sheet">Sheet Scheduler</button>
+      <button class="nav-tab" data-page="broadcast">Auto Broadcast</button>
       <button class="nav-tab" data-page="reports">Reports</button>
       <button class="nav-tab" data-page="chatbot">Chatbot</button>
       <button class="nav-tab" data-page="quick">Quick Replies</button>
@@ -297,6 +298,51 @@
       <div class="card">
         <h2>Scheduled sheets</h2>
         <div id="sheet-sched-list" class="campaigns-list"><p class="hint">No scheduled sheets yet.</p></div>
+      </div>
+    </section>
+
+    <!-- ================= Auto Broadcast ================= -->
+    <section id="page-broadcast" class="page hidden">
+      <div class="card">
+        <h2>Auto Broadcast</h2>
+        <p class="hint">Send <b>one current file</b> (image / PDF / Excel) to a saved list, automatically, several times a day on a repeating schedule. Upload a new file any time — the old one is replaced, and the schedule keeps sending whatever is current.</p>
+
+        <label for="bc-name">Name</label>
+        <input type="text" id="bc-name" placeholder="e.g. Daily rate card" />
+
+        <label for="bc-list">Send to (saved list)</label>
+        <select id="bc-list"><option value="">— pick a saved list —</option></select>
+        <p class="hint" style="margin-top:4px">Make lists in <b>New Campaign → Recipients → Saved Lists</b>.</p>
+
+        <label for="bc-times">Send times (India time, comma separated)</label>
+        <input type="text" id="bc-times" placeholder="e.g. 10:00, 12:00, 14:00, 16:00, 18:00" />
+        <p class="hint" style="margin-top:4px">24-hour or AM/PM both work: <code>10:00</code>, <code>14:30</code>, <code>6:30 PM</code>. A bare number means o'clock: <code>10</code> = 10:00.</p>
+
+        <label for="bc-freq">Repeat</label>
+        <select id="bc-freq">
+          <option value="daily">Daily</option>
+          <option value="weekly">Weekly (same weekday)</option>
+          <option value="monthly">Monthly (same date)</option>
+          <option value="yearly">Yearly (same date)</option>
+        </select>
+
+        <label for="bc-caption">Caption (optional)</label>
+        <textarea id="bc-caption" rows="2" placeholder="Sent with the file. {{name}} works here too."></textarea>
+
+        <div class="upload-row" style="margin-top:10px">
+          <label for="bc-file" class="file-btn">Choose file (image / PDF / Excel)</label>
+          <input id="bc-file" type="file" accept="image/*,video/*,application/pdf,.doc,.docx,.xls,.xlsx" class="hidden" />
+          <span id="bc-file-info" class="hint" style="margin:0">No file yet — caption-only is allowed.</span>
+        </div>
+
+        <button type="button" class="primary" id="bc-save" style="margin-top:12px">Create broadcast</button>
+        <button type="button" class="btn-secondary hidden" id="bc-cancel-edit" style="margin-top:12px">Cancel edit</button>
+        <p class="hint" id="bc-status" role="status"></p>
+      </div>
+
+      <div class="card">
+        <h2>Your broadcasts</h2>
+        <div id="bc-list-view" class="campaigns-list"><p class="hint">No broadcasts yet.</p></div>
       </div>
     </section>
 

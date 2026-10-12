@@ -1,7 +1,7 @@
 const $ = (id) => document.getElementById(id);
 const tokenKey = "starshiftToken";
 let token = sessionStorage.getItem(tokenKey) || "";
-let statusPoller, progressPoller, countdownTimer, reportsPoller, sheetPoller;
+let statusPoller, progressPoller, countdownTimer, reportsPoller, sheetPoller, bcPoller;
 let activeCampaignId = null;
 let attachment = null; // { dataUrl, name, mimeType } when a file is attached
 const MAX_ATTACH_MB = 45;
@@ -46,7 +46,7 @@ function signedIn(mobile, role) {
 function signOut() {
   sessionStorage.removeItem(tokenKey);
   token = "";
-  [statusPoller, progressPoller, reportsPoller, sheetPoller].forEach(clearTimeout);
+  [statusPoller, progressPoller, reportsPoller, sheetPoller, bcPoller].forEach(clearTimeout);
   clearInterval(countdownTimer);
   selected = [];
   try { ["starshiftSelected", "starshiftContacts", "starshiftGroups"].forEach((k) => localStorage.removeItem(k)); } catch { /* private mode */ }
@@ -100,7 +100,7 @@ $("reset-password").addEventListener("click", async () => {
 $("logout").addEventListener("click", signOut);
 
 // ---------- Navigation ----------
-const PAGES = ["campaign", "sheet", "reports", "chatbot", "quick", "unsub"];
+const PAGES = ["campaign", "sheet", "broadcast", "reports", "chatbot", "quick", "unsub"];
 function showPage(page) {
   document.querySelectorAll(".nav-tab").forEach((tab) => tab.setAttribute("aria-selected", tab.dataset.page === page));
   PAGES.forEach((p) => { const sec = $("page-" + p); if (sec) sec.classList.toggle("hidden", p !== page); });
@@ -111,6 +111,7 @@ function showPage(page) {
   if (page === "quick") renderQuick();
   if (page === "unsub") loadUnsub();
   if (page === "sheet") loadSheetJobs();
+  if (page === "broadcast") loadBroadcasts();
 }
 document.querySelectorAll(".nav-tab").forEach((tab) => tab.addEventListener("click", () => showPage(tab.dataset.page)));
 
@@ -608,6 +609,155 @@ $("sheet-sched-file").addEventListener("change", async (event) => {
     loadSheetJobs();
   } catch (e) { $("sheet-sched-file-info").textContent = `Could not use that file: ${e.message}`; }
   finally { event.target.value = ""; }
+});
+
+// ---------- Auto Broadcast ----------
+let bcEditing = null;        // id being edited, or null
+let bcPendingFile = null;    // { dataUrl, name, mimeType } chosen before create
+const FREQ_LABEL = { daily: "Daily", weekly: "Weekly", monthly: "Monthly", yearly: "Yearly" };
+
+async function populateBcLists(selectedId) {
+  try {
+    const { lists = [] } = await api("/lists");
+    $("bc-list").innerHTML = `<option value="">— pick a saved list —</option>` +
+      lists.map((l) => `<option value="${l.id}" ${l.id === selectedId ? "selected" : ""}>${esc(l.name)} (${l.recipients.length})</option>`).join("");
+  } catch { /* ignore */ }
+}
+
+async function loadBroadcasts() {
+  clearTimeout(bcPoller);
+  await populateBcLists($("bc-list").value);
+  try {
+    const { broadcasts = [] } = await api("/broadcasts");
+    $("bc-list-view").innerHTML = broadcasts.length
+      ? broadcasts.map(renderBroadcast).join("")
+      : `<p class="hint">No broadcasts yet.</p>`;
+    $("bc-list-view").querySelectorAll("[data-bc-act]").forEach((b) =>
+      b.addEventListener("click", () => bcAction(b.dataset.id, b.dataset.bcAct, b)));
+    if (broadcasts.some((b) => b.active)) bcPoller = setTimeout(loadBroadcasts, 15000);
+  } catch (e) { $("bc-list-view").innerHTML = `<p class="error">${esc(e.message)}</p>`; }
+}
+
+function renderBroadcast(b) {
+  const times = b.times.join(", ");
+  const next = b.nextRunAt ? new Date(b.nextRunAt).toLocaleString() : "—";
+  const last = b.lastRunAt ? new Date(b.lastRunAt).toLocaleString() : "never";
+  const lastRun = b.runs && b.runs[0] ? ` · last run: ${b.runs[0].sent || 0} sent, ${b.runs[0].failed || 0} failed` : "";
+  const act = (a, label) => `<button data-bc-act="${a}" data-id="${b.id}">${label}</button>`;
+  return `<div class="campaign-item">
+    <div class="head"><span>${esc(b.name)}</span><span class="status-badge status-${b.active ? "running" : "paused"}">${b.active ? "Active" : "Paused"}</span></div>
+    <div class="campaign-meta">To: ${esc(b.listName)} (${b.recipientCount}) · ${FREQ_LABEL[b.frequency] || b.frequency} at ${esc(times)}</div>
+    <div class="campaign-meta">File: ${b.file ? esc(b.file.name) : "— none (caption only)"} · next: ${esc(next)} · last: ${esc(last)}${lastRun}</div>
+    <div class="campaign-actions">
+      ${act("run-now", "Send now")}
+      ${act(b.active ? "pause" : "resume", b.active ? "Pause" : "Resume")}
+      ${act("edit", "Edit")}
+      ${act("replace", "Replace file")}
+      ${act("delete", "Delete")}
+    </div>
+  </div>`;
+}
+
+const hiddenBcReplace = document.createElement("input");
+hiddenBcReplace.type = "file";
+hiddenBcReplace.accept = "image/*,video/*,application/pdf,.doc,.docx,.xls,.xlsx";
+hiddenBcReplace.className = "hidden";
+document.body.appendChild(hiddenBcReplace);
+let bcReplaceId = null;
+hiddenBcReplace.addEventListener("change", async () => {
+  const file = hiddenBcReplace.files[0];
+  if (!file || !bcReplaceId) return;
+  if (file.size > MAX_ATTACH_MB * 1024 * 1024) { alert(`Too big (max ${MAX_ATTACH_MB} MB).`); hiddenBcReplace.value = ""; return; }
+  try {
+    const payload = { dataUrl: await readAsDataUrl(file), name: file.name, mimeType: file.type || "application/octet-stream" };
+    await api(`/broadcasts/${bcReplaceId}/file`, "POST", { file: payload });
+    loadBroadcasts();
+  } catch (e) { alert(e.message); } finally { hiddenBcReplace.value = ""; bcReplaceId = null; }
+});
+
+async function bcAction(id, action, btn) {
+  try {
+    if (action === "delete") {
+      if (!confirm("Delete this broadcast? Its file is removed too.")) return;
+      await api(`/broadcasts/${id}`, "DELETE");
+    } else if (action === "pause" || action === "resume") {
+      await api(`/broadcasts/${id}`, "PATCH", { active: action === "resume" });
+    } else if (action === "run-now") {
+      if (btn) btn.disabled = true;
+      const r = await api(`/broadcasts/${id}/run-now`, "POST", {});
+      alert(`Sent ${r.sent}, failed ${r.failed}.`);
+    } else if (action === "replace") {
+      bcReplaceId = id; hiddenBcReplace.click(); return;
+    } else if (action === "edit") {
+      return bcStartEdit(id);
+    }
+    loadBroadcasts();
+  } catch (e) { alert(e.message); if (btn) btn.disabled = false; }
+}
+
+async function bcStartEdit(id) {
+  try {
+    const { broadcasts = [] } = await api("/broadcasts");
+    const b = broadcasts.find((x) => x.id === id);
+    if (!b) return;
+    bcEditing = id;
+    $("bc-name").value = b.name;
+    await populateBcLists(b.listId);
+    $("bc-list").value = b.listId;
+    $("bc-times").value = b.times.join(", ");
+    $("bc-freq").value = b.frequency;
+    $("bc-caption").value = b.caption;
+    $("bc-file-info").textContent = b.file ? `Current: ${b.file.name} (use “Replace file” to change)` : "No file.";
+    $("bc-save").textContent = "Update broadcast";
+    $("bc-cancel-edit").classList.remove("hidden");
+    $("bc-name").scrollIntoView({ behavior: "smooth", block: "center" });
+  } catch (e) { alert(e.message); }
+}
+
+function bcResetForm() {
+  bcEditing = null; bcPendingFile = null;
+  $("bc-name").value = ""; $("bc-times").value = ""; $("bc-caption").value = ""; $("bc-freq").value = "daily";
+  $("bc-list").value = ""; $("bc-file").value = "";
+  $("bc-file-info").textContent = "No file yet — caption-only is allowed.";
+  $("bc-save").textContent = "Create broadcast";
+  $("bc-cancel-edit").classList.add("hidden");
+}
+$("bc-cancel-edit").addEventListener("click", bcResetForm);
+
+$("bc-file").addEventListener("change", async (event) => {
+  const file = event.target.files[0];
+  if (!file) return;
+  if (file.size > MAX_ATTACH_MB * 1024 * 1024) { $("bc-file-info").textContent = `Too big (max ${MAX_ATTACH_MB} MB).`; event.target.value = ""; return; }
+  try {
+    bcPendingFile = { dataUrl: await readAsDataUrl(file), name: file.name, mimeType: file.type || "application/octet-stream" };
+    $("bc-file-info").textContent = `📎 ${file.name} (${Math.round(file.size / 1024)} KB)`;
+  } catch (e) { bcPendingFile = null; $("bc-file-info").textContent = e.message; }
+});
+
+$("bc-save").addEventListener("click", async () => {
+  const body = {
+    name: $("bc-name").value.trim(),
+    listId: $("bc-list").value,
+    times: $("bc-times").value,
+    frequency: $("bc-freq").value,
+    caption: $("bc-caption").value,
+  };
+  if (!body.listId) return alert("Pick a saved list.");
+  if (!body.times.trim()) return alert("Add at least one send time.");
+  $("bc-save").disabled = true;
+  $("bc-status").textContent = "Saving…";
+  try {
+    if (bcEditing) {
+      await api(`/broadcasts/${bcEditing}`, "PATCH", body);
+      if (bcPendingFile) await api(`/broadcasts/${bcEditing}/file`, "POST", { file: bcPendingFile });
+      $("bc-status").textContent = "Updated.";
+    } else {
+      await api("/broadcasts", "POST", { ...body, file: bcPendingFile });
+      $("bc-status").textContent = "Broadcast created.";
+    }
+    bcResetForm();
+    loadBroadcasts();
+  } catch (e) { $("bc-status").textContent = e.message; } finally { $("bc-save").disabled = false; }
 });
 
 // ---------- Reports ----------
