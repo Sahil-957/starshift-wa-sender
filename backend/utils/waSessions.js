@@ -66,6 +66,17 @@ function saveNames(mobile, names) {
 }
 const looksNumeric = (s) => /^\+?[\d\s()-]+$/.test(s);
 
+/** Reads WhatsApp's saved @lid -> phone map for a group sender; "" if there's no mapping on disk. */
+function lidPhoneFromFile(mobile, lidJid) {
+  const lid = /^(\d+)@lid$/.exec(lidJid || "")?.[1];
+  if (!lid) return "";
+  try {
+    return String(JSON.parse(fs.readFileSync(path.join(authDir(mobile), `lid-mapping-${lid}_reverse.json`), "utf8"))).replace(/\D/g, "");
+  } catch {
+    return "";
+  }
+}
+
 function notFound(message) {
   return Object.assign(new Error(message), { status: 404 });
 }
@@ -301,20 +312,24 @@ async function chatExport(mobile, opts) {
   const s = sessions.get(mobile);
   const lidToPhone = new Map(); // @lid jid -> phone, resolved once per export
 
-  /** The phone for a group sender, resolving an @lid id through the live session when needed. */
+  /** The phone for a group sender, resolving an @lid id to its number. opts.jid senders are @lid in groups. */
   async function senderPhone(r) {
     if (r.senderNumber) return r.senderNumber;
     const sj = r.senderJid || "";
     const direct = DIGITS_JID.exec(sj.endsWith("@s.whatsapp.net") ? sj : "")?.[1];
     if (direct) return direct;
-    if (sj.endsWith("@lid") && s?.sock?.signalRepository?.lidMapping?.getPNForLID) {
-      if (!lidToPhone.has(sj)) {
+    if (!sj.endsWith("@lid")) return "";
+    if (!lidToPhone.has(sj)) {
+      // WhatsApp saves the @lid -> phone map to disk (lid-mapping-<lid>_reverse.json); read that first, as
+      // it works even when the socket is offline. Fall back to the live mapping API if the file is missing.
+      let phone = lidPhoneFromFile(mobile, sj);
+      if (!phone && s?.sock?.signalRepository?.lidMapping?.getPNForLID) {
         const pn = await s.sock.signalRepository.lidMapping.getPNForLID(sj).catch(() => "");
-        lidToPhone.set(sj, /^(\d{7,15})/.exec((pn || "").split("@")[0])?.[1] || "");
+        phone = /^(\d{7,15})/.exec((pn || "").split("@")[0])?.[1] || "";
       }
-      return lidToPhone.get(sj);
+      lidToPhone.set(sj, phone);
     }
-    return "";
+    return lidToPhone.get(sj);
   }
 
   const rows = chatStore.messages(mobile, opts);
