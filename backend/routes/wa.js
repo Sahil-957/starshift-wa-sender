@@ -18,6 +18,23 @@ router.get("/groups", async (req, res) => {
   }
 });
 
+// ---- Chat Extract (export a chat, or all chats, to Excel; built on the client from these rows) ----
+router.get("/chats", async (req, res) => {
+  try {
+    res.json({ chats: await wa.chatList(req.auth.mobile) });
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+});
+router.get("/chat-export", async (req, res) => {
+  try {
+    const rows = await wa.chatExport(req.auth.mobile, { jid: req.query.jid || "", range: req.query.range || "all" });
+    res.json({ rows });
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+});
+
 router.post("/connect", async (req, res) => {
   try {
     res.json(await wa.connect(req.auth.mobile));

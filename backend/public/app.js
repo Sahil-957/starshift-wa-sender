@@ -102,7 +102,7 @@ $("reset-password").addEventListener("click", async () => {
 $("logout").addEventListener("click", signOut);
 
 // ---------- Navigation ----------
-const PAGES = ["campaign", "sheet", "broadcast", "reports", "chatbot", "quick", "unsub"];
+const PAGES = ["campaign", "sheet", "broadcast", "reports", "chatbot", "quick", "unsub", "extract"];
 function showPage(page) {
   document.querySelectorAll(".nav-tab").forEach((tab) => tab.setAttribute("aria-selected", tab.dataset.page === page));
   PAGES.forEach((p) => { const sec = $("page-" + p); if (sec) sec.classList.toggle("hidden", p !== page); });
@@ -114,6 +114,7 @@ function showPage(page) {
   if (page === "unsub") loadUnsub();
   if (page === "sheet") loadSheetJobs();
   if (page === "broadcast") loadBroadcasts();
+  if (page === "extract") loadChats();
 }
 document.querySelectorAll(".nav-tab").forEach((tab) => tab.addEventListener("click", () => showPage(tab.dataset.page)));
 
@@ -1185,6 +1186,88 @@ $("qr-add").addEventListener("click", () => {
   try { localStorage.setItem("starshiftQuick", JSON.stringify(l)); } catch { /* private mode */ }
   $("qr-title").value = ""; $("qr-text").value = "";
   renderQuick();
+});
+
+// ---------- Chat Extract ----------
+const RANGE_LABEL = { today: "today", "7days": "last-7-days", "15days": "last-15-days", "1month": "last-1-month", "2months": "last-2-months", all: "all" };
+
+function pad2(n) { return String(n).padStart(2, "0"); }
+function fmtDate(ms) { const d = new Date(ms); return `${pad2(d.getDate())}-${pad2(d.getMonth() + 1)}-${d.getFullYear()}`; }
+function fmtTime(ms) { const d = new Date(ms); return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`; }
+function safeName(s) { return String(s || "").replace(/[^\w.-]+/g, "_").slice(0, 40) || "export"; }
+
+/** Saves rows (array of flat objects) as an .xlsx download. */
+function downloadXlsx(rows, sheetName, fileName) {
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, sheetName);
+  XLSX.writeFile(wb, fileName);
+}
+
+async function loadChats() {
+  const sel = $("extract-chat");
+  $("extract-status").textContent = "Loading chats…";
+  try {
+    const { chats } = await api("/wa/chats");
+    const current = sel.value;
+    sel.innerHTML = '<option value="all">All chats</option>' +
+      chats.map((c) => {
+        const label = `${c.name || c.number || "Unknown"}${c.group ? " (Group)" : c.number ? ` · ${c.number}` : ""} — ${c.count} msg`;
+        return `<option value="${esc(c.jid)}">${esc(label)}</option>`;
+      }).join("");
+    if ([...sel.options].some((o) => o.value === current)) sel.value = current;
+    $("extract-status").textContent = chats.length ? "" : "No messages recorded yet. Chats appear here as they come in.";
+  } catch (e) {
+    $("extract-status").textContent = e.message;
+  }
+}
+
+$("extract-refresh").addEventListener("click", loadChats);
+
+$("extract-download").addEventListener("click", async () => {
+  const jid = $("extract-chat").value;
+  const range = $("extract-range").value;
+  const btn = $("extract-download");
+  btn.disabled = true;
+  $("extract-status").textContent = "Preparing Excel…";
+  try {
+    const { rows } = await api(`/wa/chat-export?jid=${encodeURIComponent(jid)}&range=${encodeURIComponent(range)}`);
+    if (!rows.length) { $("extract-status").textContent = "No messages found for this chat and date range."; return; }
+    const out = rows.map((r) => ({
+      Date: fmtDate(r.at),
+      Time: fmtTime(r.at),
+      Chat: r.chat,
+      Type: r.type,
+      Direction: r.direction,
+      Name: r.name,
+      Mobile: r.number,
+      Message: r.text,
+    }));
+    const who = jid === "all" ? "all-chats" : safeName($("extract-chat").selectedOptions[0]?.text.split(" — ")[0]);
+    downloadXlsx(out, "Chats", `chat-${who}-${RANGE_LABEL[range] || range}.xlsx`);
+    $("extract-status").textContent = `Downloaded ${rows.length} message${rows.length === 1 ? "" : "s"}.`;
+  } catch (e) {
+    $("extract-status").textContent = e.message;
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+$("numbers-download").addEventListener("click", async () => {
+  const btn = $("numbers-download");
+  btn.disabled = true;
+  $("numbers-status").textContent = "Preparing Excel…";
+  try {
+    const { contacts } = await api("/wa/contacts");
+    if (!contacts.length) { $("numbers-status").textContent = "No contacts known yet. Sync contacts from New Campaign first."; return; }
+    const out = contacts.map((c) => ({ Name: c.name || "", Mobile: c.number || "" }));
+    downloadXlsx(out, "Numbers", "mobile-numbers.xlsx");
+    $("numbers-status").textContent = `Downloaded ${contacts.length} number${contacts.length === 1 ? "" : "s"}.`;
+  } catch (e) {
+    $("numbers-status").textContent = e.message;
+  } finally {
+    btn.disabled = false;
+  }
 });
 
 // ---------- Boot ----------

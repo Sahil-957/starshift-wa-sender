@@ -15,6 +15,7 @@ const {
   fetchLatestBaileysVersion,
 } = require("@whiskeysockets/baileys");
 const waBot = require("./waBot");
+const chatStore = require("./chatStore");
 const { writeJsonAtomic } = require("./atomicWrite");
 
 const SESSIONS_DIR = path.join(__dirname, "..", "data", "wa-sessions");
@@ -117,11 +118,16 @@ async function connect(mobile) {
     if (namesChanged) saveNames(mobile, session.names);
   };
   sock.ev.on("messages.upsert", (event) => {
-    if (session.sock === sock) waBot.onMessages(mobile, sock, event); // a superseded socket stays quiet
+    if (session.sock !== sock) return; // a superseded socket stays quiet
+    chatStore.record(mobile, event.messages); // keep a copy for Chat Extract
+    waBot.onMessages(mobile, sock, event);
   });
   sock.ev.on("contacts.upsert", remember);
   sock.ev.on("contacts.update", remember);
-  sock.ev.on("messaging-history.set", ({ contacts }) => remember(contacts));
+  sock.ev.on("messaging-history.set", ({ contacts, messages }) => {
+    remember(contacts);
+    if (session.sock === sock) chatStore.record(mobile, messages); // back-fill from WhatsApp's history sync
+  });
   sock.ev.on("connection.update", async ({ connection, lastDisconnect, qr }) => {
     if (sessions.get(mobile) !== session || session.sock !== sock) return; // superseded
     if (qr) {
@@ -250,6 +256,57 @@ async function groups(mobile) {
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
+// ---------- Chat Extract ----------
+// chatStore keeps the raw messages (jids, numbers, text); the display name of each chat is resolved here,
+// where the contact names and group subjects live.
+
+/** { names: jid->contact name, groups: jid->group subject }. Group subjects need a live connection. */
+async function chatNames(mobile) {
+  const s = sessions.get(mobile);
+  const names = s?.names || loadNames(mobile);
+  const groups = {};
+  if (s && s.state === "open") {
+    try {
+      const all = s.groups || (s.groups = await s.sock.groupFetchAllParticipating());
+      for (const g of Object.values(all)) groups[g.id] = g.subject || "";
+    } catch {
+      /* offline or throttled - fall back to the group jid */
+    }
+  }
+  return { names, groups };
+}
+
+function displayChat(jid, group, number, { names, groups }) {
+  if (group) return groups[jid] || "Group";
+  return names[jid] || number || (jid || "").split("@")[0];
+}
+
+/** The chats we have messages for, with a readable name and a count - for the Chat Extract picker. */
+async function chatList(mobile) {
+  const resolve = await chatNames(mobile);
+  return chatStore.chats(mobile).map((c) => ({
+    jid: c.jid,
+    group: c.group,
+    number: c.number,
+    count: c.count,
+    name: displayChat(c.jid, c.group, c.number, resolve),
+  }));
+}
+
+/** Flat export rows (oldest first) for one chat or all chats over a date range. opts: { jid, range }. */
+async function chatExport(mobile, opts) {
+  const resolve = await chatNames(mobile);
+  return chatStore.messages(mobile, opts).map((r) => ({
+    at: r.t,
+    chat: displayChat(r.chatJid, r.group, r.chatNumber, resolve),
+    type: r.group ? "Group" : "Direct",
+    direction: r.fromMe ? "Sent" : "Received",
+    name: r.fromMe ? "" : r.senderName || (r.group ? "" : displayChat(r.chatJid, r.group, r.chatNumber, resolve)),
+    number: r.fromMe ? "" : r.senderNumber,
+    text: r.text,
+  }));
+}
+
 // On restart every linked account has to reconnect. Firing all of them at once (100+ Baileys
 // handshakes in the same tick) spikes CPU and gets the connections throttled by WhatsApp, so they
 // are brought up a few at a time with a gap between batches. The server is usable immediately;
@@ -271,4 +328,4 @@ function restoreAll() {
   startBatch();
 }
 
-module.exports = { connect, status, logout, send, contacts, groups, restoreAll };
+module.exports = { connect, status, logout, send, contacts, groups, chatList, chatExport, restoreAll };

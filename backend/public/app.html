@@ -56,6 +56,7 @@
       <button class="nav-tab" data-page="chatbot">Chatbot</button>
       <button class="nav-tab" data-page="quick">Quick Replies</button>
       <button class="nav-tab" data-page="unsub">Unsubscribers</button>
+      <button class="nav-tab" data-page="extract">Chat Extract</button>
     </div>
     <div class="wa-chip">
       <button id="wa-chip-btn" class="wa-chip-btn"><i id="status-dot" class="wa-dot"></i><span id="status-text">Checking WhatsApp…</span></button>
@@ -474,6 +475,45 @@
         <textarea id="unsub-text" rows="8"></textarea>
         <button type="button" class="primary" id="unsub-save">Save unsubscribers</button>
         <p class="hint" id="unsub-status"></p>
+      </div>
+    </section>
+
+    <!-- ================= Chat Extract ================= -->
+    <section id="page-extract" class="page hidden">
+      <div class="card">
+        <h2>Chat Extract to Excel</h2>
+        <p class="hint">Pick a chat — one number or a group — and download its messages as an Excel file. Choose <b>All chats</b> to export everything together.</p>
+
+        <label for="extract-chat">Chat</label>
+        <div class="row" style="gap:8px;align-items:center">
+          <select id="extract-chat" style="flex:1"><option value="all">All chats</option></select>
+          <button type="button" id="extract-refresh">Refresh</button>
+        </div>
+
+        <label for="extract-range" style="display:block;margin-top:12px">Date range</label>
+        <select id="extract-range">
+          <option value="today">Today</option>
+          <option value="7days">Last 7 days</option>
+          <option value="15days">Last 15 days</option>
+          <option value="1month">Last 1 month</option>
+          <option value="2months">Last 2 months</option>
+          <option value="all" selected>All</option>
+        </select>
+
+        <div class="row" style="margin-top:14px">
+          <button type="button" class="primary" id="extract-download">Download chat Excel</button>
+        </div>
+        <p class="hint" id="extract-status"></p>
+        <p class="hint">Note: messages are saved from the time this feature went live (plus whatever WhatsApp back-syncs when the account links), so very old chats may be partial.</p>
+      </div>
+
+      <div class="card">
+        <h2>Mobile Numbers to Excel</h2>
+        <p class="hint">Download every contact the server's WhatsApp knows — name and mobile number — as an Excel file.</p>
+        <div class="row">
+          <button type="button" class="primary" id="numbers-download">Download numbers Excel</button>
+        </div>
+        <p class="hint" id="numbers-status"></p>
       </div>
     </section>
   </main>
