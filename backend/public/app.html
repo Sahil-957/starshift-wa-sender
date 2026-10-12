@@ -57,6 +57,7 @@
       <button class="nav-tab" data-page="quick">Quick Replies</button>
       <button class="nav-tab" data-page="unsub">Unsubscribers</button>
       <button class="nav-tab" data-page="extract">Chat Extract</button>
+      <button class="nav-tab" data-page="api">API</button>
     </div>
     <div class="wa-chip">
       <button id="wa-chip-btn" class="wa-chip-btn"><i id="status-dot" class="wa-dot"></i><span id="status-text">Checking WhatsApp…</span></button>
@@ -547,6 +548,36 @@
           <button type="button" class="primary" id="members-download">Download members Excel</button>
         </div>
         <p class="hint" id="members-status"></p>
+      </div>
+    </section>
+
+    <!-- ================= API ================= -->
+    <section id="page-api" class="page hidden">
+      <div class="card">
+        <h2>Your API key</h2>
+        <p class="hint">Use this key to send messages and run campaigns from your own website, software or tools — without logging in. It drives your own linked WhatsApp. Keep it secret; anyone with it can send from your account.</p>
+        <div class="row" style="gap:8px;align-items:center;max-width:620px">
+          <input id="api-key" readonly placeholder="No key yet — click Generate" style="flex:1;font-family:monospace" />
+          <button type="button" id="api-copy">Copy</button>
+          <button type="button" class="primary" id="api-rotate">Generate / Reset</button>
+        </div>
+        <p class="hint" id="api-status"></p>
+        <p class="hint">Resetting makes a new key and the old one stops working immediately.</p>
+      </div>
+
+      <div class="card">
+        <h2>How to use it</h2>
+        <p class="hint">Base URL: <b id="api-base">https://api.starshift.in</b>. Send your key in the <code>x-api-key</code> header.</p>
+        <h3 style="margin:14px 0 6px">Send one message</h3>
+        <pre id="api-ex-send" class="api-code"></pre>
+        <h3 style="margin:14px 0 6px">Start a bulk campaign</h3>
+        <pre id="api-ex-campaign" class="api-code"></pre>
+        <h3 style="margin:14px 0 6px">Other endpoints</h3>
+        <p class="hint" style="line-height:1.9">
+          <code>GET /api/v1/status</code> — is WhatsApp linked<br>
+          <code>GET /api/v1/campaign/&lt;id&gt;</code> — campaign sent/failed + failed list<br>
+          <code>GET /api/v1/chats</code>, <code>/api/v1/chat-export?jid=&amp;range=7days</code>, <code>/api/v1/group-members?jid=</code> — needs the Chat Extract add-on
+        </p>
       </div>
     </section>
   </main>

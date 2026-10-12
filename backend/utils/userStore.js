@@ -34,6 +34,12 @@ function upsert(mobile, changes) {
   return users[mobile];
 }
 
+/** The customer whose API key matches, or null. Used by the public /api/v1 key auth. */
+function findByApiKey(apiKey) {
+  if (!apiKey) return null;
+  return Object.values(load()).find((u) => u.apiKey && u.apiKey === apiKey) || null;
+}
+
 function remove(mobile) {
   const users = load();
   if (!users[mobile]) return false;
@@ -42,4 +48,4 @@ function remove(mobile) {
   return true;
 }
 
-module.exports = { get, list, upsert, remove };
+module.exports = { get, list, upsert, remove, findByApiKey };

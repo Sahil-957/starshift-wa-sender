@@ -703,3 +703,6 @@ td.fields, td.reason { white-space: normal; min-width: 160px; }
 .sheet-row-when { color: #5a6b66; white-space: nowrap; }
 .sheet-row-att { color: var(--brand-ink); }
 .sheet-row-note { color: #b23b3b; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.api-code{background:#0d1f17;color:#d8f0df;padding:12px 14px;border-radius:8px;font:12px/1.5 Consolas,Menlo,monospace;white-space:pre-wrap;word-break:break-word;overflow-x:auto;margin:0}
+code{background:#0000000d;padding:1px 5px;border-radius:4px;font-family:Consolas,Menlo,monospace;font-size:12px}

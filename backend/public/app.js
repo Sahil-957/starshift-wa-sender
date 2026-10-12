@@ -119,7 +119,7 @@ $("reset-password").addEventListener("click", async () => {
 $("logout").addEventListener("click", signOut);
 
 // ---------- Navigation ----------
-const PAGES = ["campaign", "sheet", "broadcast", "reports", "chatbot", "quick", "unsub", "extract"];
+const PAGES = ["campaign", "sheet", "broadcast", "reports", "chatbot", "quick", "unsub", "extract", "api"];
 function showPage(page) {
   document.querySelectorAll(".nav-tab").forEach((tab) => tab.setAttribute("aria-selected", tab.dataset.page === page));
   PAGES.forEach((p) => { const sec = $("page-" + p); if (sec) sec.classList.toggle("hidden", p !== page); });
@@ -132,6 +132,7 @@ function showPage(page) {
   if (page === "sheet") loadSheetJobs();
   if (page === "broadcast") loadBroadcasts();
   if (page === "extract") loadChats();
+  if (page === "api") loadApiKey();
 }
 document.querySelectorAll(".nav-tab").forEach((tab) => tab.addEventListener("click", () => showPage(tab.dataset.page)));
 
@@ -1422,6 +1423,46 @@ $("numbers-download").addEventListener("click", async () => {
   } finally {
     btn.disabled = false;
   }
+});
+
+// ---------- API key ----------
+let _apiKey = "";
+function renderApiExamples() {
+  const base = location.origin;
+  $("api-base").textContent = base;
+  const key = _apiKey || "YOUR_API_KEY";
+  $("api-ex-send").textContent =
+    `curl -X POST ${base}/api/v1/send \\\n` +
+    `  -H "x-api-key: ${key}" \\\n` +
+    `  -H "Content-Type: application/json" \\\n` +
+    `  -d '{"to":"919876543210","message":"Hi {{name}}","name":"Ramesh"}'`;
+  $("api-ex-campaign").textContent =
+    `curl -X POST ${base}/api/v1/campaign \\\n` +
+    `  -H "x-api-key: ${key}" \\\n` +
+    `  -H "Content-Type: application/json" \\\n` +
+    `  -d '{"name":"Offer","message":"Hi {{name}}","gapSeconds":20,` +
+    `"recipients":[{"mobile":"919876543210","name":"Ramesh"},{"mobile":"919812345678","name":"Sita"}]}'`;
+}
+async function loadApiKey() {
+  try {
+    const { apiKey } = await api("/account/apikey");
+    _apiKey = apiKey || "";
+    $("api-key").value = _apiKey;
+    renderApiExamples();
+  } catch (e) { $("api-status").textContent = e.message; }
+}
+$("api-rotate").addEventListener("click", async () => {
+  if (_apiKey && !confirm("Generate a new key? The current key stops working immediately.")) return;
+  try {
+    const { apiKey } = await api("/account/apikey/rotate", "POST", {});
+    _apiKey = apiKey; $("api-key").value = apiKey; renderApiExamples();
+    $("api-status").textContent = "New key generated — copy and store it safely.";
+  } catch (e) { $("api-status").textContent = e.message; }
+});
+$("api-copy").addEventListener("click", () => {
+  if (!_apiKey) { $("api-status").textContent = "Generate a key first."; return; }
+  navigator.clipboard?.writeText(_apiKey);
+  $("api-status").textContent = "Copied.";
 });
 
 // ---------- Boot ----------

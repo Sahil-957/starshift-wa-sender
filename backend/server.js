@@ -11,6 +11,8 @@ const listRoutes = require("./routes/lists");
 const importRoutes = require("./routes/import");
 const sheetJobRoutes = require("./routes/sheetJobs");
 const broadcastRoutes = require("./routes/broadcasts");
+const accountRoutes = require("./routes/account");
+const publicApiRoutes = require("./routes/publicApi");
 const waSessions = require("./utils/waSessions");
 const campaigns = require("./utils/campaigns");
 const sheetJobs = require("./utils/sheetJobs");
@@ -36,6 +38,10 @@ app.use("/api/sheet-jobs", express.json({ limit: "30mb" }), requireAuth, sheetJo
 // File uploads (the current broadcast image/pdf) come inline, so this route takes a larger body.
 app.use("/api/broadcasts", express.json({ limit: "60mb" }), requireAuth, broadcastRoutes);
 app.use("/api/import", express.json(), requireAuth, importRoutes);
+// Logged-in account settings (API key management).
+app.use("/api/account", express.json(), requireAuth, accountRoutes);
+// Public integration API - its own per-account API-key auth (not the JWT), larger body for inline media.
+app.use("/api/v1", express.json({ limit: "60mb" }), publicApiRoutes);
 app.use(express.json());
 
 app.use("/api/auth", authRoutes);
