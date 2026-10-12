@@ -65,11 +65,27 @@
     </div>
   </nav>
 
-  <!-- ---------- Server WhatsApp panel (QR) ---------- -->
+  <!-- ---------- Server WhatsApp panel (QR / phone code) ---------- -->
   <div id="wa-panel" class="wa-panel hidden">
     <h2>Server WhatsApp</h2>
     <p class="hint" id="connection-state">Checking connection…</p>
+
+    <div id="link-methods" class="row" style="gap:8px;margin:10px 0">
+      <button type="button" id="method-qr" class="primary">Scan QR code</button>
+      <button type="button" id="method-phone">Use mobile number</button>
+    </div>
+
     <img id="qr" class="qr hidden" alt="WhatsApp pairing QR code" />
+
+    <div id="pair-box" class="hidden">
+      <label for="pair-phone">WhatsApp number to link (with country code)</label>
+      <div class="row" style="gap:8px;align-items:center;max-width:420px">
+        <input id="pair-phone" inputmode="tel" placeholder="919876543210" style="flex:1" />
+        <button type="button" class="primary" id="pair-get">Get code</button>
+      </div>
+      <p id="pair-code" class="hidden" style="font-size:26px;font-weight:bold;letter-spacing:4px;margin:12px 0"></p>
+      <p class="hint">On your phone: <b>WhatsApp → Linked devices → Link a device → Link with phone number instead</b>, then type this code.</p>
+    </div>
   </div>
 
   <main class="layout">

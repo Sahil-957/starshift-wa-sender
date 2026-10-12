@@ -58,7 +58,7 @@ router.get("/group-members", needExtract, async (req, res) => {
 
 router.post("/connect", async (req, res) => {
   try {
-    res.json(await wa.connect(req.auth.mobile));
+    res.json(await wa.connect(req.auth.mobile, { pairingPhone: req.body.phone }));
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

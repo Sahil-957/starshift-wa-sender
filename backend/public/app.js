@@ -3,6 +3,7 @@ const tokenKey = "starshiftToken";
 let token = sessionStorage.getItem(tokenKey) || "";
 let statusPoller, progressPoller, countdownTimer, reportsPoller, sheetPoller, bcPoller;
 let activeCampaignId = null;
+let accountMobile = ""; // the logged-in account's number, used to prefill phone-code linking
 let attachment = null; // { dataUrl, name, mimeType } when a file is attached
 const MAX_ATTACH_MB = 45;
 
@@ -41,6 +42,7 @@ function signedIn(mobile, role, feats) {
   $("forgot-view").classList.add("hidden");
   $("logout").classList.remove("hidden");
   $("admin-link").classList.toggle("hidden", role !== "admin");
+  accountMobile = mobile || "";
   $("account-label").textContent = mobile ? `Logged in as +${mobile}` : "";
   applyFeatures();
   showPage("campaign");
@@ -140,19 +142,29 @@ async function refreshStatus() {
   try {
     const status = await api("/wa/status");
     const connected = status.state === "open";
+    const pairing = status.state === "pairing";
     $("status-text").textContent = connected
       ? `WhatsApp: +${status.me || ""}`
       : status.state === "qr" ? "Scan QR to link"
+      : pairing ? "Enter code on phone"
       : status.state === "connecting" ? "Connecting…" : "WhatsApp not linked";
     $("status-dot").className = "wa-dot " + (connected ? "ok" : status.state === "disconnected" ? "off" : "busy");
     $("connection-state").textContent = connected
       ? `Connected as +${status.me || ""}. Messages send from this server, even with your browser closed.`
       : status.state === "qr" ? "Scan this QR in WhatsApp → Linked devices → Link a device."
-      : status.state === "connecting" ? "Preparing a secure connection…" : "Click “Link WhatsApp”, then scan the QR with your phone.";
+      : pairing ? "Type the code below into your phone to link."
+      : status.state === "connecting" ? "Preparing a secure connection…" : "Click “Link WhatsApp”, then choose Scan QR or Use mobile number.";
     if (status.qr) { $("qr").src = status.qr; $("qr").classList.remove("hidden"); } else $("qr").classList.add("hidden");
-    $("connect").classList.toggle("hidden", connected || status.state === "qr");
+    if (pairing && status.pairingCode) {
+      const c = status.pairingCode;
+      $("pair-code").textContent = c.length === 8 ? `${c.slice(0, 4)}-${c.slice(4)}` : c;
+      $("pair-code").classList.remove("hidden");
+      $("pair-box").classList.remove("hidden");
+    }
+    $("link-methods").classList.toggle("hidden", connected);
+    $("connect").classList.toggle("hidden", connected || status.state === "qr" || pairing);
     $("unlink").classList.toggle("hidden", !connected);
-    if (status.state === "qr" || status.state === "connecting") $("wa-panel").classList.remove("hidden");
+    if (status.state === "qr" || status.state === "connecting" || pairing) $("wa-panel").classList.remove("hidden");
     $("send").disabled = !connected;
     $("direct-send").disabled = !connected;
     clearTimeout(statusPoller);
@@ -177,6 +189,47 @@ $("unlink").addEventListener("click", async () => {
   if (!confirm("Unlink this WhatsApp account from the server?")) return;
   try { await api("/wa/logout", "POST", {}); await refreshStatus(); }
   catch (error) { $("connection-state").textContent = error.message; }
+});
+
+// Linking method: Scan QR (default) vs enter a code on the phone.
+$("method-qr").addEventListener("click", async () => {
+  $("pair-box").classList.add("hidden");
+  $("connection-state").textContent = "Starting QR…";
+  try { await api("/wa/logout", "POST", {}); await api("/wa/connect", "POST", {}); await refreshStatus(); }
+  catch (error) { $("connection-state").textContent = error.message; }
+});
+
+$("method-phone").addEventListener("click", () => {
+  $("qr").classList.add("hidden");
+  $("pair-code").classList.add("hidden");
+  $("pair-box").classList.remove("hidden");
+  if (!$("pair-phone").value) $("pair-phone").value = accountMobile;
+});
+
+$("pair-get").addEventListener("click", async () => {
+  const phone = $("pair-phone").value.replace(/\D/g, "");
+  if (phone.length < 10) { $("connection-state").textContent = "Enter the number with country code, e.g. 919876543210."; return; }
+  const btn = $("pair-get");
+  btn.disabled = true;
+  $("pair-code").classList.add("hidden");
+  $("connection-state").textContent = "Requesting a code from WhatsApp…";
+  try {
+    await api("/wa/logout", "POST", {}); // reset any QR attempt in progress
+    const res = await api("/wa/connect", "POST", { phone });
+    if (res.pairingCode) {
+      const c = res.pairingCode;
+      $("pair-code").textContent = c.length === 8 ? `${c.slice(0, 4)}-${c.slice(4)}` : c;
+      $("pair-code").classList.remove("hidden");
+      $("connection-state").textContent = "Type this code into your phone to link.";
+    } else {
+      $("connection-state").textContent = "Could not get a code — try Scan QR instead.";
+    }
+    await refreshStatus();
+  } catch (error) {
+    $("connection-state").textContent = error.message;
+  } finally {
+    btn.disabled = false;
+  }
 });
 
 // ---------- Compose helpers ----------

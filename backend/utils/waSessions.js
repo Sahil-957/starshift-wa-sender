@@ -84,15 +84,23 @@ function notFound(message) {
 function status(mobile) {
   const s = sessions.get(mobile);
   if (!s) return { state: "disconnected" };
-  return { state: s.state, qr: s.state === "qr" ? s.qr : undefined, me: s.me };
+  return {
+    state: s.state,
+    qr: s.state === "qr" ? s.qr : undefined,
+    pairingCode: s.state === "pairing" ? s.pairingCode : undefined,
+    me: s.me,
+  };
 }
 
-async function connect(mobile) {
+/** opts.pairingPhone: link by entering a code on the phone instead of scanning the QR (that number's code). */
+async function connect(mobile, opts = {}) {
   const existing = sessions.get(mobile);
   if (existing && existing.state !== "disconnected") return status(mobile);
 
   const session = existing || { state: "connecting" };
   session.state = "connecting";
+  session.usePairing = !!opts.pairingPhone;
+  session.pairingCode = null;
   sessions.set(mobile, session);
 
   const { state: auth, saveCreds } = await useMultiFileAuthState(authDir(mobile));
@@ -141,7 +149,7 @@ async function connect(mobile) {
   });
   sock.ev.on("connection.update", async ({ connection, lastDisconnect, qr }) => {
     if (sessions.get(mobile) !== session || session.sock !== sock) return; // superseded
-    if (qr) {
+    if (qr && !session.usePairing) {
       session.state = "qr";
       session.qr = await QRCode.toDataURL(qr);
     }
@@ -165,6 +173,22 @@ async function connect(mobile) {
       }
     }
   });
+
+  // Phone-number linking: ask WhatsApp for an 8-character code the user types into their phone, instead of
+  // scanning the QR. Only for a fresh link (an already-registered login just reconnects).
+  if (opts.pairingPhone && !auth.creds?.registered) {
+    const phone = String(opts.pairingPhone).replace(/\D/g, "");
+    try {
+      await new Promise((r) => setTimeout(r, 1500)); // let the socket open its connection first
+      if (session.sock === sock && !auth.creds?.registered) {
+        session.pairingCode = await sock.requestPairingCode(phone);
+        session.state = "pairing";
+      }
+    } catch (err) {
+      console.warn(`[wa ${mobile}] pairing code request failed:`, err.message || err);
+      session.usePairing = false; // fall back to the QR, which is still being offered
+    }
+  }
   return status(mobile);
 }
 
