@@ -2,6 +2,7 @@ const express = require("express");
 const userStore = require("../utils/userStore");
 const activation = require("../utils/activation");
 const { generatePassword, hashPassword } = require("../utils/password");
+const { FEATURES } = require("./auth");
 
 // Mounted behind requireAdmin in server.js.
 const router = express.Router();
@@ -78,6 +79,13 @@ router.patch("/users/:mobile", (req, res) => {
   const changes = {};
   if (typeof req.body.active === "boolean") changes.active = req.body.active;
   if (typeof req.body.name === "string") changes.name = req.body.name.trim();
+  if (req.body.features && typeof req.body.features === "object") {
+    const features = { ...user.features };
+    for (const key of FEATURES) {
+      if (typeof req.body.features[key] === "boolean") features[key] = req.body.features[key];
+    }
+    changes.features = features;
+  }
   res.json({ user: publicUser(userStore.upsert(user.mobile, changes)) });
 });
 

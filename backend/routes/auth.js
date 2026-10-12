@@ -23,6 +23,23 @@ function roleOf(mobile) {
   return isAdmin(mobile) ? "admin" : "customer";
 }
 
+// Premium add-ons the seller can switch on/off per customer. A flag that was never set counts as ON, so
+// existing customers keep what they already use; the admin turns one OFF to gate it behind a higher plan.
+const FEATURES = ["chatbot", "extract"];
+function featuresOf(user) {
+  const out = {};
+  for (const key of FEATURES) out[key] = user?.features?.[key] !== false;
+  return out;
+}
+
+/** Blocks a route when the customer's plan doesn't include the named feature. Admin always passes. */
+function requireFeature(name) {
+  return (req, res, next) => {
+    if (req.auth.role === "admin" || req.auth.features?.[name]) return next();
+    res.status(403).json({ message: "This feature is not enabled on your plan. Please contact the seller." });
+  };
+}
+
 /** Why a customer can't use the extension right now (inactive or plan ended), or null if they can. */
 function accessProblem(user) {
   if (!user?.active) return INACTIVE_MESSAGE;
@@ -55,7 +72,8 @@ function requireAuth(req, res, next) {
     if (changedAt > iat) return res.status(401).json({ message: "Your password was changed. Please log in again." });
     expiresAt = user.expiresAt || null;
   }
-  req.auth = { mobile, role: roleOf(mobile), expiresAt };
+  const features = isAdmin(mobile) ? featuresOf(null) : featuresOf(userStore.get(mobile));
+  req.auth = { mobile, role: roleOf(mobile), expiresAt, features };
   next();
 }
 
@@ -94,7 +112,13 @@ router.post("/login", (req, res) => {
   }
 
   const token = jwt.sign({ mobile, role: roleOf(mobile) }, process.env.JWT_SECRET, { expiresIn: "30d" });
-  res.json({ token, mobile, role: roleOf(mobile), expiresAt: isAdmin(mobile) ? null : user.expiresAt || null });
+  res.json({
+    token,
+    mobile,
+    role: roleOf(mobile),
+    expiresAt: isAdmin(mobile) ? null : user.expiresAt || null,
+    features: isAdmin(mobile) ? featuresOf(null) : featuresOf(user),
+  });
 });
 
 
@@ -114,7 +138,7 @@ router.post("/activate", (req, res) => {
   const now = new Date().toISOString();
   userStore.upsert(user.mobile, { activationUsedAt: now, lastLoginAt: now });
   const token = jwt.sign({ mobile: user.mobile, role: "customer" }, process.env.JWT_SECRET, { expiresIn: "30d" });
-  res.json({ token, mobile: user.mobile, role: "customer", expiresAt: user.expiresAt || null, name: user.name || "" });
+  res.json({ token, mobile: user.mobile, role: "customer", expiresAt: user.expiresAt || null, name: user.name || "", features: featuresOf(user) });
 });
 
 // Sends a one-time code to the customer's own number so they can set a new password themselves.
@@ -157,4 +181,4 @@ router.post("/reset-password", (req, res) => {
 
 router.get("/me", requireAuth, (req, res) => res.json(req.auth));
 
-module.exports = { router, requireAuth, requireAdmin };
+module.exports = { router, requireAuth, requireAdmin, requireFeature, FEATURES };

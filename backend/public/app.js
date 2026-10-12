@@ -21,13 +21,28 @@ const api = async (path, method = "GET", body) => {
 };
 
 // ---------- Auth ----------
-function signedIn(mobile, role) {
+// Premium add-ons the seller can switch off per account; an unset flag means on.
+let features = { chatbot: true, extract: true };
+function applyFeatures() {
+  const map = { chatbot: features.chatbot !== false, extract: features.extract !== false };
+  document.querySelectorAll(".nav-tab[data-page]").forEach((tab) => {
+    const page = tab.dataset.page;
+    if (page in map) tab.classList.toggle("hidden", !map[page]);
+  });
+  // If the open page just got switched off, fall back to New Campaign.
+  const current = document.querySelector('.nav-tab[aria-selected="true"]')?.dataset.page;
+  if (current && current in map && !map[current]) showPage("campaign");
+}
+
+function signedIn(mobile, role, feats) {
+  features = feats || { chatbot: true, extract: true };
   document.body.classList.remove("locked");
   $("login-view").classList.add("hidden");
   $("forgot-view").classList.add("hidden");
   $("logout").classList.remove("hidden");
   $("admin-link").classList.toggle("hidden", role !== "admin");
   $("account-label").textContent = mobile ? `Logged in as +${mobile}` : "";
+  applyFeatures();
   showPage("campaign");
   refreshStatus();
   loadActiveCampaign();
@@ -66,7 +81,7 @@ $("login-form").addEventListener("submit", async (event) => {
     const result = await api("/auth/login", "POST", { mobile, password: $("password").value });
     token = result.token;
     sessionStorage.setItem(tokenKey, token);
-    signedIn(result.mobile, result.role);
+    signedIn(result.mobile, result.role, result.features);
   } catch (error) {
     $("login-error").textContent = error.message;
   }
@@ -1357,4 +1372,4 @@ $("numbers-download").addEventListener("click", async () => {
 });
 
 // ---------- Boot ----------
-if (token) api("/auth/me").then((me) => signedIn(me.mobile, me.role)).catch(() => signOut());
+if (token) api("/auth/me").then((me) => signedIn(me.mobile, me.role, me.features)).catch(() => signOut());

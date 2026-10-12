@@ -14,6 +14,12 @@ const { writeJsonAtomic } = require("./atomicWrite");
 const { normalizeMessageContent, isJidGroup, isJidBroadcast, isJidNewsletter } = require("@whiskeysockets/baileys");
 
 const botData = require("./botData");
+const userStore = require("./userStore");
+
+/** The seller can switch the chatbot add-on off per customer; an unset flag counts as on. */
+function chatbotEnabled(mobile) {
+  return userStore.get(mobile)?.features?.chatbot !== false;
+}
 
 require(path.join(__dirname, "..", "..", "extension", "common", "chatbot.js")); // defines globalThis.SwasBot
 const { SwasBot } = globalThis;
@@ -201,6 +207,7 @@ async function answer(mobile, sock, bot, config, msg) {
 /** Baileys' messages.upsert handler for one account's socket. */
 async function onMessages(mobile, sock, { messages, type }) {
   if (type !== "notify") return; // "append" is history being filled in, not new messages
+  if (!chatbotEnabled(mobile)) return; // the seller has gated the chatbot add-on off for this customer
   const bot = load(mobile);
   if (!bot.config) return;
   const config = buildConfig(bot);

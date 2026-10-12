@@ -13,11 +13,19 @@ async function loadCustomers() {
   try {
     const { users } = await api("/admin/users");
     $("customer-count").textContent = `${users.length} account(s)`;
-    $("customers").innerHTML = users.length ? users.map((u) => `<tr><td><b>${esc(u.name || "Customer")}</b><br><span class="muted">+${esc(u.mobile)}</span></td><td>${dateLabel(u.expiresAt)}</td><td><span class="pill ${u.active ? "active" : ""}">${u.active ? "Active" : "Inactive"}</span></td><td><div class="actions"><button data-activation="${esc(u.mobile)}">Copy activation link</button><button data-renew="${esc(u.mobile)}">Renew</button><button data-toggle="${esc(u.mobile)}" data-active="${u.active}">${u.active ? "Deactivate" : "Activate"}</button><button data-password="${esc(u.mobile)}">Reset password</button><button data-delete="${esc(u.mobile)}" class="danger">Delete</button></div></td></tr>`).join("") : `<tr><td colspan="4">No customers yet.</td></tr>`;
+    $("customers").innerHTML = users.length ? users.map((u) => {
+      const chatbotOn = u.features?.chatbot !== false;
+      const extractOn = u.features?.extract !== false;
+      return `<tr><td><b>${esc(u.name || "Customer")}</b><br><span class="muted">+${esc(u.mobile)}</span></td><td>${dateLabel(u.expiresAt)}</td><td><span class="pill ${u.active ? "active" : ""}">${u.active ? "Active" : "Inactive"}</span></td><td><div class="actions"><button data-feat="chatbot" data-mobile="${esc(u.mobile)}" data-on="${chatbotOn}" class="${chatbotOn ? "feat-on" : "feat-off"}">Chatbot: ${chatbotOn ? "On" : "Off"}</button><button data-feat="extract" data-mobile="${esc(u.mobile)}" data-on="${extractOn}" class="${extractOn ? "feat-on" : "feat-off"}">Chat Extract: ${extractOn ? "On" : "Off"}</button><button data-activation="${esc(u.mobile)}">Copy activation link</button><button data-renew="${esc(u.mobile)}">Renew</button><button data-toggle="${esc(u.mobile)}" data-active="${u.active}">${u.active ? "Deactivate" : "Activate"}</button><button data-password="${esc(u.mobile)}">Reset password</button><button data-delete="${esc(u.mobile)}" class="danger">Delete</button></div></td></tr>`;
+    }).join("") : `<tr><td colspan="4">No customers yet.</td></tr>`;
     bindActions(users);
   } catch (error) { $("page-error").textContent = error.message; }
 }
 function bindActions(users) {
+  $("customers").querySelectorAll("[data-feat]").forEach((button) => button.addEventListener("click", async () => {
+    const on = button.dataset.on === "true";
+    try { await api(`/admin/users/${button.dataset.mobile}`, "PATCH", { features: { [button.dataset.feat]: !on } }); await loadCustomers(); } catch (error) { alert(error.message); }
+  }));
   $("customers").querySelectorAll("[data-activation]").forEach((button) => button.addEventListener("click", async () => {
     try {
       const user = users.find((u) => u.mobile === button.dataset.activation);
