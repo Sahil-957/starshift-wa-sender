@@ -13,6 +13,8 @@ const { normalizeMessageContent, isJidGroup, isJidBroadcast, isJidNewsletter } =
 
 const CHATS_DIR = path.join(__dirname, "..", "data", "chats");
 
+if (globalThis.__chatDbg === undefined) globalThis.__chatDbg = 20; // TEMP
+
 function chatFile(mobile) {
   return path.join(CHATS_DIR, `${String(mobile).replace(/\D/g, "")}.jsonl`);
 }
