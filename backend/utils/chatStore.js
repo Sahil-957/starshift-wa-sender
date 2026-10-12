@@ -69,6 +69,10 @@ function toRecord(msg) {
   if (!text) return null;
 
   const fromMe = !!msg.key?.fromMe;
+  if (group && !fromMe && globalThis.__chatDbg > 0) {
+    globalThis.__chatDbg--;
+    console.log("[chatdbg] key=" + JSON.stringify(msg.key) + " participant=" + JSON.stringify(msg.participant) + " pushName=" + JSON.stringify(msg.pushName));
+  }
   // Who sent it: in a group it's the participant; in a 1:1 it's the chat itself (or me, when I sent it).
   const senderJid = fromMe ? "" : group ? (msg.key.participantAlt || msg.key.participant || "") : chatJid;
   const senderNumber = fromMe ? "" : phoneFromJid(senderJid) || phoneFromJid(msg.key.senderPn);
