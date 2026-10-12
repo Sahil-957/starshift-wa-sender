@@ -25,6 +25,7 @@ const path = require("path");
 const crypto = require("crypto");
 const wa = require("./waSessions");
 const userStore = require("./userStore");
+const { sendFailureReport } = require("./failureReport");
 const { personalize } = require("./messaging");
 const { writeJsonAtomic } = require("./atomicWrite");
 
@@ -245,6 +246,19 @@ async function sendRow(mobile, batchId, rowKey) {
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+/** When a batch has no pending rows left, WhatsApp the seller its failed list once (per wave of rows). */
+async function maybeReportBatch(mobile, batchId) {
+  const b = find(mobile, batchId);
+  if (!b || b.status === "cancelled" || b.reportedAt) return;
+  if (b.rows.some((r) => r.status === "pending")) return; // still sending
+  const schedulable = b.rows.filter((r) => r.status !== "invalid");
+  const failures = b.rows
+    .filter((r) => r.status === "failed")
+    .map((r) => ({ name: r.name, mobile: r.mobile, reason: r.failReason }));
+  update(mobile, batchId, (x) => (x.reportedAt = Date.now()));
+  await sendFailureReport(mobile, { title: `Sheet: ${b.name}`, total: schedulable.length, failures });
+}
+
 /** One scheduler pass: find every row that is due across all accounts and send them, gently paced. */
 async function tick() {
   if (ticking || !fs.existsSync(DIR)) return;
@@ -274,12 +288,19 @@ async function tick() {
     };
 
     let fired = 0;
+    const touched = new Set();
     for (const job of due) {
       if (fired >= MAX_PER_TICK) break;
       if (!isOpen(job.mobile)) continue; // not linked / inactive: leave pending, retry next tick
       if (fired > 0) await sleep(SEND_GAP_MS);
       await sendRow(job.mobile, job.batchId, job.rowKey);
+      touched.add(`${job.mobile}\u0000${job.batchId}`);
       fired++;
+    }
+    // Any batch we just finished sending gets its failed list WhatsApp'd to the seller.
+    for (const t of touched) {
+      const [m, bid] = t.split("\u0000");
+      await maybeReportBatch(m, bid).catch(() => {});
     }
   } catch (err) {
     console.warn("[sheetJobs tick]", err.message || err);
@@ -328,7 +349,13 @@ async function resync(mobile, id) {
   const batch = find(mobile, id);
   if (!batch || batch.source !== "sheet" || !batch.sheetUrl) return batch;
   const fresh = await fetchSheetRows(batch.sheetUrl);
-  return update(mobile, id, (b) => { b.rows = mergeRows(b.rows, fresh); b.lastSyncedAt = Date.now(); });
+  return update(mobile, id, (b) => {
+    const beforeKeys = new Set(b.rows.map((r) => r.key));
+    b.rows = mergeRows(b.rows, fresh);
+    b.lastSyncedAt = Date.now();
+    // New rows arrived after a finished wave: allow the next completion to send a fresh failed list.
+    if (b.rows.some((r) => r.status === "pending" && !beforeKeys.has(r.key))) b.reportedAt = null;
+  });
 }
 
 async function syncAll() {

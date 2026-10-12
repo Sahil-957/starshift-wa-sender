@@ -16,6 +16,7 @@ const crypto = require("crypto");
 const wa = require("./waSessions");
 const lists = require("./lists");
 const userStore = require("./userStore");
+const { sendFailureReport } = require("./failureReport");
 const { personalize } = require("./messaging");
 const { writeJsonAtomic } = require("./atomicWrite");
 
@@ -136,7 +137,8 @@ async function runBroadcast(mobile, id) {
   if (!picked || !picked.recipients.length) return { sent: 0, failed: 0, error: "List is empty or missing." };
 
   const media = b.file ? loadMedia(mobile, id) : null;
-  let sent = 0, failed = 0;
+  let sent = 0;
+  const failures = [];
   for (let i = 0; i < picked.recipients.length; i++) {
     if (wa.status(mobile).state !== "open") break; // lost connection mid-run: stop, next tick retries the slot
     const r = picked.recipients[i];
@@ -150,12 +152,12 @@ async function runBroadcast(mobile, id) {
     try {
       await wa.send(mobile, { target, message: message || undefined, attachment });
       sent++;
-    } catch {
-      failed++;
+    } catch (err) {
+      failures.push({ name: r.name, mobile: r.mobile, reason: err.message || String(err) });
     }
     if (i < picked.recipients.length - 1) await sleep(SEND_GAP_MS);
   }
-  return { sent, failed };
+  return { sent, failed: failures.length, failures };
 }
 
 /** One scheduler pass: run every active broadcast whose next slot is due. */
@@ -184,8 +186,9 @@ async function tick() {
         update(mobile, b.id, (x) => {
           x.lastRunAt = Date.now();
           x.nextRunAt = afterRun;
-          x.runs = [{ at: Date.now(), ...result }, ...(x.runs || [])].slice(0, RUN_HISTORY);
+          x.runs = [{ at: Date.now(), sent: result.sent, failed: result.failed }, ...(x.runs || [])].slice(0, RUN_HISTORY);
         });
+        sendFailureReport(mobile, { title: `Auto Broadcast: ${b.name}`, total: result.sent + result.failed, failures: result.failures }).catch(() => {});
       }
     }
   } catch (err) {
@@ -286,11 +289,13 @@ async function runNow(mobile, id) {
   const problem = accessProblem(mobile);
   if (problem) throw Object.assign(new Error(problem), { status: 403 });
   const result = await runBroadcast(mobile, id);
+  const b2 = find(mobile, id);
   update(mobile, id, (x) => {
     x.lastRunAt = Date.now();
-    x.runs = [{ at: Date.now(), manual: true, ...result }, ...(x.runs || [])].slice(0, RUN_HISTORY);
+    x.runs = [{ at: Date.now(), manual: true, sent: result.sent, failed: result.failed }, ...(x.runs || [])].slice(0, RUN_HISTORY);
   });
-  return { ...result };
+  sendFailureReport(mobile, { title: `Auto Broadcast: ${b2?.name || "Broadcast"}`, total: result.sent + result.failed, failures: result.failures }).catch(() => {});
+  return { sent: result.sent, failed: result.failed };
 }
 
 function remove(mobile, id) {

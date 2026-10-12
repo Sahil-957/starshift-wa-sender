@@ -13,6 +13,7 @@ const fs = require("fs");
 const path = require("path");
 const wa = require("./waSessions");
 const userStore = require("./userStore");
+const { sendFailureReport } = require("./failureReport");
 const { personalize, withFooter } = require("./messaging");
 const { writeJsonAtomic } = require("./atomicWrite");
 
@@ -249,6 +250,12 @@ function markCompleted(mobile, id) {
     c.nextSendAt = null;
   });
   const campaign = find(mobile, id);
+  if (campaign) {
+    const failures = campaign.contacts
+      .filter((c) => c.status === "failed")
+      .map((c) => ({ name: c.name, mobile: c.mobile, reason: c.failReason }));
+    sendFailureReport(mobile, { title: `Campaign: ${campaign.name}`, total: campaign.contacts.length, failures }).catch(() => {});
+  }
   const mode = campaign?.repeat?.mode;
   if (!campaign || !mode || mode === "none") return;
 
