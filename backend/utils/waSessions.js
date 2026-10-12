@@ -245,13 +245,13 @@ function contacts(mobile) {
     .sort((a, b) => (b.name ? 1 : 0) - (a.name ? 1 : 0) || (a.name || a.number).localeCompare(b.name || b.number));
 }
 
-/** The groups this account's WhatsApp is in, as [{ name }] - for the dashboard's Group picker. */
+/** The groups this account's WhatsApp is in, as [{ name, jid }] - for the Group and Chat Extract pickers. */
 async function groups(mobile) {
   const s = sessions.get(mobile);
   if (!s || s.state !== "open") throw new Error("Server WhatsApp is not connected. Link it first.");
   const all = await s.sock.groupFetchAllParticipating();
   return Object.values(all)
-    .map((g) => ({ name: g.subject || "" }))
+    .map((g) => ({ name: g.subject || "", jid: g.id }))
     .filter((g) => g.name)
     .sort((a, b) => a.name.localeCompare(b.name));
 }

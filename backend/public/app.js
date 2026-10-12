@@ -1204,19 +1204,44 @@ function downloadXlsx(rows, sheetName, fileName) {
   XLSX.writeFile(wb, fileName);
 }
 
+function optionsHtml(items) {
+  return items.map((it) => `<option value="${esc(it.jid)}">${esc(it.label)}</option>`).join("");
+}
+
 async function loadChats() {
   const sel = $("extract-chat");
-  $("extract-status").textContent = "Loading chats…";
+  $("extract-status").textContent = "Loading groups and contacts…";
   try {
-    const { chats } = await api("/wa/chats");
+    // Recorded chats definitely have messages; groups and contacts let the user pick a target up front
+    // even before anything is recorded for it. All three are keyed by the same jid the export filters on.
+    const [{ chats }, groupsRes, contactsRes] = await Promise.all([
+      api("/wa/chats"),
+      api("/wa/groups").catch(() => ({ groups: [] })),
+      api("/wa/contacts").catch(() => ({ contacts: [] })),
+    ]);
+    const seen = new Set(chats.map((c) => c.jid));
+
+    const recorded = chats.map((c) => ({
+      jid: c.jid,
+      label: `${c.name || c.number || "Unknown"}${c.group ? " (Group)" : c.number ? ` · ${c.number}` : ""} — ${c.count} msg`,
+    }));
+    const groups = (groupsRes.groups || [])
+      .filter((g) => g.jid && !seen.has(g.jid))
+      .map((g) => ({ jid: g.jid, label: g.name }));
+    const contacts = (contactsRes.contacts || [])
+      .filter((c) => c.number)
+      .map((c) => ({ jid: `${c.number}@s.whatsapp.net`, label: `${c.name || c.number} · ${c.number}` }))
+      .filter((c) => !seen.has(c.jid));
+
     const current = sel.value;
-    sel.innerHTML = '<option value="all">All chats</option>' +
-      chats.map((c) => {
-        const label = `${c.name || c.number || "Unknown"}${c.group ? " (Group)" : c.number ? ` · ${c.number}` : ""} — ${c.count} msg`;
-        return `<option value="${esc(c.jid)}">${esc(label)}</option>`;
-      }).join("");
+    sel.innerHTML =
+      '<option value="all">All chats</option>' +
+      (recorded.length ? `<optgroup label="Recorded chats">${optionsHtml(recorded)}</optgroup>` : "") +
+      (groups.length ? `<optgroup label="Groups">${optionsHtml(groups)}</optgroup>` : "") +
+      (contacts.length ? `<optgroup label="Contacts">${optionsHtml(contacts)}</optgroup>` : "");
     if ([...sel.options].some((o) => o.value === current)) sel.value = current;
-    $("extract-status").textContent = chats.length ? "" : "No messages recorded yet. Chats appear here as they come in.";
+    $("extract-status").textContent =
+      groups.length || contacts.length || recorded.length ? "" : "Link the server WhatsApp to see your groups and contacts.";
   } catch (e) {
     $("extract-status").textContent = e.message;
   }
@@ -1225,14 +1250,16 @@ async function loadChats() {
 $("extract-refresh").addEventListener("click", loadChats);
 
 $("extract-download").addEventListener("click", async () => {
-  const jid = $("extract-chat").value;
+  // A typed number wins over the dropdown; otherwise use the selected group/contact (or all chats).
+  const typed = $("extract-number").value.replace(/\D/g, "");
+  const jid = typed ? `${typed}@s.whatsapp.net` : $("extract-chat").value;
   const range = $("extract-range").value;
   const btn = $("extract-download");
   btn.disabled = true;
   $("extract-status").textContent = "Preparing Excel…";
   try {
     const { rows } = await api(`/wa/chat-export?jid=${encodeURIComponent(jid)}&range=${encodeURIComponent(range)}`);
-    if (!rows.length) { $("extract-status").textContent = "No messages found for this chat and date range."; return; }
+    if (!rows.length) { $("extract-status").textContent = "No messages recorded yet for this chat and date range. They are saved from now on."; return; }
     const out = rows.map((r) => ({
       Date: fmtDate(r.at),
       Time: fmtTime(r.at),
@@ -1243,7 +1270,7 @@ $("extract-download").addEventListener("click", async () => {
       Mobile: r.number,
       Message: r.text,
     }));
-    const who = jid === "all" ? "all-chats" : safeName($("extract-chat").selectedOptions[0]?.text.split(" — ")[0]);
+    const who = typed ? typed : jid === "all" ? "all-chats" : safeName($("extract-chat").selectedOptions[0]?.text.split(" — ")[0]);
     downloadXlsx(out, "Chats", `chat-${who}-${RANGE_LABEL[range] || range}.xlsx`);
     $("extract-status").textContent = `Downloaded ${rows.length} message${rows.length === 1 ? "" : "s"}.`;
   } catch (e) {
