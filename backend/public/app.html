@@ -517,9 +517,20 @@
         <h2>Mobile Numbers to Excel</h2>
         <p class="hint">Download every contact the server's WhatsApp knows — name and mobile number — as an Excel file.</p>
         <div class="row">
-          <button type="button" class="primary" id="numbers-download">Download numbers Excel</button>
+          <button type="button" class="primary" id="numbers-download">Download all contacts Excel</button>
         </div>
         <p class="hint" id="numbers-status"></p>
+
+        <hr style="border:none;border-top:1px solid #0001;margin:16px 0" />
+
+        <h3 style="margin:0 0 6px">Group members to Excel</h3>
+        <p class="hint">Pick a group and download all its members — name and mobile number.</p>
+        <label for="members-group">Group</label>
+        <div class="row" style="gap:8px;align-items:center">
+          <select id="members-group" style="flex:1"><option value="">— pick a group —</option></select>
+          <button type="button" class="primary" id="members-download">Download members Excel</button>
+        </div>
+        <p class="hint" id="members-status"></p>
       </div>
     </section>
   </main>

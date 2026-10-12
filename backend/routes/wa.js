@@ -43,6 +43,15 @@ router.get("/chat-export", async (req, res) => {
   }
 });
 
+// All members (name + mobile) of one group, for exporting a group's contacts to Excel.
+router.get("/group-members", async (req, res) => {
+  try {
+    res.json(await wa.groupMembers(req.auth.mobile, req.query.jid));
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+});
+
 router.post("/connect", async (req, res) => {
   try {
     res.json(await wa.connect(req.auth.mobile));

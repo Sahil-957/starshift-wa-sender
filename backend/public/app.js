@@ -1254,6 +1254,12 @@ async function loadChats() {
         .filter((c) => !seen.has(c.jid)),
     };
     renderExtractOptions($("extract-search").value);
+    // Group-members picker gets every group the account is in (not just the unrecorded ones).
+    const allGroups = (groupsRes.groups || []).slice().sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+    const mg = $("members-group");
+    const mgCurrent = mg.value;
+    mg.innerHTML = '<option value="">— pick a group —</option>' + allGroups.map((g) => `<option value="${esc(g.jid)}">${esc(g.name)}</option>`).join("");
+    if ([...mg.options].some((o) => o.value === mgCurrent)) mg.value = mgCurrent;
     const total = _extractItems.recorded.length + _extractItems.groups.length + _extractItems.contacts.length;
     $("extract-status").textContent = total ? "" : "Link the server WhatsApp to see your groups and contacts.";
   } catch (e) {
@@ -1308,6 +1314,26 @@ $("extract-older").addEventListener("click", async () => {
     setTimeout(loadChats, 6000); // refresh counts once they land
   } catch (e) {
     $("extract-status").textContent = e.message;
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+$("members-download").addEventListener("click", async () => {
+  const jid = $("members-group").value;
+  if (!jid) { $("members-status").textContent = "Pick a group first."; return; }
+  const btn = $("members-download");
+  btn.disabled = true;
+  $("members-status").textContent = "Fetching members…";
+  try {
+    const { subject, members } = await api(`/wa/group-members?jid=${encodeURIComponent(jid)}`);
+    if (!members.length) { $("members-status").textContent = "No members found for this group."; return; }
+    const out = members.map((m) => ({ Name: m.name || "", Mobile: m.number || "", Role: m.role || "" }));
+    downloadXlsx(out, "Members", `group-members-${safeName(subject)}.xlsx`);
+    const withNum = members.filter((m) => m.number).length;
+    $("members-status").textContent = `Downloaded ${members.length} members (${withNum} with a number).`;
+  } catch (e) {
+    $("members-status").textContent = e.message;
   } finally {
     btn.disabled = false;
   }

@@ -267,6 +267,26 @@ async function groups(mobile) {
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
+/** All members of one group as [{ name, number, role }] - for exporting a group's contacts to Excel. */
+async function groupMembers(mobile, groupJid) {
+  const session = openSocket(mobile);
+  if (!groupJid || !groupJid.endsWith("@g.us")) throw new Error("Pick a group to export its members.");
+  const meta = await session.sock.groupMetadata(groupJid);
+  const names = session.names || loadNames(mobile);
+  const rows = [];
+  for (const p of meta.participants || []) {
+    const id = p.id || "";
+    // A member id is a @lid or a @s.whatsapp.net jid; resolve a number from whichever form it takes.
+    let number = /@s\.whatsapp\.net$/.test(id) ? id.split("@")[0] : lidPhoneFromFile(mobile, id);
+    if (!number && p.jid && /@s\.whatsapp\.net$/.test(p.jid)) number = p.jid.split("@")[0];
+    if (!number && p.phoneNumber) number = String(p.phoneNumber).replace(/\D/g, "");
+    const name = names[id] || (p.jid && names[p.jid]) || (number ? names[`${number}@s.whatsapp.net`] : "") || "";
+    rows.push({ name, number, role: p.admin === "superadmin" ? "Owner" : p.admin ? "Admin" : "Member" });
+  }
+  rows.sort((a, b) => (a.name || a.number).localeCompare(b.name || b.number));
+  return { subject: meta.subject || "", members: rows };
+}
+
 // ---------- Chat Extract ----------
 // chatStore keeps the raw messages (jids, numbers, text); the display name of each chat is resolved here,
 // where the contact names and group subjects live.
@@ -399,4 +419,4 @@ function restoreAll() {
   startBatch();
 }
 
-module.exports = { connect, status, logout, send, contacts, groups, chatList, chatExport, fetchHistory, restoreAll };
+module.exports = { connect, status, logout, send, contacts, groups, groupMembers, chatList, chatExport, fetchHistory, restoreAll };
