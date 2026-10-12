@@ -774,21 +774,41 @@ async function bcWatchTick() {
   for (const [id, info] of bcHandles) {
     try {
       if ((await info.handle.queryPermission({ mode: "readwrite" })) !== "granted") {
-        setWatchStatus(id, "👁️ Click “Watch a PC folder” again to re-allow access.");
+        setWatchStatus(id, "👁️ Paused — click “Watch a PC folder” again to re-allow (needed after a reload).");
         continue;
       }
-      const files = await dirFilesNewestFirst(info.handle);
-      if (!files.length) { setWatchStatus(id, "👁️ Watching — folder is empty."); continue; }
-      const newest = files[0];
-      const key = `${newest.name}|${newest.file.size}|${newest.lastModified}`;
-      if (key === info.lastKey) continue; // nothing new
-      const dataUrl = await readAsDataUrl(newest.file);
-      await api(`/broadcasts/${id}/file`, "POST", { file: { dataUrl, name: newest.name, mimeType: newest.file.type || "application/octet-stream" } });
-      info.lastKey = key;
-      // New file arrived → remove the older files from the folder (keep only the newest).
-      for (const old of files.slice(1)) { try { await info.handle.removeEntry(old.name); } catch { /* locked/open */ } }
-      setWatchStatus(id, `👁️ Sent new file: ${newest.name} (older files removed).`);
-      loadBroadcasts();
+      const files = await dirFilesNewestFirst(info.handle); // newest modified-time first
+      if (!files.length) { setWatchStatus(id, "👁️ Watching — folder is empty."); info.seen = new Set(); info.currentName = null; continue; }
+      const names = new Set(files.map((f) => f.name));
+
+      // Which file is "just dropped in": one whose name wasn't there last check (newest among them).
+      let picked = null;
+      if (!info.seen) picked = files[0]; // first look after starting/reloading
+      else picked = files.filter((f) => !info.seen.has(f.name)).sort((a, b) => b.lastModified - a.lastModified)[0] || null;
+      info.seen = names;
+
+      // If the file we think is current has vanished, fall back to the newest.
+      if (!info.currentName || !names.has(info.currentName)) picked = picked || files[0];
+
+      let uploadedName = null;
+      if (picked) {
+        const dataUrl = await readAsDataUrl(picked.file);
+        await api(`/broadcasts/${id}/file`, "POST", { file: { dataUrl, name: picked.name, mimeType: picked.file.type || "application/octet-stream" } });
+        info.currentName = picked.name;
+        uploadedName = picked.name;
+      }
+
+      // Invariant: the folder keeps ONLY the current file. Every tick, remove the rest
+      // (so stray old files are gone within one tick even when nothing new was added).
+      let removed = 0, failed = 0;
+      for (const f of files) {
+        if (f.name === info.currentName) continue;
+        try { await info.handle.removeEntry(f.name); removed++; } catch { failed++; }
+      }
+      if (uploadedName) setWatchStatus(id, `👁️ Sent: ${uploadedName}${removed ? ` · removed ${removed} old` : ""}${failed ? ` · ${failed} couldn't be removed (use a non-OneDrive folder)` : ""}`);
+      else if (removed || failed) setWatchStatus(id, `👁️ Folder cleaned — kept ${info.currentName}${failed ? ` · ${failed} couldn't be removed (use a non-OneDrive folder)` : ""}`);
+      else setWatchStatus(id, `👁️ Watching — current: ${info.currentName}`);
+      if (uploadedName) loadBroadcasts();
     } catch { /* retry next tick */ }
   }
 }
