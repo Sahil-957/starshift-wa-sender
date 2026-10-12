@@ -317,7 +317,10 @@ async function fetchHistory(mobile, { jid, count = 50 } = {}) {
   if (!jid || jid === "all") throw new Error("Pick one chat (a group or a contact) to load older messages for.");
   const anchor = chatStore.oldestRecord(mobile, jid);
   if (!anchor) {
-    throw notFound("No message is stored for this chat yet to load from. Send or receive one message in it, then try again.");
+    throw notFound(
+      "No message is stored for this chat yet, so there's nothing to load older from. " +
+        "Get one message into it first (send or receive one), or Unlink and re-link the WhatsApp once to back-fill every chat's history at once."
+    );
   }
   const key = { remoteJid: anchor.chatJid, id: anchor.id, fromMe: !!anchor.fromMe };
   await session.sock.fetchMessageHistory(Math.min(Math.max(Number(count) || 50, 1), 50), key, anchor.t);
