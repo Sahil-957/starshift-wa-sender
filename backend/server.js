@@ -88,17 +88,31 @@ function sendPage(file) {
   return (_req, res) => res.type("html").send(renderPage(file));
 }
 
+// The app's own pages and scripts change on every deploy; tell the browser to revalidate so an update
+// shows up without a hard refresh. (The big vendored xlsx library still caches normally.)
+const noCache = (res) => res.set("Cache-Control", "no-cache");
+const sendApp = (file) => (_req, res) => { noCache(res); res.sendFile(path.join(PUBLIC_DIR, file)); };
+
 app.get("/privacy", sendPage("privacy.html"));
 app.get("/terms", sendPage("terms.html"));
 app.get("/", (_req, res) => res.redirect("/app"));
-app.get("/app", (_req, res) => res.sendFile(path.join(PUBLIC_DIR, "app.html")));
-app.get("/admin", (_req, res) => res.sendFile(path.join(PUBLIC_DIR, "admin.html")));
+app.get("/app", sendApp("app.html"));
+app.get("/admin", sendApp("admin.html"));
 
 // The page a customer lands on when they open the activation link their seller sent them.
-app.get("/activate", (_req, res) => res.sendFile(path.join(PUBLIC_DIR, "activate.html")));
+app.get("/activate", sendApp("activate.html"));
 
-// Stylesheets and anything else the pages above reference.
-app.use(express.static(PUBLIC_DIR, { index: false }));
+// Stylesheets and anything else the pages above reference. The app's own JS/CSS revalidate each load.
+app.use(
+  express.static(PUBLIC_DIR, {
+    index: false,
+    setHeaders: (res, filePath) => {
+      if (/\.html$/.test(filePath) || /[\\/](app|admin|chatbot)\.(js|css)$/.test(filePath)) {
+        res.setHeader("Cache-Control", "no-cache");
+      }
+    },
+  })
+);
 
 
 const PORT = process.env.PORT || 5000;
