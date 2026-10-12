@@ -647,12 +647,12 @@ function renderBroadcast(b) {
   return `<div class="campaign-item">
     <div class="head"><span>${esc(b.name)}</span><span class="status-badge status-${b.active ? "running" : "paused"}">${b.active ? "Active" : "Paused"}</span></div>
     <div class="campaign-meta">To: ${esc(b.listName)} (${b.recipientCount}) · ${FREQ_LABEL[b.frequency] || b.frequency} at ${esc(times)}</div>
-    <div class="campaign-meta">File: ${b.file ? esc(b.file.name) : "— none (caption only)"} · next: ${esc(next)} · last: ${esc(last)}${lastRun}</div>
+    <div class="campaign-meta">📁 Folder: ${b.file ? esc(b.file.name) : "— empty (caption only)"} · next: ${esc(next)} · last: ${esc(last)}${lastRun}</div>
     <div class="campaign-actions">
       ${act("run-now", "Send now")}
       ${act(b.active ? "pause" : "resume", b.active ? "Pause" : "Resume")}
       ${act("edit", "Edit")}
-      ${act("replace", "Replace file")}
+      ${act("replace", "Put new file in folder")}
       ${act("delete", "Delete")}
     </div>
   </div>`;
@@ -707,7 +707,7 @@ async function bcStartEdit(id) {
     $("bc-times").value = b.times.join(", ");
     $("bc-freq").value = b.frequency;
     $("bc-caption").value = b.caption;
-    $("bc-file-info").textContent = b.file ? `Current: ${b.file.name} (use “Replace file” to change)` : "No file.";
+    $("bc-file-info").textContent = b.file ? `In folder: ${b.file.name} (use “Put new file in folder” to change)` : "Folder is empty.";
     $("bc-save").textContent = "Update broadcast";
     $("bc-cancel-edit").classList.remove("hidden");
     $("bc-name").scrollIntoView({ behavior: "smooth", block: "center" });
@@ -718,7 +718,7 @@ function bcResetForm() {
   bcEditing = null; bcPendingFile = null;
   $("bc-name").value = ""; $("bc-times").value = ""; $("bc-caption").value = ""; $("bc-freq").value = "daily";
   $("bc-list").value = ""; $("bc-file").value = "";
-  $("bc-file-info").textContent = "No file yet — caption-only is allowed.";
+  $("bc-file-info").textContent = "Folder is empty — caption-only is allowed.";
   $("bc-save").textContent = "Create broadcast";
   $("bc-cancel-edit").classList.add("hidden");
 }
@@ -730,7 +730,7 @@ $("bc-file").addEventListener("change", async (event) => {
   if (file.size > MAX_ATTACH_MB * 1024 * 1024) { $("bc-file-info").textContent = `Too big (max ${MAX_ATTACH_MB} MB).`; event.target.value = ""; return; }
   try {
     bcPendingFile = { dataUrl: await readAsDataUrl(file), name: file.name, mimeType: file.type || "application/octet-stream" };
-    $("bc-file-info").textContent = `📎 ${file.name} (${Math.round(file.size / 1024)} KB)`;
+    $("bc-file-info").textContent = `📁 In folder: ${file.name} (${Math.round(file.size / 1024)} KB)`;
   } catch (e) { bcPendingFile = null; $("bc-file-info").textContent = e.message; }
 });
 
