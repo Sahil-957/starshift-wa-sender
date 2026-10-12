@@ -331,11 +331,13 @@
 
         <label style="margin-top:10px">📁 Folder (holds one file)</label>
         <div class="upload-row">
-          <label for="bc-file" class="file-btn">Put file in folder (image / PDF / Excel)</label>
+          <label for="bc-folder" class="file-btn">📁 Select a folder</label>
+          <input id="bc-folder" type="file" webkitdirectory directory multiple class="hidden" />
+          <label for="bc-file" class="file-btn">or pick one file</label>
           <input id="bc-file" type="file" accept="image/*,video/*,application/pdf,.doc,.docx,.xls,.xlsx" class="hidden" />
           <span id="bc-file-info" class="hint" style="margin:0">Folder is empty — caption-only is allowed.</span>
         </div>
-        <p class="hint" style="margin-top:4px">The folder keeps just the latest file: put a new one in and the old is removed automatically. The schedule always sends whatever is in the folder now.</p>
+        <p class="hint" style="margin-top:4px">Select a folder and the <b>newest file</b> inside it is used. The folder keeps just that one file on the server; when you put a new file in your folder, select it again and it replaces the old. The schedule always sends whatever is current.</p>
 
         <button type="button" class="primary" id="bc-save" style="margin-top:12px">Create broadcast</button>
         <button type="button" class="btn-secondary hidden" id="bc-cancel-edit" style="margin-top:12px">Cancel edit</button>

@@ -658,16 +658,26 @@ function renderBroadcast(b) {
   </div>`;
 }
 
+// Picks the newest real file out of a folder selection (skips OS junk / hidden files).
+function newestFile(fileList) {
+  const junk = /(^|\/)(\.|~\$)|(^|\/)(thumbs\.db|desktop\.ini|\.ds_store)$/i;
+  const files = [...(fileList || [])].filter((f) => f.size > 0 && !junk.test(f.webkitRelativePath || f.name));
+  if (!files.length) return null;
+  return files.sort((a, b) => b.lastModified - a.lastModified)[0];
+}
+
+// Row "Put new file in folder" — opens a folder picker and uploads its newest file.
 const hiddenBcReplace = document.createElement("input");
 hiddenBcReplace.type = "file";
-hiddenBcReplace.accept = "image/*,video/*,application/pdf,.doc,.docx,.xls,.xlsx";
+hiddenBcReplace.webkitdirectory = true;
+hiddenBcReplace.multiple = true;
 hiddenBcReplace.className = "hidden";
 document.body.appendChild(hiddenBcReplace);
 let bcReplaceId = null;
 hiddenBcReplace.addEventListener("change", async () => {
-  const file = hiddenBcReplace.files[0];
-  if (!file || !bcReplaceId) return;
-  if (file.size > MAX_ATTACH_MB * 1024 * 1024) { alert(`Too big (max ${MAX_ATTACH_MB} MB).`); hiddenBcReplace.value = ""; return; }
+  const file = newestFile(hiddenBcReplace.files);
+  if (!file || !bcReplaceId) { hiddenBcReplace.value = ""; bcReplaceId = null; if (hiddenBcReplace.files.length) alert("No usable file in that folder."); return; }
+  if (file.size > MAX_ATTACH_MB * 1024 * 1024) { alert(`Newest file is too big (max ${MAX_ATTACH_MB} MB).`); hiddenBcReplace.value = ""; return; }
   try {
     const payload = { dataUrl: await readAsDataUrl(file), name: file.name, mimeType: file.type || "application/octet-stream" };
     await api(`/broadcasts/${bcReplaceId}/file`, "POST", { file: payload });
@@ -717,21 +727,29 @@ async function bcStartEdit(id) {
 function bcResetForm() {
   bcEditing = null; bcPendingFile = null;
   $("bc-name").value = ""; $("bc-times").value = ""; $("bc-caption").value = ""; $("bc-freq").value = "daily";
-  $("bc-list").value = ""; $("bc-file").value = "";
+  $("bc-list").value = ""; $("bc-file").value = ""; $("bc-folder").value = "";
   $("bc-file-info").textContent = "Folder is empty — caption-only is allowed.";
   $("bc-save").textContent = "Create broadcast";
   $("bc-cancel-edit").classList.add("hidden");
 }
 $("bc-cancel-edit").addEventListener("click", bcResetForm);
 
-$("bc-file").addEventListener("change", async (event) => {
-  const file = event.target.files[0];
+async function bcAcceptFile(file) {
   if (!file) return;
-  if (file.size > MAX_ATTACH_MB * 1024 * 1024) { $("bc-file-info").textContent = `Too big (max ${MAX_ATTACH_MB} MB).`; event.target.value = ""; return; }
+  if (file.size > MAX_ATTACH_MB * 1024 * 1024) { $("bc-file-info").textContent = `Too big (max ${MAX_ATTACH_MB} MB).`; return; }
   try {
     bcPendingFile = { dataUrl: await readAsDataUrl(file), name: file.name, mimeType: file.type || "application/octet-stream" };
     $("bc-file-info").textContent = `📁 In folder: ${file.name} (${Math.round(file.size / 1024)} KB)`;
+    // When editing an existing broadcast, put it in the folder straight away.
+    if (bcEditing) { try { await api(`/broadcasts/${bcEditing}/file`, "POST", { file: bcPendingFile }); bcPendingFile = null; $("bc-status").textContent = "Folder updated."; loadBroadcasts(); } catch (e) { alert(e.message); } }
   } catch (e) { bcPendingFile = null; $("bc-file-info").textContent = e.message; }
+}
+$("bc-file").addEventListener("change", (event) => { bcAcceptFile(event.target.files[0]); event.target.value = ""; });
+$("bc-folder").addEventListener("change", (event) => {
+  const file = newestFile(event.target.files);
+  if (!file && event.target.files.length) $("bc-file-info").textContent = "No usable file in that folder.";
+  bcAcceptFile(file);
+  event.target.value = "";
 });
 
 $("bc-save").addEventListener("click", async () => {
