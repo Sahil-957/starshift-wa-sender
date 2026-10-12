@@ -1208,8 +1208,28 @@ function optionsHtml(items) {
   return items.map((it) => `<option value="${esc(it.jid)}">${esc(it.label)}</option>`).join("");
 }
 
-async function loadChats() {
+// The full picker contents, kept so the search box can filter without re-fetching. { recorded, groups, contacts }.
+let _extractItems = { recorded: [], groups: [], contacts: [] };
+
+/** Rebuilds the <select> from _extractItems, keeping only rows whose label matches the query. */
+function renderExtractOptions(query = "") {
   const sel = $("extract-chat");
+  const q = query.trim().toLowerCase();
+  const hit = (it) => !q || it.label.toLowerCase().includes(q);
+  const recorded = _extractItems.recorded.filter(hit);
+  const groups = _extractItems.groups.filter(hit);
+  const contacts = _extractItems.contacts.filter(hit);
+  const current = sel.value;
+  sel.innerHTML =
+    (q ? "" : '<option value="all">All chats</option>') +
+    (recorded.length ? `<optgroup label="Recorded chats">${optionsHtml(recorded)}</optgroup>` : "") +
+    (groups.length ? `<optgroup label="Groups">${optionsHtml(groups)}</optgroup>` : "") +
+    (contacts.length ? `<optgroup label="Contacts">${optionsHtml(contacts)}</optgroup>` : "");
+  if ([...sel.options].some((o) => o.value === current)) sel.value = current;
+  else if (sel.options.length) sel.selectedIndex = 0;
+}
+
+async function loadChats() {
   $("extract-status").textContent = "Loading groups and contacts…";
   try {
     // Recorded chats definitely have messages; groups and contacts let the user pick a target up front
@@ -1220,34 +1240,29 @@ async function loadChats() {
       api("/wa/contacts").catch(() => ({ contacts: [] })),
     ]);
     const seen = new Set(chats.map((c) => c.jid));
-
-    const recorded = chats.map((c) => ({
-      jid: c.jid,
-      label: `${c.name || c.number || "Unknown"}${c.group ? " (Group)" : c.number ? ` · ${c.number}` : ""} — ${c.count} msg`,
-    }));
-    const groups = (groupsRes.groups || [])
-      .filter((g) => g.jid && !seen.has(g.jid))
-      .map((g) => ({ jid: g.jid, label: g.name }));
-    const contacts = (contactsRes.contacts || [])
-      .filter((c) => c.number)
-      .map((c) => ({ jid: `${c.number}@s.whatsapp.net`, label: `${c.name || c.number} · ${c.number}` }))
-      .filter((c) => !seen.has(c.jid));
-
-    const current = sel.value;
-    sel.innerHTML =
-      '<option value="all">All chats</option>' +
-      (recorded.length ? `<optgroup label="Recorded chats">${optionsHtml(recorded)}</optgroup>` : "") +
-      (groups.length ? `<optgroup label="Groups">${optionsHtml(groups)}</optgroup>` : "") +
-      (contacts.length ? `<optgroup label="Contacts">${optionsHtml(contacts)}</optgroup>` : "");
-    if ([...sel.options].some((o) => o.value === current)) sel.value = current;
-    $("extract-status").textContent =
-      groups.length || contacts.length || recorded.length ? "" : "Link the server WhatsApp to see your groups and contacts.";
+    _extractItems = {
+      recorded: chats.map((c) => ({
+        jid: c.jid,
+        label: `${c.name || c.number || "Unknown"}${c.group ? " (Group)" : c.number ? ` · ${c.number}` : ""} — ${c.count} msg`,
+      })),
+      groups: (groupsRes.groups || [])
+        .filter((g) => g.jid && !seen.has(g.jid))
+        .map((g) => ({ jid: g.jid, label: g.name })),
+      contacts: (contactsRes.contacts || [])
+        .filter((c) => c.number)
+        .map((c) => ({ jid: `${c.number}@s.whatsapp.net`, label: `${c.name || c.number} · ${c.number}` }))
+        .filter((c) => !seen.has(c.jid)),
+    };
+    renderExtractOptions($("extract-search").value);
+    const total = _extractItems.recorded.length + _extractItems.groups.length + _extractItems.contacts.length;
+    $("extract-status").textContent = total ? "" : "Link the server WhatsApp to see your groups and contacts.";
   } catch (e) {
     $("extract-status").textContent = e.message;
   }
 }
 
 $("extract-refresh").addEventListener("click", loadChats);
+$("extract-search").addEventListener("input", (e) => renderExtractOptions(e.target.value));
 
 $("extract-download").addEventListener("click", async () => {
   // A typed number wins over the dropdown; otherwise use the selected group/contact (or all chats).
