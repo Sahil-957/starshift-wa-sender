@@ -41,6 +41,7 @@ function signedIn(mobile, role) {
   renderGroups("");
   syncContacts(false);
   syncGroups(false);
+  restoreWatches();
 }
 
 function signOut() {
@@ -48,6 +49,7 @@ function signOut() {
   token = "";
   [statusPoller, progressPoller, reportsPoller, sheetPoller, bcPoller].forEach(clearTimeout);
   clearInterval(countdownTimer);
+  clearInterval(bcWatchTimer); bcWatchTimer = null; bcHandles.clear();
   selected = [];
   try { ["starshiftSelected", "starshiftContacts", "starshiftGroups"].forEach((k) => localStorage.removeItem(k)); } catch { /* private mode */ }
   document.body.classList.add("locked");
@@ -644,15 +646,23 @@ function renderBroadcast(b) {
   const last = b.lastRunAt ? new Date(b.lastRunAt).toLocaleString() : "never";
   const lastRun = b.runs && b.runs[0] ? ` · last run: ${b.runs[0].sent || 0} sent, ${b.runs[0].failed || 0} failed` : "";
   const act = (a, label) => `<button data-bc-act="${a}" data-id="${b.id}">${label}</button>`;
+  const watching = bcHandles.has(b.id);
+  const watchLine = FS_SUPPORTED
+    ? `<div class="campaign-meta" id="bc-watch-${b.id}">${watching ? "👁️ Watching your PC folder — keep this tab open." : "Not watching a PC folder."}</div>`
+    : `<div class="campaign-meta">Live PC-folder watch needs Chrome or Edge.</div>`;
+  const watchBtn = !FS_SUPPORTED ? ""
+    : watching ? act("unwatch", "Stop watching folder") : act("watch", "👁️ Watch a PC folder (auto)");
   return `<div class="campaign-item">
     <div class="head"><span>${esc(b.name)}</span><span class="status-badge status-${b.active ? "running" : "paused"}">${b.active ? "Active" : "Paused"}</span></div>
     <div class="campaign-meta">To: ${esc(b.listName)} (${b.recipientCount}) · ${FREQ_LABEL[b.frequency] || b.frequency} at ${esc(times)}</div>
     <div class="campaign-meta">📁 Folder: ${b.file ? esc(b.file.name) : "— empty (caption only)"} · next: ${esc(next)} · last: ${esc(last)}${lastRun}</div>
+    ${watchLine}
     <div class="campaign-actions">
       ${act("run-now", "Send now")}
       ${act(b.active ? "pause" : "resume", b.active ? "Pause" : "Resume")}
       ${act("edit", "Edit")}
       ${act("replace", "Put new file in folder")}
+      ${watchBtn}
       ${act("delete", "Delete")}
     </div>
   </div>`;
@@ -700,9 +710,104 @@ async function bcAction(id, action, btn) {
       bcReplaceId = id; hiddenBcReplace.click(); return;
     } else if (action === "edit") {
       return bcStartEdit(id);
+    } else if (action === "watch") {
+      return bcStartWatch(id);
+    } else if (action === "unwatch") {
+      return bcStopWatch(id);
     }
     loadBroadcasts();
   } catch (e) { alert(e.message); if (btn) btn.disabled = false; }
+}
+
+// ---------- Live PC-folder watching (File System Access API; Chrome/Edge) ----------
+// While this tab stays open, the chosen folder is polled: the newest file is uploaded to the
+// broadcast (replacing the old on the server) and the older files in the folder are deleted.
+const FS_SUPPORTED = typeof window.showDirectoryPicker === "function";
+const bcHandles = new Map(); // broadcastId -> { handle, lastKey }
+let bcWatchTimer = null;
+
+function idbOpen() {
+  return new Promise((res, rej) => {
+    const r = indexedDB.open("swasWatch", 1);
+    r.onupgradeneeded = () => r.result.createObjectStore("handles");
+    r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+  });
+}
+async function idbPut(k, v) { const db = await idbOpen(); return new Promise((res, rej) => { const t = db.transaction("handles", "readwrite"); t.objectStore("handles").put(v, k); t.oncomplete = () => res(); t.onerror = () => rej(t.error); }); }
+async function idbGet(k) { const db = await idbOpen(); return new Promise((res) => { const rq = db.transaction("handles", "readonly").objectStore("handles").get(k); rq.onsuccess = () => res(rq.result); rq.onerror = () => res(null); }); }
+async function idbDel(k) { const db = await idbOpen(); return new Promise((res) => { const t = db.transaction("handles", "readwrite"); t.objectStore("handles").delete(k); t.oncomplete = () => res(); }); }
+async function idbKeys() { const db = await idbOpen(); return new Promise((res) => { const rq = db.transaction("handles", "readonly").objectStore("handles").getAllKeys(); rq.onsuccess = () => res(rq.result || []); rq.onerror = () => res([]); }); }
+
+const JUNK_RE = /^(\.|~\$)|^(thumbs\.db|desktop\.ini|\.ds_store)$/i;
+async function dirFilesNewestFirst(handle) {
+  const files = [];
+  for await (const entry of handle.values()) {
+    if (entry.kind !== "file" || JUNK_RE.test(entry.name)) continue;
+    const f = await entry.getFile();
+    if (f.size > 0) files.push({ name: entry.name, file: f, lastModified: f.lastModified });
+  }
+  return files.sort((a, b) => b.lastModified - a.lastModified);
+}
+
+function setWatchStatus(id, text) { const el = $(`bc-watch-${id}`); if (el) el.textContent = text; }
+
+async function bcStartWatch(id) {
+  if (!FS_SUPPORTED) return alert("This needs Chrome or Edge.");
+  let handle;
+  try { handle = await window.showDirectoryPicker({ mode: "readwrite" }); }
+  catch { return; } // user cancelled
+  if ((await handle.requestPermission({ mode: "readwrite" })) !== "granted") return alert("Folder permission is needed.");
+  bcHandles.set(id, { handle, lastKey: null });
+  try { await idbPut(id, handle); } catch { /* handle not storable: in-memory only */ }
+  loadBroadcasts();
+  startWatchLoop();
+  bcWatchTick();
+}
+
+async function bcStopWatch(id) {
+  bcHandles.delete(id);
+  await idbDel(id).catch(() => {});
+  loadBroadcasts();
+}
+
+async function bcWatchTick() {
+  for (const [id, info] of bcHandles) {
+    try {
+      if ((await info.handle.queryPermission({ mode: "readwrite" })) !== "granted") {
+        setWatchStatus(id, "👁️ Click “Watch a PC folder” again to re-allow access.");
+        continue;
+      }
+      const files = await dirFilesNewestFirst(info.handle);
+      if (!files.length) { setWatchStatus(id, "👁️ Watching — folder is empty."); continue; }
+      const newest = files[0];
+      const key = `${newest.name}|${newest.file.size}|${newest.lastModified}`;
+      if (key === info.lastKey) continue; // nothing new
+      const dataUrl = await readAsDataUrl(newest.file);
+      await api(`/broadcasts/${id}/file`, "POST", { file: { dataUrl, name: newest.name, mimeType: newest.file.type || "application/octet-stream" } });
+      info.lastKey = key;
+      // New file arrived → remove the older files from the folder (keep only the newest).
+      for (const old of files.slice(1)) { try { await info.handle.removeEntry(old.name); } catch { /* locked/open */ } }
+      setWatchStatus(id, `👁️ Sent new file: ${newest.name} (older files removed).`);
+      loadBroadcasts();
+    } catch { /* retry next tick */ }
+  }
+}
+
+function startWatchLoop() {
+  if (bcWatchTimer || !bcHandles.size) return;
+  bcWatchTimer = setInterval(bcWatchTick, 15000);
+}
+
+async function restoreWatches() {
+  if (!FS_SUPPORTED) return;
+  try {
+    for (const id of await idbKeys()) {
+      const handle = await idbGet(id);
+      if (handle) bcHandles.set(id, { handle, lastKey: null });
+    }
+  } catch { /* ignore */ }
+  startWatchLoop();
+  bcWatchTick();
 }
 
 async function bcStartEdit(id) {
