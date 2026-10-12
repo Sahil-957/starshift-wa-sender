@@ -1295,6 +1295,24 @@ $("extract-download").addEventListener("click", async () => {
   }
 });
 
+$("extract-older").addEventListener("click", async () => {
+  const typed = $("extract-number").value.replace(/\D/g, "");
+  const jid = typed ? `${typed}@s.whatsapp.net` : $("extract-chat").value;
+  if (!jid || jid === "all") { $("extract-status").textContent = "Pick one chat (a group or a contact) first."; return; }
+  const btn = $("extract-older");
+  btn.disabled = true;
+  $("extract-status").textContent = "Asking WhatsApp for older messages…";
+  try {
+    await api("/wa/chat-history", "POST", { jid, count: 50 });
+    $("extract-status").textContent = "Requested. Older messages are arriving — wait ~5 seconds, then Download again.";
+    setTimeout(loadChats, 6000); // refresh counts once they land
+  } catch (e) {
+    $("extract-status").textContent = e.message;
+  } finally {
+    btn.disabled = false;
+  }
+});
+
 $("numbers-download").addEventListener("click", async () => {
   const btn = $("numbers-download");
   btn.disabled = true;

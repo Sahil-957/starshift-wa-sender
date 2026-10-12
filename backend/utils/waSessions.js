@@ -307,6 +307,23 @@ async function chatExport(mobile, opts) {
   }));
 }
 
+/**
+ * Asks WhatsApp for older messages of one chat (Baileys on-demand history sync). The messages don't come
+ * back here - WhatsApp delivers them a few seconds later on the messaging-history.set event, where they're
+ * recorded like any other. Needs at least one already-stored message in that chat to anchor the request.
+ */
+async function fetchHistory(mobile, { jid, count = 50 } = {}) {
+  const session = openSocket(mobile);
+  if (!jid || jid === "all") throw new Error("Pick one chat (a group or a contact) to load older messages for.");
+  const anchor = chatStore.oldestRecord(mobile, jid);
+  if (!anchor) {
+    throw notFound("No message is stored for this chat yet to load from. Send or receive one message in it, then try again.");
+  }
+  const key = { remoteJid: anchor.chatJid, id: anchor.id, fromMe: !!anchor.fromMe };
+  await session.sock.fetchMessageHistory(Math.min(Math.max(Number(count) || 50, 1), 50), key, anchor.t);
+  return { requested: true, from: anchor.t };
+}
+
 // On restart every linked account has to reconnect. Firing all of them at once (100+ Baileys
 // handshakes in the same tick) spikes CPU and gets the connections throttled by WhatsApp, so they
 // are brought up a few at a time with a gap between batches. The server is usable immediately;
@@ -328,4 +345,4 @@ function restoreAll() {
   startBatch();
 }
 
-module.exports = { connect, status, logout, send, contacts, groups, chatList, chatExport, restoreAll };
+module.exports = { connect, status, logout, send, contacts, groups, chatList, chatExport, fetchHistory, restoreAll };

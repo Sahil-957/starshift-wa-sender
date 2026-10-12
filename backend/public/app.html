@@ -504,10 +504,12 @@
           <option value="all" selected>All</option>
         </select>
 
-        <div class="row" style="margin-top:14px">
+        <div class="row" style="margin-top:14px;gap:8px">
           <button type="button" class="primary" id="extract-download">Download chat Excel</button>
+          <button type="button" id="extract-older">Load older from WhatsApp</button>
         </div>
         <p class="hint" id="extract-status"></p>
+        <p class="hint"><b>Load older from WhatsApp</b> asks WhatsApp to send older messages of the selected chat (needs at least one message already in it). Wait a few seconds, then download again — it may bring a limited window, so click it again to go further back.</p>
         <p class="hint">Note: messages are saved from the time this feature went live (plus whatever WhatsApp back-syncs when the account links), so very old chats may be partial.</p>
       </div>
 

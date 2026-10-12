@@ -145,6 +145,12 @@ function chats(mobile) {
   return [...byJid.values()].sort((a, b) => b.lastAt - a.lastAt);
 }
 
+/** The oldest stored message for a chat, as the anchor for an on-demand history fetch; null if none. */
+function oldestRecord(mobile, jid) {
+  const mine = readAll(mobile).filter((r) => r.chatJid === jid && r.id);
+  return mine.length ? mine[mine.length - 1] : null; // readAll is newest-first
+}
+
 const RANGE_DAYS = { today: 0, "7days": 7, "15days": 15, "1month": 30, "2months": 60, all: null };
 
 /** Start-of-window timestamp (ms) for a named range; 0 means "no lower bound" (all). */
@@ -170,4 +176,4 @@ function messages(mobile, { jid = "", range = "all" } = {}) {
     .sort((a, b) => a.t - b.t);
 }
 
-module.exports = { record, chats, messages, RANGE_DAYS };
+module.exports = { record, chats, messages, oldestRecord, RANGE_DAYS };

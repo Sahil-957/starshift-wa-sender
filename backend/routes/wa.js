@@ -26,6 +26,14 @@ router.get("/chats", async (req, res) => {
     res.status(400).json({ message: err.message });
   }
 });
+// Ask WhatsApp for older messages of one chat; they arrive async and are recorded, then re-exported.
+router.post("/chat-history", async (req, res) => {
+  try {
+    res.json(await wa.fetchHistory(req.auth.mobile, { jid: req.body.jid, count: req.body.count }));
+  } catch (err) {
+    res.status(err.status || 400).json({ message: err.message });
+  }
+});
 router.get("/chat-export", async (req, res) => {
   try {
     const rows = await wa.chatExport(req.auth.mobile, { jid: req.query.jid || "", range: req.query.range || "all" });
