@@ -990,8 +990,12 @@ function renderBotUI() {
   $("bot-welcome-msg-en").value = s.welcomeMessageEn || "";
   $("bot-fallback-msg-en").value = s.fallbackMessageEn || "";
   $("bot-unsub-reply-en").value = s.unsubscribeReplyEn || "";
+  $("bot-lookup-enabled").checked = !!s.lookupEnabled;
+  $("bot-lookup-kw").value = s.lookupKeywords || "";
+  $("bot-lookup-notreg").value = s.notRegisteredMessage || "";
   toggleBilingual();
   renderRules();
+  loadBotData();
 }
 
 function toggleBilingual() {
@@ -1054,8 +1058,60 @@ function readBotUI() {
     welcomeMessageEn: $("bot-welcome-msg-en").value,
     fallbackMessageEn: $("bot-fallback-msg-en").value,
     unsubscribeReplyEn: $("bot-unsub-reply-en").value,
+    lookupEnabled: $("bot-lookup-enabled").checked,
+    lookupKeywords: $("bot-lookup-kw").value,
+    notRegisteredMessage: $("bot-lookup-notreg").value,
   };
 }
+
+// ---------- Chatbot data-lookup sheet ----------
+async function loadBotData() {
+  try {
+    const d = await api("/wa/bot/data");
+    $("bot-data-clear").classList.toggle("hidden", !d.loaded);
+    $("bot-data-status").textContent = d.loaded
+      ? `✅ ${d.count} number(s) loaded · columns: ${d.headers.join(", ")}${d.updatedAt ? ` · updated ${new Date(d.updatedAt).toLocaleString()}` : ""}`
+      : "No data sheet loaded yet.";
+  } catch (e) { $("bot-data-status").textContent = e.message; }
+}
+
+async function uploadBotData(rows, sourceLabel) {
+  $("bot-data-status").textContent = "Loading…";
+  try {
+    const d = await api("/wa/bot/data", "POST", { rows });
+    $("bot-data-status").textContent = `✅ ${d.count} number(s) loaded from ${sourceLabel} · columns: ${d.headers.join(", ")}`;
+    $("bot-data-clear").classList.remove("hidden");
+  } catch (e) { $("bot-data-status").textContent = e.message; }
+}
+
+$("bot-data-file").addEventListener("change", async (event) => {
+  const file = event.target.files[0];
+  if (!file) return;
+  try {
+    const wb = XLSX.read(await file.arrayBuffer(), { type: "array" });
+    const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: "", raw: false });
+    await uploadBotData(rows, file.name);
+  } catch (e) { $("bot-data-status").textContent = `Could not read: ${e.message}`; }
+  finally { event.target.value = ""; }
+});
+
+$("bot-data-import").addEventListener("click", async () => {
+  const url = $("bot-data-url").value.trim();
+  if (!url) return;
+  $("bot-data-import").disabled = true;
+  try {
+    const { csv } = await api("/import/sheets", "POST", { url });
+    const wb = XLSX.read(csv, { type: "string" });
+    const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: "", raw: false });
+    await uploadBotData(rows, "Google Sheets");
+    $("bot-data-url").value = "";
+  } catch (e) { $("bot-data-status").textContent = e.message; } finally { $("bot-data-import").disabled = false; }
+});
+
+$("bot-data-clear").addEventListener("click", async () => {
+  if (!confirm("Clear the loaded data sheet?")) return;
+  try { await api("/wa/bot/data", "DELETE"); loadBotData(); } catch (e) { alert(e.message); }
+});
 
 async function syncBot() {
   const result = await api("/wa/bot/sync", "POST", {

@@ -13,8 +13,21 @@ const path = require("path");
 const { writeJsonAtomic } = require("./atomicWrite");
 const { normalizeMessageContent, isJidGroup, isJidBroadcast, isJidNewsletter } = require("@whiskeysockets/baileys");
 
+const botData = require("./botData");
+
 require(path.join(__dirname, "..", "..", "extension", "common", "chatbot.js")); // defines globalThis.SwasBot
 const { SwasBot } = globalThis;
+
+/** The data-lookup action for this message, or null when lookup isn't triggered. */
+function lookupAction(mobile, settings, text, senderNumber) {
+  if (!settings?.lookupEnabled) return null;
+  const keywords = String(settings.lookupKeywords || "1").split(",").map((k) => k.trim().toLowerCase()).filter(Boolean);
+  if (!keywords.includes(String(text).trim().toLowerCase())) return null;
+  const reply = botData.lookupReply(mobile, senderNumber);
+  if (reply) return { type: "lookup", label: "Data lookup", reply };
+  const notReg = String(settings.notRegisteredMessage || "").trim();
+  return notReg ? { type: "lookup-miss", label: "Not registered", reply: notReg } : null;
+}
 
 const BOTS_DIR = path.join(__dirname, "..", "data", "bots");
 const MAX_AGE_MS = 10 * 60 * 1000; // a backlog delivered after a restart is not answered
@@ -152,7 +165,9 @@ async function answer(mobile, sock, bot, config, msg) {
   const inSession = Date.now() - last < SwasBot.LIMITS.sessionMs;
   const idleMs = last ? Date.now() - last : null; // time since the bot last answered this chat
   const lang = (bot.langs || (bot.langs = {}))[jid] || "";
-  const action = SwasBot.matchMessage(text, config, { unsubscribed, inSession, idleMs, lang });
+  // Data lookup (e.g. "1" -> this customer's own loan details) takes priority over the normal rules.
+  const action = lookupAction(mobile, bot.config?.settings, text, contact.number)
+    || SwasBot.matchMessage(text, config, { unsubscribed, inSession, idleMs, lang });
   if (!action) {
     console.log(`[bot ${mobile}] ${who}: "${text}" - no reply${unsubscribed ? " (unsubscribed)" : ""}`);
     return;

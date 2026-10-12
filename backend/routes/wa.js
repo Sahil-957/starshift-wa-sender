@@ -1,6 +1,7 @@
 const express = require("express");
 const wa = require("../utils/waSessions");
 const bot = require("../utils/waBot");
+const botData = require("../utils/botData");
 
 // Mounted behind requireAuth: every account drives only its own linked WhatsApp.
 const router = express.Router();
@@ -38,6 +39,17 @@ router.post("/send", async (req, res) => {
     res.status(err.status || 400).json({ message: err.message || String(err) });
   }
 });
+
+// ---- Chatbot data-lookup sheet (loan details etc., keyed by mobile) ----
+router.get("/bot/data", (req, res) => res.json(botData.summary(req.auth.mobile)));
+router.post("/bot/data", (req, res) => {
+  try {
+    res.json(botData.setFromRows(req.auth.mobile, req.body.rows));
+  } catch (err) {
+    res.status(err.status || 400).json({ message: err.message || String(err) });
+  }
+});
+router.delete("/bot/data", (req, res) => res.json(botData.clear(req.auth.mobile)));
 
 // Current stored chatbot config + unsubscribers, and the built-in defaults, for the web app's Chatbot page.
 router.get("/bot", (req, res) => res.json(bot.current(req.auth.mobile)));

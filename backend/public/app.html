@@ -394,6 +394,30 @@
         <input type="number" id="bot-rewelcome" min="0" max="1440" />
       </div>
       <div class="card">
+        <h2>Customer lookup (loan details etc.)</h2>
+        <p class="hint">Attach a sheet keyed by <b>mobile number</b> (columns like Name, Loan Amount, Interest, Total Outstanding). When a customer whose number is in the sheet sends the keyword below, the bot replies with <b>their own row</b>. Numbers not in the sheet get the “not registered” message.</p>
+        <label class="switch"><input type="checkbox" id="bot-lookup-enabled" /> Enable customer lookup</label>
+        <label>Trigger keyword(s) (comma separated) — e.g. a menu option</label>
+        <input type="text" id="bot-lookup-kw" placeholder="1" />
+        <label>“Not registered” reply (for numbers not in the sheet)</label>
+        <textarea id="bot-lookup-notreg" rows="2" placeholder="Your number is not registered. Please contact us."></textarea>
+
+        <div class="divider">Upload the data sheet (Excel / CSV)</div>
+        <p class="hint">One column must be <b>Mobile</b> (or Number/Phone), with or without country code. Other columns are sent back as “Header: value”. Re-upload any time to refresh.</p>
+        <div class="upload-row">
+          <label for="bot-data-file" class="file-btn">Upload Excel / CSV</label>
+          <input id="bot-data-file" type="file" accept=".xlsx,.xls,.csv" class="hidden" />
+          <button type="button" class="btn-secondary danger hidden" id="bot-data-clear">Clear data</button>
+        </div>
+        <div class="divider">or Google Sheet link</div>
+        <div class="sheet-row">
+          <input type="text" id="bot-data-url" placeholder="https://docs.google.com/spreadsheets/d/..." />
+          <button type="button" class="btn-secondary" id="bot-data-import">Load</button>
+        </div>
+        <p class="hint" id="bot-data-status" style="margin-top:8px"></p>
+      </div>
+
+      <div class="card">
         <h2>Keyword rules</h2>
         <p class="hint">Checked top to bottom; the first match replies. A number keyword (menu option) must be the whole message.</p>
         <div id="rule-list" class="pick-list tall"></div>
