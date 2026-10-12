@@ -691,3 +691,12 @@ td.fields, td.reason { white-space: normal; min-width: 160px; }
 .schedule-opts { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 10px; }
 .schedule-opts > div { flex: 1; min-width: 140px; }
 .progress-actions { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+
+/* Sheet Scheduler — per-row status list */
+.sheet-rows { margin-top: 10px; border: 1px solid var(--line, #e3e8e6); border-radius: 9px; max-height: 260px; overflow: auto; }
+.sheet-row-item { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-bottom: 1px solid #eef2f1; font-size: 12.5px; }
+.sheet-row-item:last-child { border-bottom: 0; }
+.sheet-row-to { font-weight: 600; min-width: 90px; }
+.sheet-row-when { color: #5a6b66; white-space: nowrap; }
+.sheet-row-att { color: var(--brand-ink); }
+.sheet-row-note { color: #b23b3b; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

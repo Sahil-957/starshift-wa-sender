@@ -50,6 +50,7 @@
   <nav class="navrow">
     <div class="nav">
       <button class="nav-tab" data-page="campaign" aria-selected="true">New Campaign</button>
+      <button class="nav-tab" data-page="sheet">Sheet Scheduler</button>
       <button class="nav-tab" data-page="reports">Reports</button>
       <button class="nav-tab" data-page="chatbot">Chatbot</button>
       <button class="nav-tab" data-page="quick">Quick Replies</button>
@@ -259,6 +260,43 @@
             </div>
           </div>
         </div>
+      </div>
+    </section>
+
+    <!-- ================= Sheet Scheduler ================= -->
+    <section id="page-sheet" class="page hidden">
+      <div class="card">
+        <h2>Sheet Scheduler</h2>
+        <p class="hint">Each <b>row</b> is sent at its <b>own date &amp; time</b> — its own message and its own attachment. Fill a Google Sheet (or Excel/CSV) with these columns:</p>
+        <p class="hint">
+          <b>name</b> · <b>mobile</b> (with or without country code) · <b>message</b> · <b>date</b> (DD-MM-YYYY) · <b>time</b> (hh:mm AM/PM) · <b>attachment</b> (optional public link)
+          — times are India time (IST). Any extra column works as <code>{{column_name}}</code> in the message.
+          <a href="/sample-schedule.csv" download>Download sample</a>.
+        </p>
+        <p class="hint">For the <b>attachment</b> link: a Google Drive share link (<b>Anyone with the link → Viewer</b>) or any direct file URL. Leave blank for a text-only row.</p>
+
+        <div class="divider">Google Sheet link (checks for new rows automatically)</div>
+        <p class="hint">In Google Sheets: <b>Share → Anyone with the link → Viewer</b>, then paste the link. New rows you add later are picked up on their own (every few minutes).</p>
+        <label for="sheet-sched-name">Name (optional)</label>
+        <input type="text" id="sheet-sched-name" placeholder="e.g. October reminders" />
+        <div class="sheet-row" style="margin-top:8px">
+          <input type="text" id="sheet-sched-url" placeholder="https://docs.google.com/spreadsheets/d/..." />
+          <button type="button" class="primary" id="sheet-sched-load">Load &amp; schedule</button>
+        </div>
+        <label class="switch" style="margin-top:8px"><input type="checkbox" id="sheet-sched-sync" checked /> Keep syncing — pick up new rows added to this sheet</label>
+
+        <div class="divider">or upload Excel / CSV (one-time)</div>
+        <div class="upload-row">
+          <label for="sheet-sched-file" class="file-btn">Upload Excel / CSV</label>
+          <input id="sheet-sched-file" type="file" accept=".xlsx,.xls,.csv" class="hidden" />
+          <span id="sheet-sched-file-info" class="hint" style="margin:0"></span>
+        </div>
+        <p id="sheet-sched-status" class="hint" role="status"></p>
+      </div>
+
+      <div class="card">
+        <h2>Scheduled sheets</h2>
+        <div id="sheet-sched-list" class="campaigns-list"><p class="hint">No scheduled sheets yet.</p></div>
       </div>
     </section>
 

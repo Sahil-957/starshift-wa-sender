@@ -1,7 +1,7 @@
 const $ = (id) => document.getElementById(id);
 const tokenKey = "starshiftToken";
 let token = sessionStorage.getItem(tokenKey) || "";
-let statusPoller, progressPoller, countdownTimer, reportsPoller;
+let statusPoller, progressPoller, countdownTimer, reportsPoller, sheetPoller;
 let activeCampaignId = null;
 let attachment = null; // { dataUrl, name, mimeType } when a file is attached
 const MAX_ATTACH_MB = 45;
@@ -46,7 +46,7 @@ function signedIn(mobile, role) {
 function signOut() {
   sessionStorage.removeItem(tokenKey);
   token = "";
-  [statusPoller, progressPoller, reportsPoller].forEach(clearTimeout);
+  [statusPoller, progressPoller, reportsPoller, sheetPoller].forEach(clearTimeout);
   clearInterval(countdownTimer);
   selected = [];
   try { ["starshiftSelected", "starshiftContacts", "starshiftGroups"].forEach((k) => localStorage.removeItem(k)); } catch { /* private mode */ }
@@ -100,15 +100,17 @@ $("reset-password").addEventListener("click", async () => {
 $("logout").addEventListener("click", signOut);
 
 // ---------- Navigation ----------
-const PAGES = ["campaign", "reports", "chatbot", "quick", "unsub"];
+const PAGES = ["campaign", "sheet", "reports", "chatbot", "quick", "unsub"];
 function showPage(page) {
   document.querySelectorAll(".nav-tab").forEach((tab) => tab.setAttribute("aria-selected", tab.dataset.page === page));
   PAGES.forEach((p) => { const sec = $("page-" + p); if (sec) sec.classList.toggle("hidden", p !== page); });
   clearTimeout(reportsPoller);
+  clearTimeout(sheetPoller);
   if (page === "reports") loadReports();
   if (page === "chatbot") loadBot();
   if (page === "quick") renderQuick();
   if (page === "unsub") loadUnsub();
+  if (page === "sheet") loadSheetJobs();
 }
 document.querySelectorAll(".nav-tab").forEach((tab) => tab.addEventListener("click", () => showPage(tab.dataset.page)));
 
@@ -526,6 +528,87 @@ async function loadActiveCampaign() {
     if (["scheduled", "running", "paused"].includes(current.status)) trackProgress();
   } catch { /* none yet */ }
 }
+
+// ---------- Sheet Scheduler ----------
+const SHEET_LABEL = { active: "Active", cancelled: "Cancelled" };
+
+async function loadSheetJobs() {
+  clearTimeout(sheetPoller);
+  try {
+    const { batches = [] } = await api("/sheet-jobs");
+    $("sheet-sched-list").innerHTML = batches.length
+      ? batches.map(renderSheetBatch).join("")
+      : `<p class="hint">No scheduled sheets yet.</p>`;
+    $("sheet-sched-list").querySelectorAll("[data-sheet-act]").forEach((b) =>
+      b.addEventListener("click", () => sheetAction(b.dataset.id, b.dataset.sheetAct, b)));
+    if (batches.some((b) => b.status === "active" && b.counts.pending > 0)) sheetPoller = setTimeout(loadSheetJobs, 8000);
+  } catch (e) { $("sheet-sched-list").innerHTML = `<p class="error">${esc(e.message)}</p>`; }
+}
+
+function renderSheetBatch(b) {
+  const c = b.counts || {};
+  const next = b.nextSendAt ? ` · next ${new Date(b.nextSendAt).toLocaleString()}` : "";
+  const synced = b.source === "sheet" ? ` · ${b.syncEnabled ? "auto-sync on" : "sync off"}${b.lastSyncedAt ? ` (last ${new Date(b.lastSyncedAt).toLocaleTimeString()})` : ""}` : "";
+  const act = (a, label) => `<button data-sheet-act="${a}" data-id="${b.id}">${label}</button>`;
+  let actions = "";
+  if (b.status === "active") {
+    if (b.source === "sheet") actions += act("resync", "Sync now");
+    actions += act("cancel", "Cancel") + act("delete", "Delete");
+  } else actions = act("delete", "Delete");
+  const rows = (b.rows || []).slice(0, 60).map((r) => {
+    const badge = r.status === "sent" ? "status-completed" : r.status === "failed" ? "status-cancelled" : r.status === "invalid" ? "status-paused" : "status-scheduled";
+    const when = r.sendAt ? new Date(r.sendAt).toLocaleString() : `${esc(r.rawDate || "")} ${esc(r.rawTime || "")}`;
+    const note = r.failReason ? ` — ${esc(r.failReason)}` : "";
+    return `<div class="sheet-row-item"><span class="status-badge ${badge}">${r.status}</span><span class="sheet-row-to">${esc(r.name || r.mobile)}</span><span class="sheet-row-when">${esc(when)}</span>${r.attachmentUrl ? '<span class="sheet-row-att">📎</span>' : ""}<span class="sheet-row-note">${note}</span></div>`;
+  }).join("");
+  return `<div class="campaign-item">
+    <div class="head"><span>${esc(b.name)}</span><span class="status-badge status-${b.status === "active" ? "running" : "cancelled"}">${SHEET_LABEL[b.status] || b.status}</span></div>
+    <div class="campaign-meta">${b.source === "sheet" ? "Google Sheet" : "Uploaded file"} · ${b.total} row(s)${synced}${next}</div>
+    <div class="campaign-meta">Sent: ${c.sent || 0} | Failed: ${c.failed || 0} | Pending: ${c.pending || 0} | Invalid: ${c.invalid || 0}</div>
+    <div class="sheet-rows">${rows}${b.rows && b.rows.length > 60 ? `<div class="hint" style="padding:6px">…and ${b.rows.length - 60} more</div>` : ""}</div>
+    <div class="campaign-actions">${actions}</div>
+  </div>`;
+}
+
+async function sheetAction(id, action, btn) {
+  if (action === "delete" && !confirm("Delete this scheduled sheet? Pending rows will not be sent.")) return;
+  if (action === "cancel" && !confirm("Cancel the pending rows in this sheet?")) return;
+  if (btn) btn.disabled = true;
+  try {
+    if (action === "delete") await api(`/sheet-jobs/${id}`, "DELETE");
+    else await api(`/sheet-jobs/${id}/${action}`, "POST", {});
+    loadSheetJobs();
+  } catch (e) { alert(e.message); if (btn) btn.disabled = false; }
+}
+
+$("sheet-sched-load").addEventListener("click", async () => {
+  const url = $("sheet-sched-url").value.trim();
+  if (!url) return alert("Paste the Google Sheet link first.");
+  $("sheet-sched-load").disabled = true;
+  $("sheet-sched-status").textContent = "Reading the sheet…";
+  try {
+    const { batch } = await api("/sheet-jobs", "POST", {
+      mode: "sheet", url, name: $("sheet-sched-name").value.trim(), autoSync: $("sheet-sched-sync").checked,
+    });
+    $("sheet-sched-status").textContent = `Scheduled ${batch.counts.pending} row(s)${batch.counts.invalid ? `, ${batch.counts.invalid} skipped` : ""}.`;
+    $("sheet-sched-url").value = ""; $("sheet-sched-name").value = "";
+    loadSheetJobs();
+  } catch (e) { $("sheet-sched-status").textContent = e.message; } finally { $("sheet-sched-load").disabled = false; }
+});
+
+$("sheet-sched-file").addEventListener("change", async (event) => {
+  const file = event.target.files[0];
+  if (!file) return;
+  $("sheet-sched-file-info").textContent = "Reading…";
+  try {
+    const wb = XLSX.read(await file.arrayBuffer(), { type: "array" });
+    const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: "", raw: false });
+    const { batch } = await api("/sheet-jobs", "POST", { mode: "upload", name: $("sheet-sched-name").value.trim() || file.name, rows });
+    $("sheet-sched-file-info").textContent = `${batch.counts.pending} row(s) scheduled${batch.counts.invalid ? `, ${batch.counts.invalid} skipped` : ""} from ${file.name}.`;
+    loadSheetJobs();
+  } catch (e) { $("sheet-sched-file-info").textContent = `Could not use that file: ${e.message}`; }
+  finally { event.target.value = ""; }
+});
 
 // ---------- Reports ----------
 async function loadReports() {

@@ -1,0 +1,4 @@
+name,mobile,message,date,time,attachment
+Asha,919876543210,"Hi {{name}}, your order is ready for pickup.",15-10-2026,10:30 AM,
+Ravi,918765432109,"Reminder: your appointment is tomorrow.",15-10-2026,02:00 PM,https://drive.google.com/file/d/FILEID/view?usp=sharing
+Sunita,917654321098,"Thank you {{name}}! Here is your invoice.",16-10-2026,11:15 AM,https://example.com/invoice.pdf
