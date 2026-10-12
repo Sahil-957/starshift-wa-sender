@@ -260,6 +260,13 @@ async function send(mobile, { target, message, attachment }) {
   }
 }
 
+/** Sends a plain text message from one linked account to a phone number (used for WhatsApp OTP delivery). */
+async function sendText(fromMobile, toNumber, text) {
+  const session = openSocket(fromMobile); // throws a clear error if that account isn't linked
+  const jid = await numberJid(session, toNumber); // also checks the number is on WhatsApp
+  await session.sock.sendMessage(jid, { text });
+}
+
 /** Saved contacts the server's WhatsApp knows, as [{ name, number }] - for the dashboard's Contact picker. */
 function contacts(mobile) {
   const s = sessions.get(mobile);
@@ -443,4 +450,4 @@ function restoreAll() {
   startBatch();
 }
 
-module.exports = { connect, status, logout, send, contacts, groups, groupMembers, chatList, chatExport, fetchHistory, restoreAll };
+module.exports = { connect, status, logout, send, sendText, contacts, groups, groupMembers, chatList, chatExport, fetchHistory, restoreAll };
