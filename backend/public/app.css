@@ -806,7 +806,7 @@ button.primary:hover:not(:disabled), .btn-direct:hover { transform: translateY(-
 .card:nth-of-type(4n)::before { background: linear-gradient(120deg, var(--blue), #22d3ee); }
 
 /* Navigation bar in the same navy→blue as the Direct Send button — header above stays green */
-.navrow { background: linear-gradient(120deg, var(--navy) 0%, var(--brand-blue) 100%); }
+.navrow { background: linear-gradient(120deg, #061f45 0%, #0d47a1 50%, var(--brand-blue) 100%); }
 .nav-tab[aria-selected="true"] {
   background: linear-gradient(135deg, var(--brand-blue), #3b82f6);
   border-color: rgba(255, 255, 255, 0.6);
