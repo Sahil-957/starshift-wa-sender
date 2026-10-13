@@ -873,3 +873,45 @@ button.primary:hover:not(:disabled), .btn-direct:hover { transform: translateY(-
 /* The colourful page pills, stacked full-width inside the dropdown. */
 .page-menu-dropdown .nav-tab { width: 100%; text-align: left; justify-content: flex-start; }
 .page-menu-dropdown .nav-tab[aria-selected="true"] { box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.85); transform: none; }
+
+/* ---- Richer Menu dropdown: glossy items, icons, hover slide, soft entrance ---- */
+.page-menu-dropdown {
+  min-width: 248px; padding: 12px; border-radius: 16px; gap: 7px;
+  background: linear-gradient(180deg, #13294d 0%, #0d1f3d 100%);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 24px 60px -16px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  animation: menuPop 0.16s ease-out;
+}
+@keyframes menuPop { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+
+/* Every row: taller, rounder, a glossy sheen over its colour, and a left icon slot. */
+.page-menu-dropdown .nav-tab,
+.page-menu-dropdown .menu-item {
+  padding: 12px 14px; border-radius: 11px; font-size: 13.5px; font-weight: 700;
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(0, 0, 0, 0.12));
+  box-shadow: 0 4px 10px -4px rgba(0, 0, 0, 0.45); border: none;
+  transition: transform 0.14s ease, filter 0.14s ease, box-shadow 0.14s ease;
+}
+.page-menu-dropdown .nav-tab:hover,
+.page-menu-dropdown .menu-item:hover {
+  transform: translateX(4px); filter: brightness(1.08);
+  box-shadow: 0 6px 16px -4px rgba(0, 0, 0, 0.55);
+}
+/* Little leading icons for each row */
+.page-menu-dropdown .nav-tab::before,
+.page-menu-dropdown .menu-item::before { font-size: 15px; width: 18px; display: inline-block; text-align: center; }
+.page-menu-dropdown .nav-tab[data-page="campaign"]::before  { content: "📣"; }
+.page-menu-dropdown .nav-tab[data-page="sheet"]::before      { content: "📊"; }
+.page-menu-dropdown .nav-tab[data-page="broadcast"]::before  { content: "📢"; }
+.page-menu-dropdown .nav-tab[data-page="reports"]::before    { content: "📈"; }
+.page-menu-dropdown .nav-tab[data-page="chatbot"]::before    { content: "🤖"; }
+.page-menu-dropdown .nav-tab[data-page="quick"]::before      { content: "⚡"; }
+.page-menu-dropdown .nav-tab[data-page="unsub"]::before      { content: "🚫"; }
+.page-menu-dropdown .nav-tab[data-page="extract"]::before    { content: "💬"; }
+.page-menu-dropdown .nav-tab[data-page="api"]::before        { content: "🔌"; }
+#connect::before { content: "🔗"; }
+#unlink::before  { content: "❌"; }
+.page-menu-dropdown .menu-blue::before   { content: "🎧"; }
+.page-menu-dropdown .menu-orange::before { content: "🛠"; }
+.page-menu-dropdown .menu-red::before    { content: "⎋"; }
+.menu-sep { margin: 8px 4px; }
