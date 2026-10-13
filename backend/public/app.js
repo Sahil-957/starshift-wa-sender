@@ -646,9 +646,8 @@ function renderProgress(c) {
       : c.status === "scheduled" ? `Scheduled for ${new Date(c.scheduleAt).toLocaleString()}.`
       : `${sent} sent, ${failed} failed, ${total - done} pending.`);
   $("cancel").classList.toggle("hidden", !active);
-  // Pause/Resume: shown while active, and only once sending has actually started (can't pause a plain schedule).
-  const pausable = active && c.status !== "scheduled";
-  $("pause").classList.toggle("hidden", !pausable);
+  // Pause/Resume: shown whenever the campaign is active (scheduled, running or paused).
+  $("pause").classList.toggle("hidden", !active);
   $("pause").textContent = c.status === "paused" ? "Resume" : "Pause";
   $("pause").dataset.resume = c.status === "paused" ? "1" : "0";
   if (!active) $("send").disabled = false;
