@@ -823,6 +823,12 @@ button.primary:hover:not(:disabled), .btn-direct:hover { transform: translateY(-
 .nav-tab:hover { filter: brightness(1.1); transform: translateY(-1px); }
 /* The open page keeps its colour but gets a white ring and a lift. */
 .nav-tab[aria-selected="true"] { border-color: rgba(255, 255, 255, 0.9); box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.85), 0 8px 18px rgba(0, 0, 0, 0.35); transform: translateY(-1px); filter: brightness(1.05); }
+
+/* Top-right action buttons: Support = blue, Admin Panel = orange, Log out = red. */
+a.topbar-link[href^="https://wa.me"] { background: #2563eb; border-color: rgba(255, 255, 255, 0.35); color: #fff; }
+#admin-link { background: #e8820c; border-color: rgba(255, 255, 255, 0.35); color: #fff; }
+#logout { background: #e11d48; border-color: rgba(255, 255, 255, 0.35); color: #fff; }
+a.topbar-link[href^="https://wa.me"]:hover, #admin-link:hover, #logout:hover { filter: brightness(1.1); }
 .nav-tab[aria-selected="true"] {
   background: linear-gradient(135deg, var(--brand-blue), #3b82f6);
   border-color: rgba(255, 255, 255, 0.6);
