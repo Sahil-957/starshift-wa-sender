@@ -926,3 +926,23 @@ button.primary:hover:not(:disabled), .btn-direct:hover { transform: translateY(-
 .page-menu-dropdown .nav-tab[data-page="unsub"]     { background: #0e96c0; }
 .page-menu-dropdown .nav-tab[data-page="extract"]   { background: #0fa6ad; }
 .page-menu-dropdown .nav-tab[data-page="api"]       { background: #14b8a6; }
+
+/* ---- Simple, clean dropdown: plain white list, no pills/icons ---- */
+.page-menu-dropdown {
+  min-width: 200px; padding: 6px; border-radius: 10px; gap: 0;
+  background: #fff; border: 1px solid #e3e8ee;
+  box-shadow: 0 14px 34px -10px rgba(16, 32, 64, 0.22);
+}
+.page-menu-dropdown .nav-tab,
+.page-menu-dropdown .menu-item {
+  background: transparent !important; background-image: none !important; color: #1f2d4a !important;
+  border: none !important; box-shadow: none !important; border-radius: 6px;
+  padding: 9px 12px; font-size: 13px; font-weight: 600;
+}
+.page-menu-dropdown .nav-tab::before,
+.page-menu-dropdown .menu-item::before { content: none !important; }
+.page-menu-dropdown .nav-tab:hover,
+.page-menu-dropdown .menu-item:hover { background: #f1f4f8 !important; transform: none; filter: none; box-shadow: none; }
+.page-menu-dropdown .nav-tab[aria-selected="true"] { background: #eef3ff !important; color: #1d4ed8 !important; box-shadow: none; }
+.page-menu-dropdown #logout { color: #dc2626 !important; }
+.page-menu-dropdown .menu-sep { background: #e6eaf0; margin: 5px 6px; }
