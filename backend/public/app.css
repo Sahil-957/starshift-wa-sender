@@ -808,7 +808,7 @@ button.primary:hover:not(:disabled), .btn-direct:hover { transform: translateY(-
 /* Navigation bar in the same navy→blue as the Direct Send button — header above stays green */
 /* ---- Dark-navy header + nav (corporate look), cards below stay light ---- */
 .topbar { background: linear-gradient(120deg, #0b1d3d 0%, #16315c 100%); }
-.navrow { background: linear-gradient(120deg, #091834 0%, #102a50 100%); border-top: 1px solid rgba(255, 255, 255, 0.06); }
+.navrow { background: linear-gradient(120deg, #091834 0%, #102a50 100%); border-top: 1px solid rgba(255, 255, 255, 0.06); padding: 9px 24px; }
 /* Colourful tabs — each page its own vivid solid colour on the dark-navy bar. */
 .nav-tab { color: #fff; font-weight: 700; border: 1px solid rgba(255, 255, 255, 0.18); }
 .nav-tab[data-page="campaign"]  { background: #2563eb; }
@@ -859,8 +859,8 @@ button.primary:hover:not(:disabled), .btn-direct:hover { transform: translateY(-
 .page-menu-btn {
   display: inline-flex; align-items: center; gap: 8px; cursor: pointer;
   padding: 10px 18px; border-radius: 10px; border: none; font: 700 14px inherit; font-family: inherit;
-  background: linear-gradient(120deg, #0b1d3d, #16315c); color: #fff;
-  box-shadow: 0 6px 16px -8px rgba(11, 29, 61, 0.9);
+  background: rgba(255, 255, 255, 0.1); color: #fff; border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 6px 16px -8px rgba(0, 0, 0, 0.5);
 }
 .page-menu-btn:hover { filter: brightness(1.1); }
 .page-menu-dropdown {
