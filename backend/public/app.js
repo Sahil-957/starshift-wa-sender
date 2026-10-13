@@ -119,6 +119,18 @@ $("reset-password").addEventListener("click", async () => {
 
 $("logout").addEventListener("click", signOut);
 
+// ---------- Settings (gear) dropdown ----------
+const settingsBtn = $("settings-btn"), settingsDropdown = $("settings-dropdown");
+function closeSettings() { settingsDropdown.classList.add("hidden"); settingsBtn.setAttribute("aria-expanded", "false"); }
+settingsBtn.addEventListener("click", (e) => {
+  e.stopPropagation();
+  const opened = settingsDropdown.classList.toggle("hidden") === false;
+  settingsBtn.setAttribute("aria-expanded", opened ? "true" : "false");
+});
+document.addEventListener("click", (e) => {
+  if (!settingsDropdown.classList.contains("hidden") && !e.target.closest(".settings-menu")) closeSettings();
+});
+
 // ---------- Navigation ----------
 const PAGES = ["campaign", "sheet", "broadcast", "reports", "chatbot", "quick", "unsub", "extract", "api"];
 function showPage(page) {
@@ -138,7 +150,7 @@ function showPage(page) {
 document.querySelectorAll(".nav-tab").forEach((tab) => tab.addEventListener("click", () => showPage(tab.dataset.page)));
 
 // ---------- WhatsApp connection ----------
-$("wa-chip-btn").addEventListener("click", () => $("wa-panel").classList.toggle("hidden"));
+$("wa-chip-btn").addEventListener("click", () => { $("wa-panel").classList.toggle("hidden"); closeSettings(); });
 
 async function refreshStatus() {
   try {

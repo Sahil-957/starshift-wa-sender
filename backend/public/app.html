@@ -12,9 +12,18 @@
     <div class="brand"><span class="logo">SWAS</span><h1>Starshift WA Sender Dashboard</h1></div>
     <div class="topbar-actions">
       <span class="logged-in-as" id="account-label"></span>
-      <a class="topbar-link" href="https://wa.me/917028080364" target="_blank" rel="noopener">Support</a>
-      <a class="topbar-link hidden" id="admin-link" href="/admin">Admin Panel</a>
-      <button id="logout" class="topbar-link hidden">Log out</button>
+      <div class="settings-menu">
+        <button id="settings-btn" class="settings-btn" aria-label="Settings" aria-expanded="false" title="Settings">⚙</button>
+        <div id="settings-dropdown" class="settings-dropdown hidden">
+          <button id="wa-chip-btn" class="menu-item"><i id="status-dot" class="wa-dot"></i><span id="status-text">Checking WhatsApp…</span></button>
+          <button id="connect" class="menu-item menu-green hidden">Link WhatsApp</button>
+          <button id="unlink" class="menu-item hidden">Unlink WhatsApp</button>
+          <div class="menu-sep"></div>
+          <a class="menu-item menu-blue" href="https://wa.me/917028080364" target="_blank" rel="noopener">Support</a>
+          <a class="menu-item menu-orange hidden" id="admin-link" href="/admin">Admin Panel</a>
+          <button id="logout" class="menu-item menu-red hidden">Log out</button>
+        </div>
+      </div>
     </div>
   </header>
 
@@ -58,11 +67,6 @@
       <button class="nav-tab" data-page="unsub">Unsubscribers</button>
       <button class="nav-tab" data-page="extract">Chat Extract</button>
       <button class="nav-tab" data-page="api">API</button>
-    </div>
-    <div class="wa-chip">
-      <button id="wa-chip-btn" class="wa-chip-btn"><i id="status-dot" class="wa-dot"></i><span id="status-text">Checking WhatsApp…</span></button>
-      <button id="connect" class="wa-chip-action hidden">Link WhatsApp</button>
-      <button id="unlink" class="wa-chip-action hidden">Unlink</button>
     </div>
   </nav>
 

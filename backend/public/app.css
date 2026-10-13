@@ -824,15 +824,31 @@ button.primary:hover:not(:disabled), .btn-direct:hover { transform: translateY(-
 /* The open page keeps its colour but gets a white ring and a lift. */
 .nav-tab[aria-selected="true"] { border-color: rgba(255, 255, 255, 0.9); box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.85), 0 8px 18px rgba(0, 0, 0, 0.35); transform: translateY(-1px); filter: brightness(1.05); }
 
-/* Top-right action buttons: Support = blue, Admin Panel = orange, Log out = red. */
-a.topbar-link[href^="https://wa.me"] { background: #2563eb; border-color: rgba(255, 255, 255, 0.35); color: #fff; }
-#admin-link { background: #e8820c; border-color: rgba(255, 255, 255, 0.35); color: #fff; }
-#logout { background: #e11d48; border-color: rgba(255, 255, 255, 0.35); color: #fff; }
-a.topbar-link[href^="https://wa.me"]:hover, #admin-link:hover, #logout:hover { filter: brightness(1.1); }
-
-/* Hide the WhatsApp status/Unlink chip in the nav bar (per request). */
-.wa-chip { display: none !important; }
-.nav-tab[aria-selected="true"] {
-  background: linear-gradient(135deg, var(--brand-blue), #3b82f6);
-  border-color: rgba(255, 255, 255, 0.6);
+/* ---- Settings (gear) menu holding Support / Admin / WhatsApp / Log out ---- */
+.settings-menu { position: relative; }
+.settings-btn {
+  width: 38px; height: 38px; border-radius: 50%; cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, 0.4); background: rgba(255, 255, 255, 0.14);
+  color: #fff; font-size: 18px; line-height: 1; display: flex; align-items: center; justify-content: center;
+  transition: transform 0.25s ease, background 0.16s ease;
 }
+.settings-btn:hover { background: rgba(255, 255, 255, 0.26); transform: rotate(45deg); }
+.settings-dropdown {
+  position: absolute; top: calc(100% + 10px); right: 0; z-index: 60;
+  min-width: 220px; padding: 8px; display: flex; flex-direction: column; gap: 4px;
+  background: #0f2344; border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 12px;
+  box-shadow: 0 18px 44px -12px rgba(0, 0, 0, 0.6);
+}
+.settings-dropdown.hidden { display: none; }
+.settings-dropdown .menu-item {
+  display: flex; align-items: center; gap: 8px; width: 100%; text-align: left;
+  padding: 10px 12px; border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 9px;
+  background: rgba(255, 255, 255, 0.06); color: #eaf1ff; font: 600 13px inherit; font-family: inherit;
+  cursor: pointer; text-decoration: none; transition: filter 0.15s ease, background 0.15s ease;
+}
+.settings-dropdown .menu-item:hover { filter: brightness(1.12); background: rgba(255, 255, 255, 0.12); }
+.settings-dropdown .menu-blue   { background: #2563eb; border-color: transparent; color: #fff; }
+.settings-dropdown .menu-orange { background: #e8820c; border-color: transparent; color: #fff; }
+.settings-dropdown .menu-red    { background: #e11d48; border-color: transparent; color: #fff; }
+.settings-dropdown .menu-green  { background: #16a34a; border-color: transparent; color: #fff; }
+.menu-sep { height: 1px; background: rgba(255, 255, 255, 0.12); margin: 4px 2px; }
