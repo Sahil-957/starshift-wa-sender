@@ -762,3 +762,45 @@ button.primary:hover:not(:disabled), .btn-direct:hover { transform: translateY(-
 
 /* Live WhatsApp dot gets a soft halo */
 .wa-dot.ok { box-shadow: 0 0 0 3px rgba(37, 211, 102, 0.28); }
+
+/* ============================================================
+   Bold colour pass — every section gets its own coloured header bar,
+   a matching thicker top band, and a soft tinted body, so the page
+   reads as vivid and "rich" at a glance.
+   ============================================================ */
+.card { padding-top: 0; }
+.card::before { height: 6px; }
+
+/* Full-width tinted heading bar inside each card */
+.card h2 {
+  margin: 0 -18px 14px; padding: 13px 18px 12px;
+  font-size: 15px; font-weight: 800; letter-spacing: 0.2px;
+  color: var(--brand-ink);
+  background: linear-gradient(90deg, var(--brand-soft) 0%, rgba(226, 244, 241, 0) 100%);
+  border-bottom: 1px solid var(--line);
+}
+.card h2::before { box-shadow: 0 0 0 3px rgba(18, 140, 126, 0.18); }
+
+/* Colour-code the bar + dot by the card's position, matching the top band */
+.card:nth-of-type(2n) h2 { color: var(--green-ink); background: linear-gradient(90deg, var(--green-soft) 0%, rgba(227, 251, 233, 0) 100%); }
+.card:nth-of-type(3n) h2 { color: var(--amber-ink); background: linear-gradient(90deg, var(--amber-soft) 0%, rgba(255, 244, 224, 0) 100%); }
+.card:nth-of-type(4n) h2 { color: var(--blue-ink);  background: linear-gradient(90deg, var(--blue-soft) 0%, rgba(231, 240, 255, 0) 100%); }
+
+/* A faint colour wash over the whole card body to lift it off the page */
+.card { background: linear-gradient(180deg, rgba(18, 140, 126, 0.05), rgba(255, 255, 255, 0) 130px), var(--surface); }
+.card:nth-of-type(2n) { background: linear-gradient(180deg, rgba(37, 211, 102, 0.06), rgba(255, 255, 255, 0) 130px), var(--surface); }
+.card:nth-of-type(3n) { background: linear-gradient(180deg, rgba(245, 165, 36, 0.07), rgba(255, 255, 255, 0) 130px), var(--surface); }
+.card:nth-of-type(4n) { background: linear-gradient(180deg, rgba(59, 130, 246, 0.07), rgba(255, 255, 255, 0) 130px), var(--surface); }
+
+/* A 5th accent — violet/pink — so the palette clearly rotates through several hues */
+:root { --violet: #8b5cf6; --violet-soft: #efeaff; --violet-ink: #5b32c9; }
+.card:nth-of-type(5n)::before { background: linear-gradient(120deg, var(--violet), var(--pink)); }
+.card:nth-of-type(5n) h2 { color: var(--violet-ink); background: linear-gradient(90deg, var(--violet-soft) 0%, rgba(239, 234, 255, 0) 100%); }
+.card:nth-of-type(5n) h2::before { background: linear-gradient(120deg, var(--violet), var(--pink)); box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.18); }
+.card:nth-of-type(5n) { background: linear-gradient(180deg, rgba(139, 92, 246, 0.07), rgba(255, 255, 255, 0) 130px), var(--surface); }
+
+/* Make the top colour bands fully vivid (solid-ish), not pale */
+.card::before { background: linear-gradient(120deg, var(--teal), var(--brand)); }
+.card:nth-of-type(2n)::before { background: linear-gradient(120deg, var(--green), var(--teal)); }
+.card:nth-of-type(3n)::before { background: linear-gradient(120deg, var(--amber), #ff7a45); }
+.card:nth-of-type(4n)::before { background: linear-gradient(120deg, var(--blue), #22d3ee); }
