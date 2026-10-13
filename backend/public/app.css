@@ -804,3 +804,10 @@ button.primary:hover:not(:disabled), .btn-direct:hover { transform: translateY(-
 .card:nth-of-type(2n)::before { background: linear-gradient(120deg, var(--green), var(--teal)); }
 .card:nth-of-type(3n)::before { background: linear-gradient(120deg, var(--amber), #ff7a45); }
 .card:nth-of-type(4n)::before { background: linear-gradient(120deg, var(--blue), #22d3ee); }
+
+/* Navigation bar in blue (per request) — header above stays green */
+.navrow { background: linear-gradient(120deg, #0b3a82 0%, #1769e0 52%, #22a3ee 100%); }
+.nav-tab[aria-selected="true"] {
+  background: linear-gradient(135deg, #1769e0, #22d3ee);
+  border-color: rgba(255, 255, 255, 0.6);
+}
