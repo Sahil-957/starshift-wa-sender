@@ -876,7 +876,7 @@ button.primary:hover:not(:disabled), .btn-direct:hover { transform: translateY(-
 
 /* ---- Richer Menu dropdown: glossy items, icons, hover slide, soft entrance ---- */
 .page-menu-dropdown {
-  min-width: 210px; padding: 8px; border-radius: 14px; gap: 5px;
+  min-width: 184px; padding: 6px; border-radius: 12px; gap: 4px;
   background: linear-gradient(180deg, #13294d 0%, #0d1f3d 100%);
   border: 1px solid rgba(255, 255, 255, 0.14);
   box-shadow: 0 24px 60px -16px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.06);
@@ -887,7 +887,7 @@ button.primary:hover:not(:disabled), .btn-direct:hover { transform: translateY(-
 /* Compact rows: glossy sheen over the colour, with a left icon slot. */
 .page-menu-dropdown .nav-tab,
 .page-menu-dropdown .menu-item {
-  padding: 8px 11px; border-radius: 9px; font-size: 12.5px; font-weight: 700; gap: 7px;
+  padding: 6px 9px; border-radius: 8px; font-size: 11.5px; font-weight: 700; gap: 6px;
   background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(0, 0, 0, 0.12));
   box-shadow: 0 3px 8px -4px rgba(0, 0, 0, 0.45); border: none;
   transition: transform 0.14s ease, filter 0.14s ease, box-shadow 0.14s ease;
@@ -899,7 +899,7 @@ button.primary:hover:not(:disabled), .btn-direct:hover { transform: translateY(-
 }
 /* Little leading icons for each row */
 .page-menu-dropdown .nav-tab::before,
-.page-menu-dropdown .menu-item::before { font-size: 13px; width: 15px; display: inline-block; text-align: center; }
+.page-menu-dropdown .menu-item::before { font-size: 12px; width: 14px; display: inline-block; text-align: center; }
 .page-menu-dropdown .nav-tab[data-page="campaign"]::before  { content: "📣"; }
 .page-menu-dropdown .nav-tab[data-page="sheet"]::before      { content: "📊"; }
 .page-menu-dropdown .nav-tab[data-page="broadcast"]::before  { content: "📢"; }
