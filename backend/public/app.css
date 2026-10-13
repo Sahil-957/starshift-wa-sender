@@ -840,17 +840,17 @@ button.primary:hover:not(:disabled), .btn-direct:hover { transform: translateY(-
   box-shadow: 0 18px 44px -12px rgba(0, 0, 0, 0.6);
 }
 .settings-dropdown.hidden { display: none; }
-.settings-dropdown .menu-item {
+.menu-item {
   display: flex; align-items: center; gap: 8px; width: 100%; text-align: left;
   padding: 10px 12px; border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 9px;
   background: rgba(255, 255, 255, 0.06); color: #eaf1ff; font: 600 13px inherit; font-family: inherit;
   cursor: pointer; text-decoration: none; transition: filter 0.15s ease, background 0.15s ease;
 }
-.settings-dropdown .menu-item:hover { filter: brightness(1.12); background: rgba(255, 255, 255, 0.12); }
-.settings-dropdown .menu-blue   { background: #2563eb; border-color: transparent; color: #fff; }
-.settings-dropdown .menu-orange { background: #e8820c; border-color: transparent; color: #fff; }
-.settings-dropdown .menu-red    { background: #e11d48; border-color: transparent; color: #fff; }
-.settings-dropdown .menu-green  { background: #16a34a; border-color: transparent; color: #fff; }
+.menu-item:hover { filter: brightness(1.12); background: rgba(255, 255, 255, 0.12); }
+.menu-blue   { background: #2563eb; border-color: transparent; color: #fff; }
+.menu-orange { background: #e8820c; border-color: transparent; color: #fff; }
+.menu-red    { background: #e11d48; border-color: transparent; color: #fff; }
+.menu-green  { background: #16a34a; border-color: transparent; color: #fff; }
 .menu-sep { height: 1px; background: rgba(255, 255, 255, 0.12); margin: 4px 2px; }
 
 /* A "Menu" button on the New Campaign page that opens a colourful dropdown list

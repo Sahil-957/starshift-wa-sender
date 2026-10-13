@@ -119,19 +119,7 @@ $("reset-password").addEventListener("click", async () => {
 
 $("logout").addEventListener("click", signOut);
 
-// ---------- Settings (gear) dropdown ----------
-const settingsBtn = $("settings-btn"), settingsDropdown = $("settings-dropdown");
-function closeSettings() { settingsDropdown.classList.add("hidden"); settingsBtn.setAttribute("aria-expanded", "false"); }
-settingsBtn.addEventListener("click", (e) => {
-  e.stopPropagation();
-  const opened = settingsDropdown.classList.toggle("hidden") === false;
-  settingsBtn.setAttribute("aria-expanded", opened ? "true" : "false");
-});
-document.addEventListener("click", (e) => {
-  if (!settingsDropdown.classList.contains("hidden") && !e.target.closest(".settings-menu")) closeSettings();
-});
-
-// ---------- Page "Menu" dropdown (New Campaign page) ----------
+// ---------- The one Menu dropdown (pages + WhatsApp + Support/Admin/Log out) ----------
 const pageMenuBtn = $("page-menu-btn"), pageMenuDropdown = $("page-menu-dropdown");
 function closePageMenu() { pageMenuDropdown.classList.add("hidden"); pageMenuBtn.setAttribute("aria-expanded", "false"); }
 pageMenuBtn.addEventListener("click", (e) => {
@@ -139,7 +127,7 @@ pageMenuBtn.addEventListener("click", (e) => {
   const opened = pageMenuDropdown.classList.toggle("hidden") === false;
   pageMenuBtn.setAttribute("aria-expanded", opened ? "true" : "false");
 });
-pageMenuDropdown.querySelectorAll(".nav-tab").forEach((t) => t.addEventListener("click", closePageMenu));
+pageMenuDropdown.querySelectorAll(".nav-tab, #connect, #unlink, #admin-link, #logout").forEach((t) => t.addEventListener("click", closePageMenu));
 document.addEventListener("click", (e) => {
   if (!pageMenuDropdown.classList.contains("hidden") && !e.target.closest(".page-menu")) closePageMenu();
 });
@@ -163,7 +151,7 @@ function showPage(page) {
 document.querySelectorAll(".nav-tab").forEach((tab) => tab.addEventListener("click", () => showPage(tab.dataset.page)));
 
 // ---------- WhatsApp connection ----------
-$("wa-chip-btn").addEventListener("click", () => { $("wa-panel").classList.toggle("hidden"); closeSettings(); });
+$("wa-chip-btn").addEventListener("click", () => { $("wa-panel").classList.toggle("hidden"); closePageMenu(); });
 
 async function refreshStatus() {
   try {
