@@ -829,6 +829,9 @@ a.topbar-link[href^="https://wa.me"] { background: #2563eb; border-color: rgba(2
 #admin-link { background: #e8820c; border-color: rgba(255, 255, 255, 0.35); color: #fff; }
 #logout { background: #e11d48; border-color: rgba(255, 255, 255, 0.35); color: #fff; }
 a.topbar-link[href^="https://wa.me"]:hover, #admin-link:hover, #logout:hover { filter: brightness(1.1); }
+
+/* Hide the WhatsApp status/Unlink chip in the nav bar (per request). */
+.wa-chip { display: none !important; }
 .nav-tab[aria-selected="true"] {
   background: linear-gradient(135deg, var(--brand-blue), #3b82f6);
   border-color: rgba(255, 255, 255, 0.6);
