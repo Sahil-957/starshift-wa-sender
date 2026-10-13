@@ -852,3 +852,7 @@ button.primary:hover:not(:disabled), .btn-direct:hover { transform: translateY(-
 .settings-dropdown .menu-red    { background: #e11d48; border-color: transparent; color: #fff; }
 .settings-dropdown .menu-green  { background: #16a34a; border-color: transparent; color: #fff; }
 .menu-sep { height: 1px; background: rgba(255, 255, 255, 0.12); margin: 4px 2px; }
+
+/* The same colourful tab bar repeated at the top of the New Campaign page. */
+.page-quicknav { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+.page-quicknav .nav-tab[aria-selected="true"] { box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.28), 0 8px 18px rgba(0, 0, 0, 0.18); }
