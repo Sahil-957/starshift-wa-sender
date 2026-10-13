@@ -310,16 +310,18 @@ function loadSelected() { try { selected = JSON.parse(localStorage.getItem("star
 function renderSelected() {
   $("selected-count").textContent = selected.length;
   $("selected-list").innerHTML = selected.length
-    ? selected.map((r) => `<div class="pick-row"><div><div class="pname">${esc(r.name || r.mobile)}</div><div class="ptarget">${r.source === "group" ? "Group" : r.mobile || "contact"}</div></div><button data-rm="${esc(recKey(r))}">Remove</button></div>`).join("")
+    ? selected.map((r, i) => `<div class="pick-row"><div><div class="pname">${esc(r.name || r.mobile)}</div><div class="ptarget">${r.source === "group" ? "Group" : r.mobile || "contact"}</div></div><button data-rm="${i}">Remove</button></div>`).join("")
     : `<p class="empty-note">Nobody selected yet.</p>`;
   $("selected-list").querySelectorAll("[data-rm]").forEach((b) =>
-    b.addEventListener("click", () => { selected = selected.filter((r) => recKey(r) !== b.dataset.rm); renderSelected(); })
+    b.addEventListener("click", () => { selected.splice(Number(b.dataset.rm), 1); renderSelected(); })
   );
   saveSelected();
 }
-function addRecipient(r) {
+// allowDup: imports (Excel / Google Sheets) keep every row even if the number repeats; picking from
+// contacts/groups/lists stays deduped so an accidental double-click doesn't add the same person twice.
+function addRecipient(r, allowDup) {
   const rec = { source: r.source || "number", name: r.name || "", mobile: (r.mobile || "").replace(/\D/g, ""), custom1: r.custom1 || "", custom2: r.custom2 || "", fields: r.fields || {} };
-  if (!selected.some((x) => recKey(x) === recKey(rec))) selected.push(rec);
+  if (allowDup || !selected.some((x) => recKey(x) === recKey(rec))) selected.push(rec);
   renderSelected();
 }
 $("clear-selected").addEventListener("click", () => { selected = []; renderSelected(); });
@@ -408,7 +410,7 @@ $("excel").addEventListener("change", async (event) => {
     const wb = XLSX.read(await file.arrayBuffer(), { type: "array" });
     const parsed = parseExcel(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: "" }));
     if (!parsed.length) { $("excel-info").textContent = "No valid numbers in that file."; return; }
-    parsed.forEach((c) => addRecipient({ source: "number", ...c }));
+    parsed.forEach((c) => addRecipient({ source: "number", ...c }, true));
     $("excel-info").textContent = `${parsed.length} added from ${file.name}`;
   } catch (e) { $("excel-info").textContent = `Could not read: ${e.message}`; }
 });
@@ -423,7 +425,7 @@ $("sheet-import").addEventListener("click", async () => {
     const wb = XLSX.read(csv, { type: "string" });
     const parsed = parseExcel(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: "" }));
     if (!parsed.length) return alert("No valid numbers in that sheet.");
-    parsed.forEach((c) => addRecipient({ source: "number", ...c }));
+    parsed.forEach((c) => addRecipient({ source: "number", ...c }, true));
     alert(`${parsed.length} added from Google Sheets.`);
   } catch (e) { alert(e.message); } finally { $("sheet-import").disabled = false; }
 });
