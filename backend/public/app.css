@@ -806,9 +806,13 @@ button.primary:hover:not(:disabled), .btn-direct:hover { transform: translateY(-
 .card:nth-of-type(4n)::before { background: linear-gradient(120deg, var(--blue), #22d3ee); }
 
 /* Navigation bar in the same navy→blue as the Direct Send button — header above stays green */
-/* The Direct Send button's navy→blue, kept punchy on the wide bar by holding navy
-   on the left and finishing on a brighter blue on the right, like the button's corners. */
-.navrow { background: linear-gradient(100deg, var(--navy) 0%, #0d3f8f 22%, var(--brand-blue) 62%, #2f86f0 100%); }
+/* ---- Dark-navy header + nav (corporate look), cards below stay light ---- */
+.topbar { background: linear-gradient(120deg, #0b1d3d 0%, #16315c 100%); }
+.navrow { background: linear-gradient(120deg, #091834 0%, #102a50 100%); border-top: 1px solid rgba(255, 255, 255, 0.06); }
+/* Tabs read as clean pills on navy; the selected one is a bright electric blue. */
+.nav-tab { background: rgba(255, 255, 255, 0.07); border-color: rgba(255, 255, 255, 0.16); color: rgba(255, 255, 255, 0.85); }
+.nav-tab:hover { background: rgba(255, 255, 255, 0.16); }
+.nav-tab[aria-selected="true"] { background: linear-gradient(135deg, var(--brand-blue), #3b82f6); border-color: rgba(255, 255, 255, 0.6); box-shadow: 0 6px 16px rgba(23, 105, 224, 0.45); }
 .nav-tab[aria-selected="true"] {
   background: linear-gradient(135deg, var(--brand-blue), #3b82f6);
   border-color: rgba(255, 255, 255, 0.6);
