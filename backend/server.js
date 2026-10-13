@@ -8,6 +8,7 @@ const adminRoutes = require("./routes/admin");
 const waRoutes = require("./routes/wa");
 const campaignRoutes = require("./routes/campaigns");
 const listRoutes = require("./routes/lists");
+const draftRoutes = require("./routes/drafts");
 const importRoutes = require("./routes/import");
 const sheetJobRoutes = require("./routes/sheetJobs");
 const broadcastRoutes = require("./routes/broadcasts");
@@ -33,6 +34,8 @@ app.use("/api/wa", express.json({ limit: "70mb" }), requireAuth, waRoutes);
 // Creating a campaign posts the whole contact list plus any attachment, so this route takes a larger body.
 app.use("/api/campaigns", express.json({ limit: "60mb" }), requireAuth, campaignRoutes);
 app.use("/api/lists", express.json({ limit: "20mb" }), requireAuth, listRoutes);
+// A saved draft can carry the compose attachment inline, so this route takes a larger body.
+app.use("/api/drafts", express.json({ limit: "60mb" }), requireAuth, draftRoutes);
 // Upload mode posts every parsed row, so this route takes a larger body than the rest.
 app.use("/api/sheet-jobs", express.json({ limit: "30mb" }), requireAuth, sheetJobRoutes);
 // File uploads (the current broadcast image/pdf) come inline, so this route takes a larger body.

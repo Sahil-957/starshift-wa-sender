@@ -51,6 +51,7 @@ function signedIn(mobile, role, feats) {
   updatePreview();
   loadSelected();
   renderSelected();
+  loadDrafts();
   // Show cached contacts/groups instantly, then refresh them in the background - a refresh never empties them.
   _contacts = cacheGet("starshiftContacts");
   _groups = cacheGet("starshiftGroups");
@@ -454,6 +455,82 @@ $("save-as-list").addEventListener("click", async () => {
   const name = prompt("Name this list:");
   if (!name) return;
   try { await api("/lists", "POST", { name, recipients: selected }); alert("List saved."); } catch (e) { alert(e.message); }
+});
+
+// ---------- Saved drafts (the whole compose form, reusable later) ----------
+let draftsById = {};
+
+// Snapshot every compose field (including any attachment) so a draft restores the form exactly.
+function collectForm() {
+  return {
+    name: $("campaign-name").value,
+    message: $("message").value,
+    caption: $("caption").value,
+    footer: { enabled: $("footer-enabled").checked, text: $("footer-text").value, keyword: $("footer-keyword").value },
+    pace: document.querySelector('input[name="pace"]:checked').value,
+    gap: $("gap").value, minGap: $("min-gap").value, maxGap: $("max-gap").value,
+    batchEnabled: $("batch-enabled").checked, batchSize: $("batch-size").value, batchPause: $("batch-pause").value,
+    when: document.querySelector('input[name="when"]:checked').value,
+    scheduleAt: $("schedule-at").value, repeat: $("repeat").value,
+    attachment, // { dataUrl, name, mimeType } or null
+  };
+}
+
+function applyForm(f) {
+  if (!f) return;
+  $("campaign-name").value = f.name || "";
+  $("message").value = f.message || "";
+  $("caption").value = f.caption || "";
+  const ft = f.footer || {};
+  $("footer-enabled").checked = !!ft.enabled;
+  if (ft.text != null) $("footer-text").value = ft.text;
+  if (ft.keyword != null) $("footer-keyword").value = ft.keyword;
+
+  const paceEl = document.querySelector(`input[name="pace"][value="${f.pace === "fixed" ? "fixed" : "random"}"]`);
+  if (paceEl) { paceEl.checked = true; paceEl.dispatchEvent(new Event("change")); }
+  if (f.gap != null) { $("gap").value = f.gap; $("gap-range").value = f.gap; }
+  if (f.minGap != null) $("min-gap").value = f.minGap;
+  if (f.maxGap != null) $("max-gap").value = f.maxGap;
+  $("batch-enabled").checked = f.batchEnabled !== false;
+  if (f.batchSize != null) { $("batch-size").value = f.batchSize; $("batch-size-range").value = f.batchSize; }
+  if (f.batchPause != null) { $("batch-pause").value = f.batchPause; $("batch-pause-range").value = f.batchPause; }
+
+  const whenEl = document.querySelector(`input[name="when"][value="${f.when === "later" ? "later" : "now"}"]`);
+  if (whenEl) { whenEl.checked = true; whenEl.dispatchEvent(new Event("change")); }
+  if (f.scheduleAt != null) $("schedule-at").value = f.scheduleAt;
+  if (f.repeat != null) $("repeat").value = f.repeat;
+
+  if (f.attachment && f.attachment.dataUrl) {
+    attachment = f.attachment;
+    $("attach-info").textContent = `📎 ${f.attachment.name || "file"} — message is the caption.`;
+    $("attach-clear").classList.remove("hidden");
+  } else {
+    attachment = null; $("attach").value = "";
+    $("attach-info").textContent = "Photo, video, PDF or document.";
+    $("attach-clear").classList.add("hidden");
+  }
+  updatePreview();
+}
+
+async function loadDrafts() {
+  try {
+    const { drafts = [], max = 5 } = await api("/drafts");
+    draftsById = Object.fromEntries(drafts.map((d) => [d.id, d]));
+    $("drafts-count").textContent = `(${drafts.length}/${max})`;
+    $("drafts-list").innerHTML = drafts.length
+      ? drafts.map((d) => `<div class="pick-row"><div style="flex:1"><div class="pname">${esc(d.name)}</div><div class="ptarget">Saved ${new Date(d.savedAt).toLocaleDateString()}</div></div><div class="row-actions"><button data-loaddraft="${d.id}">Load</button><button data-deldraft="${d.id}">Delete</button></div></div>`).join("")
+      : `<p class="empty-note">No saved drafts yet. Fill the form, then “Save as draft”.</p>`;
+    $("drafts-list").querySelectorAll("[data-loaddraft]").forEach((b) => b.addEventListener("click", () => applyForm(draftsById[b.dataset.loaddraft]?.form)));
+    $("drafts-list").querySelectorAll("[data-deldraft]").forEach((b) => b.addEventListener("click", async () => { if (confirm("Delete this draft?")) { await api(`/drafts/${b.dataset.deldraft}`, "DELETE"); loadDrafts(); } }));
+  } catch (e) { $("drafts-list").innerHTML = `<p class="empty-note">${esc(e.message)}</p>`; }
+}
+
+$("save-draft").addEventListener("click", async () => {
+  if (!$("message").value.trim() && !attachment) return alert("Write a message or attach a file first.");
+  const name = prompt("Name this draft (saving over the same name updates it):", $("campaign-name").value.trim());
+  if (!name) return;
+  try { await api("/drafts", "POST", { name, form: collectForm() }); loadDrafts(); }
+  catch (e) { alert(e.message); }
 });
 
 // ---------- Attachment ----------

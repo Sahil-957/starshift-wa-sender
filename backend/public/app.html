@@ -263,6 +263,13 @@
             <h2>5. Campaign</h2>
             <label for="campaign-name">Campaign name</label>
             <input id="campaign-name" type="text" placeholder="e.g. Diwali Offer Blast" />
+            <div class="drafts-box">
+              <div class="row" style="justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px">
+                <span class="opt-label" style="margin:0">Saved drafts <span class="hint" id="drafts-count" style="margin:0"></span></span>
+                <button type="button" class="btn-link" id="save-draft">Save as draft</button>
+              </div>
+              <div class="pick-list" id="drafts-list"><p class="empty-note">No saved drafts yet.</p></div>
+            </div>
             <div class="campaign-buttons">
               <button id="send" class="primary" disabled>Save &amp; Start / Schedule</button>
               <button id="direct-send" class="btn-direct" disabled>⚡ Direct Send</button>
