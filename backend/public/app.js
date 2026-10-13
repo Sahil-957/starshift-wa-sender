@@ -131,6 +131,19 @@ document.addEventListener("click", (e) => {
   if (!settingsDropdown.classList.contains("hidden") && !e.target.closest(".settings-menu")) closeSettings();
 });
 
+// ---------- Page "Menu" dropdown (New Campaign page) ----------
+const pageMenuBtn = $("page-menu-btn"), pageMenuDropdown = $("page-menu-dropdown");
+function closePageMenu() { pageMenuDropdown.classList.add("hidden"); pageMenuBtn.setAttribute("aria-expanded", "false"); }
+pageMenuBtn.addEventListener("click", (e) => {
+  e.stopPropagation();
+  const opened = pageMenuDropdown.classList.toggle("hidden") === false;
+  pageMenuBtn.setAttribute("aria-expanded", opened ? "true" : "false");
+});
+pageMenuDropdown.querySelectorAll(".nav-tab").forEach((t) => t.addEventListener("click", closePageMenu));
+document.addEventListener("click", (e) => {
+  if (!pageMenuDropdown.classList.contains("hidden") && !e.target.closest(".page-menu")) closePageMenu();
+});
+
 // ---------- Navigation ----------
 const PAGES = ["campaign", "sheet", "broadcast", "reports", "chatbot", "quick", "unsub", "extract", "api"];
 function showPage(page) {
