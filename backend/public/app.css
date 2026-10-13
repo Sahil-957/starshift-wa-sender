@@ -915,3 +915,14 @@ button.primary:hover:not(:disabled), .btn-direct:hover { transform: translateY(-
 .page-menu-dropdown .menu-orange::before { content: "🛠"; }
 .page-menu-dropdown .menu-red::before    { content: "⎋"; }
 .menu-sep { margin: 6px 4px; }
+
+/* Cohesive blue→teal family for the page rows (replaces the clashing rainbow). */
+.page-menu-dropdown .nav-tab[data-page="campaign"]  { background: #1e3a8a; }
+.page-menu-dropdown .nav-tab[data-page="sheet"]     { background: #1e40af; }
+.page-menu-dropdown .nav-tab[data-page="broadcast"] { background: #1d4ed8; }
+.page-menu-dropdown .nav-tab[data-page="reports"]   { background: #2563eb; }
+.page-menu-dropdown .nav-tab[data-page="chatbot"]   { background: #2f7bd6; }
+.page-menu-dropdown .nav-tab[data-page="quick"]     { background: #1f8fcf; }
+.page-menu-dropdown .nav-tab[data-page="unsub"]     { background: #0e96c0; }
+.page-menu-dropdown .nav-tab[data-page="extract"]   { background: #0fa6ad; }
+.page-menu-dropdown .nav-tab[data-page="api"]       { background: #14b8a6; }
