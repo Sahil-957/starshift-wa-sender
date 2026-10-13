@@ -622,6 +622,13 @@ $("cancel").addEventListener("click", async () => {
   try { await api(`/campaigns/${activeCampaignId}/cancel`, "POST", {}); trackProgress(); } catch (error) { alert(error.message); }
 });
 
+// Pause while running, Resume while paused (the button's text says which it does now).
+$("pause").addEventListener("click", async () => {
+  if (!activeCampaignId) return;
+  const action = $("pause").dataset.resume === "1" ? "resume" : "pause";
+  try { await api(`/campaigns/${activeCampaignId}/${action}`, "POST", {}); trackProgress(); } catch (error) { alert(error.message); }
+});
+
 // ---------- Live progress (campaign card) ----------
 const LABEL = { scheduled: "Scheduled", running: "Sending", paused: "Paused", completed: "Completed", cancelled: "Cancelled" };
 
@@ -639,6 +646,11 @@ function renderProgress(c) {
       : c.status === "scheduled" ? `Scheduled for ${new Date(c.scheduleAt).toLocaleString()}.`
       : `${sent} sent, ${failed} failed, ${total - done} pending.`);
   $("cancel").classList.toggle("hidden", !active);
+  // Pause/Resume: shown while active, and only once sending has actually started (can't pause a plain schedule).
+  const pausable = active && c.status !== "scheduled";
+  $("pause").classList.toggle("hidden", !pausable);
+  $("pause").textContent = c.status === "paused" ? "Resume" : "Pause";
+  $("pause").dataset.resume = c.status === "paused" ? "1" : "0";
   if (!active) $("send").disabled = false;
   startCountdown(c);
 }
