@@ -56,6 +56,7 @@
         <button class="nav-tab" data-page="quick">Quick Replies</button>
         <button class="nav-tab" data-page="unsub">Unsubscribers</button>
         <button class="nav-tab" data-page="extract">Chat Extract</button>
+        <button class="nav-tab" data-page="chat">Chat</button>
         <button class="nav-tab" data-page="api">API</button>
         <div class="menu-sep"></div>
         <button id="wa-chip-btn" class="menu-item"><i id="status-dot" class="wa-dot"></i><span id="status-text">Checking WhatsApp…</span></button>
@@ -559,6 +560,47 @@
           <button type="button" class="primary" id="members-download">Download members Excel</button>
         </div>
         <p class="hint" id="members-status"></p>
+      </div>
+    </section>
+
+    <!-- ================= Chat ================= -->
+    <section id="page-chat" class="page hidden">
+      <div class="card chat-card">
+        <div class="chat-wrap">
+          <!-- Thread list -->
+          <aside class="chat-threads">
+            <div class="chat-threads-head">
+              <h2>Chats</h2>
+              <button type="button" id="chat-refresh" class="btn-link">Refresh</button>
+            </div>
+            <div class="chat-newrow">
+              <input id="chat-new-number" inputmode="tel" placeholder="New chat: number with country code" />
+              <button type="button" id="chat-new-open" class="secondary">Open</button>
+            </div>
+            <input id="chat-thread-search" placeholder="Search chats…" />
+            <div id="chat-thread-list" class="chat-thread-list"></div>
+            <p class="hint" id="chat-threads-status"></p>
+          </aside>
+
+          <!-- Conversation -->
+          <div class="chat-convo">
+            <div class="chat-convo-head">
+              <span id="chat-convo-title">Pick a chat, or start a new one</span>
+              <span class="muted" id="chat-convo-sub"></span>
+            </div>
+            <div id="chat-messages" class="chat-messages">
+              <p class="chat-empty">Your conversation will appear here. Received replies refresh automatically.</p>
+            </div>
+            <form id="chat-composer" class="chat-composer">
+              <button type="button" id="chat-attach-btn" class="chat-attach" title="Attach a photo, video or document">📎</button>
+              <input type="file" id="chat-attach-input" class="hidden" accept="image/*,video/*,application/pdf,.pdf,.doc,.docx,.xls,.xlsx" />
+              <textarea id="chat-input" rows="1" placeholder="Type a message…"></textarea>
+              <button type="submit" id="chat-send" class="primary">Send</button>
+            </form>
+            <div id="chat-attach-chip" class="chat-attach-chip hidden"></div>
+            <p class="hint" id="chat-send-status"></p>
+          </div>
+        </div>
       </div>
     </section>
 

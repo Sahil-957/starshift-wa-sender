@@ -250,7 +250,9 @@ async function send(mobile, { target, message, attachment }) {
       ? await groupJidByName(session, target.name)
       : target.type === "contact"
         ? contactJidByName(session, target.name)
-        : await numberJid(session, target.phone);
+        : target.type === "jid"
+          ? (String(target.jid || "").includes("@") ? target.jid : (() => { throw new Error("Invalid chat id."); })())
+          : await numberJid(session, target.phone);
 
   if (attachment?.dataUrl) {
     // Same rule as the WhatsApp Web path: the caption, or the message when there is no caption.
@@ -258,6 +260,7 @@ async function send(mobile, { target, message, attachment }) {
   } else {
     await session.sock.sendMessage(jid, { text: message });
   }
+  return jid; // the resolved chat jid (may be @lid); the live-chat UI uses it to open the new thread
 }
 
 /** Sends a plain text message from one linked account to a phone number (used for WhatsApp OTP delivery). */

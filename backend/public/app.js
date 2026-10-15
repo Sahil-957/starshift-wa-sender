@@ -25,7 +25,7 @@ const api = async (path, method = "GET", body) => {
 // Premium add-ons the seller can switch off per account; an unset flag means on.
 let features = { chatbot: true, extract: true };
 function applyFeatures() {
-  const map = { chatbot: features.chatbot !== false, extract: features.extract !== false };
+  const map = { chatbot: features.chatbot !== false, extract: features.extract !== false, chat: features.chat === true };
   document.querySelectorAll(".nav-tab[data-page]").forEach((tab) => {
     const page = tab.dataset.page;
     if (page in map) tab.classList.toggle("hidden", !map[page]);
@@ -66,6 +66,7 @@ function signOut() {
   sessionStorage.removeItem(tokenKey);
   token = "";
   [statusPoller, progressPoller, reportsPoller, sheetPoller, bcPoller].forEach(clearTimeout);
+  stopChatPolling(); _chatJid = "";
   clearInterval(countdownTimer);
   clearInterval(bcWatchTimer); bcWatchTimer = null; bcHandles.clear();
   selected = [];
@@ -133,13 +134,15 @@ document.addEventListener("click", (e) => {
 });
 
 // ---------- Navigation ----------
-const PAGES = ["campaign", "sheet", "broadcast", "reports", "chatbot", "quick", "unsub", "extract", "api"];
+const PAGES = ["campaign", "sheet", "broadcast", "reports", "chatbot", "quick", "unsub", "extract", "chat", "api"];
 function showPage(page) {
   document.querySelectorAll(".nav-tab").forEach((tab) => tab.setAttribute("aria-selected", tab.dataset.page === page));
   PAGES.forEach((p) => { const sec = $("page-" + p); if (sec) sec.classList.toggle("hidden", p !== page); });
   clearTimeout(reportsPoller);
   clearTimeout(sheetPoller);
+  stopChatPolling(); // leaving any page stops the chat pollers; re-armed when the Chat page opens
   if (page === "reports") loadReports();
+  if (page === "chat") openChatPage();
   if (page === "chatbot") loadBot();
   if (page === "quick") renderQuick();
   if (page === "unsub") loadUnsub();
@@ -1566,6 +1569,181 @@ $("api-copy").addEventListener("click", () => {
   if (!_apiKey) { $("api-status").textContent = "Generate a key first."; return; }
   navigator.clipboard?.writeText(_apiKey);
   $("api-status").textContent = "Copied.";
+});
+
+// ---------- Chat (live two-way) ----------
+// Reads recorded messages for the open thread and polls for new ones; sends through the same linked
+// WhatsApp as campaigns. Pollers run only while the Chat page is open (see showPage/stopChatPolling).
+let _chatThreads = [];
+let _chatJid = "";          // the open conversation's jid ("" = none)
+let _chatSendTarget = null; // { type:"jid", jid } for a known thread, or { type:"number", phone } for a new chat
+let _chatAttach = null;     // { dataUrl, name, mimeType } staged for the next send
+let _chatMsgPoller = null, _chatThreadPoller = null, _chatLastKey = "";
+const CHAT_MSG_MS = 5000, CHAT_THREAD_MS = 12000; // modest intervals keep server load low
+
+function stopChatPolling() { clearTimeout(_chatMsgPoller); clearTimeout(_chatThreadPoller); _chatMsgPoller = _chatThreadPoller = null; }
+
+async function openChatPage() {
+  await loadChatThreads();
+  if (_chatJid) loadChatMessages(); // re-open the last conversation if one was active
+}
+
+async function loadChatThreads() {
+  try {
+    const { chats } = await api("/wa/chat/threads");
+    _chatThreads = chats || [];
+    renderChatThreads($("chat-thread-search").value);
+    $("chat-threads-status").textContent = _chatThreads.length ? "" : "No chats yet. Start one with a number above.";
+  } catch (e) {
+    $("chat-threads-status").textContent = e.message;
+  }
+  clearTimeout(_chatThreadPoller);
+  _chatThreadPoller = setTimeout(loadChatThreads, CHAT_THREAD_MS);
+}
+
+function renderChatThreads(filter = "") {
+  const q = filter.trim().toLowerCase();
+  const list = _chatThreads
+    .filter((c) => !q || `${c.name} ${c.number}`.toLowerCase().includes(q))
+    .map((c) => {
+      const title = c.name || c.number || "Unknown";
+      const sub = c.group ? "Group" : (c.number || "");
+      return `<button type="button" class="chat-thread ${c.jid === _chatJid ? "active" : ""}" data-jid="${esc(c.jid)}" data-title="${esc(title)}" data-sub="${esc(sub)}" data-number="${esc(c.number || "")}" data-group="${c.group ? 1 : 0}">
+        <span class="chat-thread-name">${esc(title)}</span>
+        <span class="chat-thread-sub">${esc(sub)}${c.count ? ` · ${c.count} msg` : ""}</span>
+      </button>`;
+    }).join("");
+  $("chat-thread-list").innerHTML = list || `<p class="hint" style="padding:8px">No matching chats.</p>`;
+  $("chat-thread-list").querySelectorAll(".chat-thread").forEach((b) => b.addEventListener("click", () => {
+    const d = b.dataset;
+    const group = d.group === "1";
+    openChatThread(d.jid, d.title, d.sub, { type: "jid", jid: d.jid }, group);
+  }));
+}
+
+function openChatThread(jid, title, sub, sendTarget, group = false) {
+  _chatJid = jid;
+  _chatSendTarget = sendTarget;
+  _chatLastKey = "";
+  $("chat-convo-title").textContent = title || "Chat";
+  $("chat-convo-sub").textContent = sub || "";
+  $("chat-messages").innerHTML = `<p class="chat-empty">Loading…</p>`;
+  // Sending to a group by jid works; a direct chat whose number we never learned (a private @lid id) can
+  // still be viewed, and replies sent, because we send by the thread's exact jid.
+  $("chat-send").disabled = false;
+  renderChatThreads($("chat-thread-search").value);
+  loadChatMessages();
+}
+
+async function loadChatMessages() {
+  if (!_chatJid) return;
+  const jid = _chatJid;
+  try {
+    const { rows } = await api(`/wa/chat/thread?jid=${encodeURIComponent(jid)}&range=all`);
+    if (jid !== _chatJid) return; // the user switched threads while this was in flight
+    renderChatMessages(rows || []);
+  } catch (e) {
+    $("chat-send-status").textContent = e.message;
+  }
+  clearTimeout(_chatMsgPoller);
+  _chatMsgPoller = setTimeout(loadChatMessages, CHAT_MSG_MS);
+}
+
+function renderChatMessages(rows) {
+  const box = $("chat-messages");
+  if (!rows.length) { box.innerHTML = `<p class="chat-empty">No messages yet. Say hello 👋</p>`; return; }
+  // Only redraw (and auto-scroll) when something changed, so polling doesn't fight the user's scroll.
+  const key = rows.length + ":" + (rows[rows.length - 1]?.at || 0);
+  if (key === _chatLastKey) return;
+  const nearBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 80;
+  box.innerHTML = rows.map((r) => {
+    const mine = r.direction === "Sent";
+    const who = mine ? "" : (r.name || r.number || "");
+    return `<div class="chat-bubble ${mine ? "mine" : "theirs"}">
+      ${who ? `<span class="chat-bubble-who">${esc(who)}</span>` : ""}
+      <span class="chat-bubble-text">${esc(r.text)}</span>
+      <span class="chat-bubble-time">${fmtTime(r.at)}</span>
+    </div>`;
+  }).join("");
+  _chatLastKey = key;
+  if (nearBottom) box.scrollTop = box.scrollHeight;
+}
+
+// New chat from a typed number: we don't have a jid yet, so send by number; the recorded outgoing message
+// then creates the real thread, which the thread poller picks up and we open by matching number.
+function startNewChat() {
+  const digits = $("chat-new-number").value.replace(/\D/g, "");
+  if (digits.length < 8) { $("chat-threads-status").textContent = "Enter a valid number with country code."; return; }
+  const jid = `${digits}@s.whatsapp.net`;
+  openChatThread(jid, digits, digits, { type: "number", phone: digits }, false);
+  $("chat-new-number").value = "";
+}
+
+function readAttachment(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve({ dataUrl: reader.result, name: file.name, mimeType: file.type || "application/octet-stream" });
+    reader.onerror = () => reject(new Error("Could not read that file."));
+    reader.readAsDataURL(file);
+  });
+}
+
+async function sendChatMessage() {
+  if (!_chatSendTarget) { $("chat-send-status").textContent = "Pick a chat or start a new one first."; return; }
+  const text = $("chat-input").value.trim();
+  if (!text && !_chatAttach) return;
+  const btn = $("chat-send");
+  btn.disabled = true;
+  $("chat-send-status").textContent = "Sending…";
+  try {
+    const body = { target: _chatSendTarget, message: text };
+    if (_chatAttach) body.attachment = { ..._chatAttach, caption: text };
+    const { jid } = await api("/wa/chat/send", "POST", body);
+    $("chat-input").value = ""; $("chat-input").style.height = "auto";
+    clearChatAttach();
+    $("chat-send-status").textContent = "";
+    _chatLastKey = ""; // force a redraw on the next poll
+    // A brand-new chat's thread now exists under the jid WhatsApp actually used (may be an @lid id);
+    // switch the open conversation to it so the sent message and future replies land here.
+    if (jid && _chatSendTarget.type === "number") {
+      _chatJid = jid;
+      _chatSendTarget = { type: "jid", jid };
+      loadChatThreads();
+    }
+    setTimeout(loadChatMessages, 600);
+  } catch (e) {
+    $("chat-send-status").textContent = e.message;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function clearChatAttach() {
+  _chatAttach = null;
+  $("chat-attach-input").value = "";
+  $("chat-attach-chip").classList.add("hidden");
+  $("chat-attach-chip").textContent = "";
+}
+
+$("chat-refresh").addEventListener("click", loadChatThreads);
+$("chat-thread-search").addEventListener("input", (e) => renderChatThreads(e.target.value));
+$("chat-new-open").addEventListener("click", startNewChat);
+$("chat-new-number").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); startNewChat(); } });
+$("chat-composer").addEventListener("submit", (e) => { e.preventDefault(); sendChatMessage(); });
+$("chat-input").addEventListener("input", (e) => { e.target.style.height = "auto"; e.target.style.height = Math.min(e.target.scrollHeight, 120) + "px"; });
+$("chat-input").addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendChatMessage(); } });
+$("chat-attach-btn").addEventListener("click", () => $("chat-attach-input").click());
+$("chat-attach-input").addEventListener("change", async (e) => {
+  const file = e.target.files?.[0];
+  if (!file) return;
+  if (file.size > 16 * 1024 * 1024) { $("chat-send-status").textContent = "File is too large (max 16 MB)."; e.target.value = ""; return; }
+  try {
+    _chatAttach = await readAttachment(file);
+    const chip = $("chat-attach-chip");
+    chip.innerHTML = `📎 ${esc(file.name)} <button type="button" id="chat-attach-clear" class="btn-link">remove</button>`;
+    chip.classList.remove("hidden");
+    $("chat-attach-clear").addEventListener("click", clearChatAttach);
+  } catch (err) { $("chat-send-status").textContent = err.message; }
 });
 
 // ---------- Boot ----------

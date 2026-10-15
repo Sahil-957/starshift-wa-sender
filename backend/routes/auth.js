@@ -23,12 +23,17 @@ function roleOf(mobile) {
   return isAdmin(mobile) ? "admin" : "customer";
 }
 
-// Premium add-ons the seller can switch on/off per customer. A flag that was never set counts as ON, so
-// existing customers keep what they already use; the admin turns one OFF to gate it behind a higher plan.
-const FEATURES = ["chatbot", "extract"];
+// Premium add-ons the seller can switch on/off per customer. By default a flag that was never set counts
+// as ON, so existing customers keep what they already use; the admin turns one OFF to gate it behind a
+// higher plan. Opt-in add-ons are the reverse — OFF until the admin turns them on (a true pro extra).
+const FEATURES = ["chatbot", "extract", "chat"];
+const OPT_IN_FEATURES = new Set(["chat"]); // live two-way chat is a pro add-on: off until enabled
 function featuresOf(user) {
   const out = {};
-  for (const key of FEATURES) out[key] = user?.features?.[key] !== false;
+  for (const key of FEATURES) {
+    if (!user) { out[key] = true; continue; } // admin (no user record) gets everything
+    out[key] = OPT_IN_FEATURES.has(key) ? user?.features?.[key] === true : user?.features?.[key] !== false;
+  }
   return out;
 }
 

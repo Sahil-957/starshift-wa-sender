@@ -8,6 +8,7 @@ const { requireFeature } = require("./auth");
 const router = express.Router();
 const needChatbot = requireFeature("chatbot");
 const needExtract = requireFeature("extract");
+const needChat = requireFeature("chat");
 
 router.get("/status", (req, res) => res.json(wa.status(req.auth.mobile)));
 
@@ -53,6 +54,33 @@ router.get("/group-members", needExtract, async (req, res) => {
     res.json(await wa.groupMembers(req.auth.mobile, req.query.jid));
   } catch (err) {
     res.status(400).json({ message: err.message });
+  }
+});
+
+// ---- Live Chat (two-way chat from the dashboard) ----
+// Gated behind the "chat" pro add-on. Reads from the same recorded-message store as Chat Extract, and
+// sends through the same linked WhatsApp as campaigns; outgoing messages are recorded on their own upsert.
+router.get("/chat/threads", needChat, async (req, res) => {
+  try {
+    res.json({ chats: await wa.chatList(req.auth.mobile) });
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+});
+router.get("/chat/thread", needChat, async (req, res) => {
+  try {
+    const rows = await wa.chatExport(req.auth.mobile, { jid: req.query.jid || "", range: req.query.range || "all" });
+    res.json({ rows });
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+});
+router.post("/chat/send", needChat, async (req, res) => {
+  try {
+    const jid = await wa.send(req.auth.mobile, req.body);
+    res.json({ success: true, jid });
+  } catch (err) {
+    res.status(err.status || 400).json({ message: err.message || String(err) });
   }
 });
 
