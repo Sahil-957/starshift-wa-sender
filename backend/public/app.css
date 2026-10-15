@@ -983,3 +983,7 @@ button.primary:hover:not(:disabled), .btn-direct:hover { transform: translateY(-
   .chat-threads { width: auto; border-right: 0; border-bottom: 1px solid var(--line); max-height: 240px; }
   .chat-messages { min-height: 320px; }
 }
+.chat-emoji-wrap { position: relative; }
+.chat-emoji-picker { position: absolute; bottom: 44px; left: 0; width: 264px; max-height: 210px; overflow-y: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,.16); padding: 8px; display: grid; grid-template-columns: repeat(8, 1fr); gap: 2px; z-index: 50; }
+.chat-emoji-picker button { border: 0; background: transparent; font-size: 20px; line-height: 1; padding: 5px; border-radius: 8px; cursor: pointer; }
+.chat-emoji-picker button:hover { background: #eef3f1; }

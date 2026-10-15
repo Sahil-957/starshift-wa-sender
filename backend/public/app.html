@@ -592,6 +592,10 @@
               <p class="chat-empty">Your conversation will appear here. Received replies refresh automatically.</p>
             </div>
             <form id="chat-composer" class="chat-composer">
+              <div class="chat-emoji-wrap">
+                <button type="button" id="chat-emoji-btn" class="chat-attach" title="Emoji">😊</button>
+                <div id="chat-emoji-picker" class="chat-emoji-picker hidden"></div>
+              </div>
               <button type="button" id="chat-attach-btn" class="chat-attach" title="Attach a photo, video or document">📎</button>
               <input type="file" id="chat-attach-input" class="hidden" accept="image/*,video/*,application/pdf,.pdf,.doc,.docx,.xls,.xlsx" />
               <textarea id="chat-input" rows="1" placeholder="Type a message…"></textarea>

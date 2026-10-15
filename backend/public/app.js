@@ -1732,6 +1732,37 @@ $("chat-new-number").addEventListener("keydown", (e) => { if (e.key === "Enter")
 $("chat-composer").addEventListener("submit", (e) => { e.preventDefault(); sendChatMessage(); });
 $("chat-input").addEventListener("input", (e) => { e.target.style.height = "auto"; e.target.style.height = Math.min(e.target.scrollHeight, 120) + "px"; });
 $("chat-input").addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendChatMessage(); } });
+// Emoji picker for the chat composer (a broad set, incl. party/birthday ones), inserted at the cursor.
+const CHAT_EMOJIS = (
+  "😀 😁 😂 🤣 😊 😍 😘 😎 🤩 🥳 😇 🙂 😉 😌 😋 😜 🤗 🤔 😏 😴 " +
+  "😢 😭 😤 😠 😡 🥺 😳 😱 😬 🙄 😮 😅 😔 😩 🤯 😷 🤒 🤕 🤧 🥰 " +
+  "👍 👎 👏 🙏 🙌 👌 🤝 💪 ✌️ 🤞 👋 🫶 🤙 ✍️ 👇 👆 👉 👈 ✊ 🔥 " +
+  "❤️ 🧡 💛 💚 💙 💜 🖤 🤍 💗 💖 💝 💘 💕 ❣️ 💔 ✨ ⭐ 🌟 💫 🎯 " +
+  "🎉 🎊 🎂 🍰 🎁 🎈 🎀 🪄 🧨 🎆 🎇 🪅 🕯️ 🏆 🥇 👑 💐 🌹 🌸 🌈 " +
+  "✅ ☑️ ❌ ⚠️ ❗ ❓ 📌 📞 📲 💬 📣 📅 ⏰ 💰 🛒 🤑 📈 🚀 ⚡ ☕"
+).split(" ").filter(Boolean);
+
+$("chat-emoji-btn").addEventListener("click", (e) => {
+  e.stopPropagation();
+  const p = $("chat-emoji-picker");
+  if (!p.dataset.built) {
+    p.innerHTML = CHAT_EMOJIS.map((em) => `<button type="button" tabindex="-1">${em}</button>`).join("");
+    p.querySelectorAll("button").forEach((b) => b.addEventListener("click", () => {
+      const box = $("chat-input");
+      const [s, en] = [box.selectionStart ?? box.value.length, box.selectionEnd ?? box.value.length];
+      box.value = box.value.slice(0, s) + b.textContent + box.value.slice(en);
+      box.focus();
+      box.selectionStart = box.selectionEnd = s + b.textContent.length;
+      box.dispatchEvent(new Event("input")); // keep the auto-grow height in sync
+    }));
+    p.dataset.built = "1";
+  }
+  p.classList.toggle("hidden");
+});
+document.addEventListener("click", (e) => {
+  if (!e.target.closest(".chat-emoji-wrap")) $("chat-emoji-picker")?.classList.add("hidden");
+});
+
 $("chat-attach-btn").addEventListener("click", () => $("chat-attach-input").click());
 $("chat-attach-input").addEventListener("change", async (e) => {
   const file = e.target.files?.[0];
