@@ -76,6 +76,12 @@ function buildConfig(bot) {
   return SwasBot.buildConfig(settings, rules, footerKeywords);
 }
 
+/** Config with the chatbot forced off: only campaign footer STOP/START keywords stay live. */
+function footerOnlyConfig(bot) {
+  const { settings, rules, footerKeywords } = bot.config || {};
+  return SwasBot.buildConfig({ ...settings, enabled: false }, rules, footerKeywords);
+}
+
 /** change: { op: "add" | "remove", entries: [...] } - the same shape the extension applies. */
 function applyChange(list, { op, entries }) {
   if (op === "remove") return list.filter((entry) => !entries.includes(entry));
@@ -151,7 +157,7 @@ function withinRate(rt, jid) {
   return recent.length < SwasBot.LIMITS.repliesPerMinute;
 }
 
-async function answer(mobile, sock, bot, config, msg) {
+async function answer(mobile, sock, bot, config, msg, { chatbotOn = true } = {}) {
   const jid = msg.key?.remoteJid;
   if (!jid || msg.key.fromMe || isJidGroup(jid) || isJidBroadcast(jid) || isJidNewsletter(jid)) return;
   if (!isRealMessage(msg)) return;
@@ -171,8 +177,9 @@ async function answer(mobile, sock, bot, config, msg) {
   const inSession = Date.now() - last < SwasBot.LIMITS.sessionMs;
   const idleMs = last ? Date.now() - last : null; // time since the bot last answered this chat
   const lang = (bot.langs || (bot.langs = {}))[jid] || "";
-  // Data lookup (e.g. "1" -> this customer's own loan details) takes priority over the normal rules.
-  const action = lookupAction(mobile, bot.config?.settings, text, contact.number)
+  // Data lookup (e.g. "1" -> this customer's own loan details) takes priority over the normal rules,
+  // but it's part of the chatbot add-on — skip it when the add-on is gated off (footer STOP only).
+  const action = (chatbotOn ? lookupAction(mobile, bot.config?.settings, text, contact.number) : null)
     || SwasBot.matchMessage(text, config, { unsubscribed, inSession, idleMs, lang });
   if (!action) {
     console.log(`[bot ${mobile}] ${who}: "${text}" - no reply${unsubscribed ? " (unsubscribed)" : ""}`);
@@ -207,18 +214,22 @@ async function answer(mobile, sock, bot, config, msg) {
 /** Baileys' messages.upsert handler for one account's socket. */
 async function onMessages(mobile, sock, { messages, type }) {
   if (type !== "notify") return; // "append" is history being filled in, not new messages
-  if (!chatbotEnabled(mobile)) return; // the seller has gated the chatbot add-on off for this customer
   const bot = load(mobile);
   if (!bot.config) return;
-  const config = buildConfig(bot);
-  // Process when the chatbot is on, OR when campaign footer STOP keywords exist — so a STOP reply is
-  // caught and the number added to the Unsubscribers list even with the chatbot add-on off (sending is
-  // server-side now, so we can't rely on the extension's WhatsApp Web tab being open to catch it).
-  // With the chatbot off, matchMessage only ever returns an unsubscribe/start action, nothing else.
+
+  // The chatbot add-on may be gated off for this customer — but campaign footer STOP handling is a
+  // compliance feature (keeps us from messaging people who opted out), not the chatbot, so it stays
+  // live either way. With the add-on off we force the chatbot-off config, so only the footer STOP/START
+  // keywords act — no rule, welcome, fallback or data-lookup reply goes out.
+  const addonOn = chatbotEnabled(mobile);
+  const config = addonOn ? buildConfig(bot) : footerOnlyConfig(bot);
+
+  // Nothing to do unless the chatbot is on, or there are campaign footer STOP keywords to honour.
+  // Sending is server-side now, so we can't rely on the extension's WhatsApp Web tab to catch a STOP.
   if (!SwasBot.isActive(config)) return;
   for (const msg of messages || []) {
     try {
-      await answer(mobile, sock, bot, config, msg);
+      await answer(mobile, sock, bot, config, msg, { chatbotOn: addonOn });
     } catch (err) {
       console.warn(`[bot ${mobile}] reply failed:`, err.message || err);
     }
