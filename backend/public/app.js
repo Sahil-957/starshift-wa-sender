@@ -1575,6 +1575,7 @@ $("api-copy").addEventListener("click", () => {
 // Reads recorded messages for the open thread and polls for new ones; sends through the same linked
 // WhatsApp as campaigns. Pollers run only while the Chat page is open (see showPage/stopChatPolling).
 let _chatThreads = [];
+let _chatContacts = [];     // the server WhatsApp's saved contacts, for name/number search
 let _chatJid = "";          // the open conversation's jid ("" = none)
 let _chatSendTarget = null; // { type:"jid", jid } for a known thread, or { type:"number", phone } for a new chat
 let _chatAttach = null;     // { dataUrl, name, mimeType } staged for the next send
@@ -1584,8 +1585,22 @@ const CHAT_MSG_MS = 5000, CHAT_THREAD_MS = 12000; // modest intervals keep serve
 function stopChatPolling() { clearTimeout(_chatMsgPoller); clearTimeout(_chatThreadPoller); _chatMsgPoller = _chatThreadPoller = null; }
 
 async function openChatPage() {
+  loadChatContacts();        // in the background — gives names to threads and powers the name/number search
   await loadChatThreads();
   if (_chatJid) loadChatMessages(); // re-open the last conversation if one was active
+}
+
+// The server WhatsApp's saved contacts, loaded once per page open (not polled — it rarely changes).
+async function loadChatContacts() {
+  try {
+    const { contacts } = await api("/wa/contacts");
+    _chatContacts = contacts || [];
+    renderChatThreads($("chat-thread-search").value);
+  } catch { /* contacts are a convenience; a failure just means search covers existing chats only */ }
+}
+function chatContactName(number) {
+  if (!number) return "";
+  return _chatContacts.find((c) => c.number === number)?.name || "";
 }
 
 async function loadChatThreads() {
@@ -1603,21 +1618,39 @@ async function loadChatThreads() {
 
 function renderChatThreads(filter = "") {
   const q = filter.trim().toLowerCase();
-  const list = _chatThreads
-    .filter((c) => !q || `${c.name} ${c.number}`.toLowerCase().includes(q))
+  const match = (name, number) => !q || `${name} ${number}`.toLowerCase().includes(q);
+
+  // Existing chats first (names resolved from contacts where WhatsApp gave us only a number).
+  const threadItems = _chatThreads
     .map((c) => {
-      const title = c.name || c.number || "Unknown";
-      const sub = c.group ? "Group" : (c.number || "");
-      return `<button type="button" class="chat-thread ${c.jid === _chatJid ? "active" : ""}" data-jid="${esc(c.jid)}" data-title="${esc(title)}" data-sub="${esc(sub)}" data-number="${esc(c.number || "")}" data-group="${c.group ? 1 : 0}">
-        <span class="chat-thread-name">${esc(title)}</span>
-        <span class="chat-thread-sub">${esc(sub)}${c.count ? ` · ${c.count} msg` : ""}</span>
-      </button>`;
-    }).join("");
-  $("chat-thread-list").innerHTML = list || `<p class="hint" style="padding:8px">No matching chats.</p>`;
+      const name = c.name && c.name !== c.number ? c.name : (chatContactName(c.number) || c.name || c.number || "Unknown");
+      return { jid: c.jid, number: c.number || "", name, group: c.group, count: c.count, contact: false };
+    })
+    .filter((c) => match(c.name, c.number));
+
+  // While searching, also surface saved contacts that aren't already a chat — find anyone by name or number.
+  const haveNumbers = new Set(_chatThreads.map((t) => t.number).filter(Boolean));
+  const contactItems = (q ? _chatContacts : [])
+    .filter((c) => c.number && !haveNumbers.has(c.number) && match(c.name || "", c.number))
+    .slice(0, 40)
+    .map((c) => ({ jid: `${c.number}@s.whatsapp.net`, number: c.number, name: c.name || c.number, group: false, count: 0, contact: true }));
+
+  const all = threadItems.concat(contactItems);
+  $("chat-thread-list").innerHTML = all.length ? all.map((c) => {
+    const sub = c.group ? "Group" : (c.number || "");
+    const tail = c.contact ? " · contact" : (c.count ? ` · ${c.count} msg` : "");
+    return `<button type="button" class="chat-thread ${c.jid === _chatJid ? "active" : ""}" data-jid="${esc(c.jid)}" data-title="${esc(c.name)}" data-sub="${esc(sub)}" data-number="${esc(c.number)}" data-group="${c.group ? 1 : 0}" data-contact="${c.contact ? 1 : 0}">
+      <span class="chat-thread-name">${esc(c.name)}</span>
+      <span class="chat-thread-sub">${esc(sub)}${tail}</span>
+    </button>`;
+  }).join("") : `<p class="hint" style="padding:8px">No matching chats or contacts.</p>`;
+
   $("chat-thread-list").querySelectorAll(".chat-thread").forEach((b) => b.addEventListener("click", () => {
     const d = b.dataset;
-    const group = d.group === "1";
-    openChatThread(d.jid, d.title, d.sub, { type: "jid", jid: d.jid }, group);
+    // A saved contact (no recorded thread yet) is opened by number, which resolves to the real thread on
+    // the first send; an existing chat is opened by its exact jid.
+    const target = d.contact === "1" ? { type: "number", phone: d.number } : { type: "jid", jid: d.jid };
+    openChatThread(d.jid, d.title, d.sub, target, d.group === "1");
   }));
 }
 
