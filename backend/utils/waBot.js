@@ -76,10 +76,17 @@ function buildConfig(bot) {
   return SwasBot.buildConfig(settings, rules, footerKeywords);
 }
 
-/** Config with the chatbot forced off: only campaign footer STOP/START keywords stay live. */
+/**
+ * Config with the chatbot forced off: only the campaign footer STOP keyword stays live, plus a plain
+ * "start" so an opted-out contact can re-subscribe (the compliance counterpart of STOP). No welcome,
+ * rules or fallback — those are the chatbot add-on. "start" only (not "hi"), so a casual hello to a
+ * bulk-only account isn't answered.
+ */
 function footerOnlyConfig(bot) {
   const { settings, rules, footerKeywords } = bot.config || {};
-  return SwasBot.buildConfig({ ...settings, enabled: false }, rules, footerKeywords);
+  const config = SwasBot.buildConfig({ ...settings, enabled: false }, rules, footerKeywords);
+  config.startKeywords = SwasBot.keywordList("start");
+  return config;
 }
 
 /** change: { op: "add" | "remove", entries: [...] } - the same shape the extension applies. */
