@@ -1575,7 +1575,6 @@ $("api-copy").addEventListener("click", () => {
 // Reads recorded messages for the open thread and polls for new ones; sends through the same linked
 // WhatsApp as campaigns. Pollers run only while the Chat page is open (see showPage/stopChatPolling).
 let _chatThreads = [];
-let _chatContacts = [];     // the server WhatsApp's saved contacts, for name/number search
 let _chatJid = "";          // the open conversation's jid ("" = none)
 let _chatSendTarget = null; // { type:"jid", jid } for a known thread, or { type:"number", phone } for a new chat
 let _chatAttach = null;     // { dataUrl, name, mimeType } staged for the next send
@@ -1590,17 +1589,18 @@ async function openChatPage() {
   if (_chatJid) loadChatMessages(); // re-open the last conversation if one was active
 }
 
-// The server WhatsApp's saved contacts, loaded once per page open (not polled — it rarely changes).
+// Reuse the very same contact list the campaign picker uses (_contacts: synced from /wa/contacts and
+// cached), so Chat search finds exactly the contacts that appear after "Sync contacts" in a campaign.
 async function loadChatContacts() {
   try {
-    const { contacts } = await api("/wa/contacts");
-    _chatContacts = contacts || [];
-    renderChatThreads($("chat-thread-search").value);
-  } catch { /* contacts are a convenience; a failure just means search covers existing chats only */ }
+    if (!_contacts.length) await syncContacts(false);         // nothing cached yet — fetch now
+    else syncContacts(false).then(() => renderChatThreads($("chat-thread-search").value)); // refresh in bg
+  } catch { /* contacts are a convenience; search still covers existing chats */ }
+  renderChatThreads($("chat-thread-search").value);
 }
 function chatContactName(number) {
   if (!number) return "";
-  return _chatContacts.find((c) => c.number === number)?.name || "";
+  return _contacts.find((c) => c.number === number)?.name || "";
 }
 
 async function loadChatThreads() {
@@ -1630,9 +1630,9 @@ function renderChatThreads(filter = "") {
 
   // While searching, also surface saved contacts that aren't already a chat — find anyone by name or number.
   const haveNumbers = new Set(_chatThreads.map((t) => t.number).filter(Boolean));
-  const contactItems = (q ? _chatContacts : [])
+  const contactItems = (q ? _contacts : [])
     .filter((c) => c.number && !haveNumbers.has(c.number) && match(c.name || "", c.number))
-    .slice(0, 40)
+    .slice(0, 200)
     .map((c) => ({ jid: `${c.number}@s.whatsapp.net`, number: c.number, name: c.name || c.number, group: false, count: 0, contact: true }));
 
   const all = threadItems.concat(contactItems);
