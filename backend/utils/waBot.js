@@ -223,6 +223,17 @@ async function onMessages(mobile, sock, { messages, type }) {
   }
 }
 
+/**
+ * Has this contact asked to stop (replied STOP / 6 / unsubscribe)? Checked before every campaign send
+ * so a STOP that lands mid-campaign halts the rest for that number, even with the chatbot add-on off —
+ * the footer keywords are honoured regardless, and the Unsubscribers list is kept either way.
+ */
+function isUnsubscribed(mobile, { name = "", number = "" } = {}) {
+  if (!name && !number) return false;
+  const list = load(mobile).unsubscribers || [];
+  return list.some((entry) => SwasBot.isSameContact(entry, { name, number }));
+}
+
 /** The stored chatbot config + unsubscribers for an account, so the web app can load and edit what's live. */
 function current(mobile) {
   const bot = load(mobile);
@@ -240,4 +251,4 @@ function defaults() {
   return { settings: SwasBot.DEFAULT_SETTINGS, rules: SwasBot.DEFAULT_RULES };
 }
 
-module.exports = { sync, onMessages, current, defaults };
+module.exports = { sync, onMessages, current, defaults, isUnsubscribed };

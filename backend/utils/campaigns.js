@@ -15,6 +15,7 @@ const wa = require("./waSessions");
 const userStore = require("./userStore");
 const { sendFailureReport } = require("./failureReport");
 const { personalize, withFooter } = require("./messaging");
+const waBot = require("./waBot");
 const { writeJsonAtomic } = require("./atomicWrite");
 
 const DIR = path.join(__dirname, "..", "data", "campaigns");
@@ -132,6 +133,24 @@ async function advance(mobile, id) {
       });
       return;
     }
+
+    // Skip anyone who replied STOP (the unsubscribers list is kept even with the chatbot off), so a STOP
+    // that lands mid-campaign halts the rest of this campaign's sends to that number. These are marked
+    // "skipped", not failed, and don't count against the send/fail totals.
+    let skippedAny = false;
+    update(mobile, id, (c) => {
+      for (const target of c.contacts) {
+        if (target.status !== "pending") continue;
+        const who = { name: target.source === "number" ? "" : target.name, number: target.mobile || "" };
+        if (!who.number && !who.name) continue;
+        if (waBot.isUnsubscribed(mobile, who)) {
+          target.status = "skipped";
+          target.skipReason = "Recipient replied STOP (unsubscribed).";
+          skippedAny = true;
+        }
+      }
+    });
+    if (skippedAny) campaign = find(mobile, id);
 
     const nextIdx = campaign.contacts.findIndex((c) => c.status === "pending");
     if (nextIdx === -1) {
