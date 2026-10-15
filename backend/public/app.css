@@ -948,8 +948,8 @@ button.primary:hover:not(:disabled), .btn-direct:hover { transform: translateY(-
 .page-menu-dropdown .menu-sep { background: #e6eaf0; margin: 5px 6px; }
 
 /* ---------- Chat (live two-way) ---------- */
-/* The Chat page uses the full layout width (other pages are capped at 900px and centred). */
-#page-chat { max-width: none; }
+/* The Chat page sits to the left (not centred like the other pages) and is wider than their 900px cap. */
+#page-chat { max-width: 1150px; margin: 0; }
 .chat-card { padding: 0; overflow: hidden; }
 .chat-wrap { display: flex; height: 82vh; min-height: 480px; }
 .chat-threads { width: 300px; min-width: 240px; border-right: 1px solid var(--line); display: flex; flex-direction: column; background: #f7faf9; }
