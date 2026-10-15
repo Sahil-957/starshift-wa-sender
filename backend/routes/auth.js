@@ -27,7 +27,7 @@ function roleOf(mobile) {
 // as ON, so existing customers keep what they already use; the admin turns one OFF to gate it behind a
 // higher plan. Opt-in add-ons are the reverse — OFF until the admin turns them on (a true pro extra).
 const FEATURES = ["chatbot", "extract", "chat"];
-const OPT_IN_FEATURES = new Set(["chat"]); // live two-way chat is a pro add-on: off until enabled
+const OPT_IN_FEATURES = new Set(); // (none) — every add-on defaults ON; admin turns one OFF to gate it
 function featuresOf(user) {
   const out = {};
   for (const key of FEATURES) {

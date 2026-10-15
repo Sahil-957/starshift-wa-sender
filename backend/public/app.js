@@ -25,7 +25,7 @@ const api = async (path, method = "GET", body) => {
 // Premium add-ons the seller can switch off per account; an unset flag means on.
 let features = { chatbot: true, extract: true };
 function applyFeatures() {
-  const map = { chatbot: features.chatbot !== false, extract: features.extract !== false, chat: features.chat === true };
+  const map = { chatbot: features.chatbot !== false, extract: features.extract !== false, chat: features.chat !== false };
   document.querySelectorAll(".nav-tab[data-page]").forEach((tab) => {
     const page = tab.dataset.page;
     if (page in map) tab.classList.toggle("hidden", !map[page]);
