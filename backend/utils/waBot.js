@@ -211,9 +211,11 @@ async function onMessages(mobile, sock, { messages, type }) {
   const bot = load(mobile);
   if (!bot.config) return;
   const config = buildConfig(bot);
-  // Only with the chatbot on. With it off, the extension only syncs when its settings change, so a
-  // footer-only STOP stays with the WhatsApp Web tab and is never answered twice.
-  if (!config.enabled) return;
+  // Process when the chatbot is on, OR when campaign footer STOP keywords exist — so a STOP reply is
+  // caught and the number added to the Unsubscribers list even with the chatbot add-on off (sending is
+  // server-side now, so we can't rely on the extension's WhatsApp Web tab being open to catch it).
+  // With the chatbot off, matchMessage only ever returns an unsubscribe/start action, nothing else.
+  if (!SwasBot.isActive(config)) return;
   for (const msg of messages || []) {
     try {
       await answer(mobile, sock, bot, config, msg);
