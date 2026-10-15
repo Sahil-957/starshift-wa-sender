@@ -88,6 +88,21 @@ function toRecord(msg) {
   };
 }
 
+/** One stored record by message id (for building a quoted reply), or null. */
+function getRecord(mobile, id) {
+  return readAll(mobile).find((r) => r.id === id) || null;
+}
+
+/** A minimal quoted message (key + text) for Baileys' `quoted` option, reconstructed from a stored record. */
+function buildQuoted(mobile, id) {
+  const r = getRecord(mobile, id);
+  if (!r) return null;
+  return {
+    key: { remoteJid: r.chatJid, id: r.id, fromMe: !!r.fromMe, participant: r.group ? r.senderJid || undefined : undefined },
+    message: { conversation: r.text || "" },
+  };
+}
+
 /** Appends one line of JSON; a message with no timestamp or no id is skipped (we can't date or dedupe it). */
 function append(mobile, rec) {
   if (!rec || !rec.t || !rec.id) return;
@@ -179,4 +194,4 @@ function messages(mobile, { jid = "", range = "all" } = {}) {
     .sort((a, b) => a.t - b.t);
 }
 
-module.exports = { record, chats, messages, oldestRecord, RANGE_DAYS };
+module.exports = { record, chats, messages, oldestRecord, RANGE_DAYS, getRecord, buildQuoted };

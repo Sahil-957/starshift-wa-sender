@@ -988,3 +988,10 @@ button.primary:hover:not(:disabled), .btn-direct:hover { transform: translateY(-
 .chat-emoji-picker button { border: 0; background: transparent; font-size: 20px; line-height: 1; padding: 5px; border-radius: 8px; cursor: pointer; }
 .chat-emoji-picker button:hover { background: #eef3f1; }
 .chat-bubble-text a { color: #1b7cd6; text-decoration: underline; word-break: break-all; }
+.chat-reply-btn { margin-left: 8px; border: 0; background: transparent; cursor: pointer; font-size: 13px; opacity: .55; padding: 0 2px; }
+.chat-reply-btn:hover { opacity: 1; }
+.chat-reply-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 12px; margin: 0 12px; border-left: 3px solid var(--teal); background: #eef7f5; border-radius: 6px; }
+.chat-reply-info { display: flex; flex-direction: column; min-width: 0; }
+.chat-reply-who { font-size: 12px; font-weight: 700; color: var(--teal-ink); }
+.chat-reply-text { font-size: 12px; color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chat-reply-bar button { border: 0; background: transparent; cursor: pointer; font-size: 15px; color: var(--ink-soft); }

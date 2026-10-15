@@ -1578,6 +1578,7 @@ let _chatThreads = [];
 let _chatJid = "";          // the open conversation's jid ("" = none)
 let _chatSendTarget = null; // { type:"jid", jid } for a known thread, or { type:"number", phone } for a new chat
 let _chatAttach = null;     // { dataUrl, name, mimeType } staged for the next send
+let _chatReplyTo = null;    // { id, who, text } the message being replied to, or null
 let _chatMsgPoller = null, _chatThreadPoller = null, _chatLastKey = "";
 const CHAT_MSG_MS = 5000, CHAT_THREAD_MS = 12000; // modest intervals keep server load low
 
@@ -1658,6 +1659,7 @@ function openChatThread(jid, title, sub, sendTarget, group = false) {
   _chatJid = jid;
   _chatSendTarget = sendTarget;
   _chatLastKey = "";
+  clearReply(); // a pending reply belongs to the chat you were in, not the one you're opening
   $("chat-convo-title").textContent = title || "Chat";
   $("chat-convo-sub").textContent = sub || "";
   $("chat-messages").innerHTML = `<p class="chat-empty">Loading…</p>`;
@@ -1700,12 +1702,14 @@ function renderChatMessages(rows) {
   box.innerHTML = rows.map((r) => {
     const mine = r.direction === "Sent";
     const who = mine ? "" : (r.name || r.number || "");
+    const reply = r.id ? `<button type="button" class="chat-reply-btn" data-id="${esc(r.id)}" data-who="${esc(mine ? "You" : who)}" data-text="${esc(r.text)}" title="Reply">↩</button>` : "";
     return `<div class="chat-bubble ${mine ? "mine" : "theirs"}">
       ${who ? `<span class="chat-bubble-who">${esc(who)}</span>` : ""}
       <span class="chat-bubble-text">${linkify(esc(r.text))}</span>
-      <span class="chat-bubble-time">${fmtTime(r.at)}</span>
+      <span class="chat-bubble-time">${fmtTime(r.at)}${reply}</span>
     </div>`;
   }).join("");
+  box.querySelectorAll(".chat-reply-btn").forEach((b) => b.addEventListener("click", () => startReply(b.dataset.id, b.dataset.who, b.dataset.text)));
   _chatLastKey = key;
   if (nearBottom) box.scrollTop = box.scrollHeight;
 }
@@ -1729,6 +1733,21 @@ function readAttachment(file) {
   });
 }
 
+// Reply to a specific message — shows the quote bar and remembers which message to quote on send.
+function startReply(id, who, text) {
+  _chatReplyTo = { id, who, text };
+  const bar = $("chat-reply-bar");
+  bar.innerHTML = `<div class="chat-reply-info"><span class="chat-reply-who">↩ ${esc(who || "")}</span><span class="chat-reply-text">${esc((text || "").slice(0, 120))}</span></div><button type="button" id="chat-reply-cancel" title="Cancel">✕</button>`;
+  bar.classList.remove("hidden");
+  $("chat-reply-cancel").addEventListener("click", clearReply);
+  $("chat-input").focus();
+}
+function clearReply() {
+  _chatReplyTo = null;
+  $("chat-reply-bar").classList.add("hidden");
+  $("chat-reply-bar").innerHTML = "";
+}
+
 async function sendChatMessage() {
   if (!_chatSendTarget) { $("chat-send-status").textContent = "Pick a chat or start a new one first."; return; }
   const text = $("chat-input").value.trim();
@@ -1739,9 +1758,11 @@ async function sendChatMessage() {
   try {
     const body = { target: _chatSendTarget, message: text };
     if (_chatAttach) body.attachment = { ..._chatAttach, caption: text };
+    if (_chatReplyTo) body.quotedId = _chatReplyTo.id;
     const { jid } = await api("/wa/chat/send", "POST", body);
     $("chat-input").value = ""; $("chat-input").style.height = "auto";
     clearChatAttach();
+    clearReply();
     $("chat-send-status").textContent = "";
     _chatLastKey = ""; // force a redraw on the next poll
     // A brand-new chat's thread now exists under the jid WhatsApp actually used (may be an @lid id);

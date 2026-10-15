@@ -242,8 +242,8 @@ function mediaContent({ dataUrl, name, mimeType }, caption) {
   return { document: buffer, mimetype, fileName: name || "file", caption };
 }
 
-/** target: { type: "number" | "group" | "contact", phone?, name? }. Sends the file with its caption as one message. */
-async function send(mobile, { target, message, attachment }) {
+/** target: { type: "number" | "group" | "contact" | "jid", phone?, name?, jid? }. quotedId replies to a message. */
+async function send(mobile, { target, message, attachment, quotedId }) {
   const session = openSocket(mobile);
   const jid =
     target.type === "group"
@@ -254,11 +254,15 @@ async function send(mobile, { target, message, attachment }) {
           ? (String(target.jid || "").includes("@") ? target.jid : (() => { throw new Error("Invalid chat id."); })())
           : await numberJid(session, target.phone);
 
+  // A quoted reply (WhatsApp's "replying to…") rebuilt from the stored message; ignored if we don't have it.
+  const quoted = quotedId ? chatStore.buildQuoted(mobile, quotedId) : null;
+  const opts = quoted ? { quoted } : {};
+
   if (attachment?.dataUrl) {
     // Same rule as the WhatsApp Web path: the caption, or the message when there is no caption.
-    await session.sock.sendMessage(jid, mediaContent(attachment, attachment.caption || message || undefined));
+    await session.sock.sendMessage(jid, mediaContent(attachment, attachment.caption || message || undefined), opts);
   } else {
-    await session.sock.sendMessage(jid, { text: message });
+    await session.sock.sendMessage(jid, { text: message }, opts);
   }
   return jid; // the resolved chat jid (may be @lid); the live-chat UI uses it to open the new thread
 }
@@ -390,7 +394,7 @@ async function chatExport(mobile, opts) {
   const out = [];
   for (const r of rows) {
     if (r.fromMe) {
-      out.push({ at: r.t, chat: displayChat(r.chatJid, r.group, r.chatNumber, resolve), type: r.group ? "Group" : "Direct", direction: "Sent", name: "", number: "", text: r.text });
+      out.push({ at: r.t, chat: displayChat(r.chatJid, r.group, r.chatNumber, resolve), type: r.group ? "Group" : "Direct", direction: "Sent", name: "", number: "", text: r.text, id: r.id });
       continue;
     }
     const number = r.group ? await senderPhone(r) : r.chatNumber || (await senderPhone(r));
@@ -407,6 +411,7 @@ async function chatExport(mobile, opts) {
       name,
       number,
       text: r.text,
+      id: r.id,
     });
   }
   return out;
