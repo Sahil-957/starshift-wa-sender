@@ -1682,6 +1682,14 @@ async function loadChatMessages() {
   _chatMsgPoller = setTimeout(loadChatMessages, CHAT_MSG_MS);
 }
 
+// Turns URLs in already-escaped message text into clickable links (http/https or bare www.).
+function linkify(escaped) {
+  return escaped.replace(/(https?:\/\/[^\s<]+|www\.[^\s<]+)/g, (u) => {
+    const href = u.startsWith("http") ? u : `https://${u}`;
+    return `<a href="${href}" target="_blank" rel="noopener noreferrer">${u}</a>`;
+  });
+}
+
 function renderChatMessages(rows) {
   const box = $("chat-messages");
   if (!rows.length) { box.innerHTML = `<p class="chat-empty">No messages yet. Say hello 👋</p>`; return; }
@@ -1694,7 +1702,7 @@ function renderChatMessages(rows) {
     const who = mine ? "" : (r.name || r.number || "");
     return `<div class="chat-bubble ${mine ? "mine" : "theirs"}">
       ${who ? `<span class="chat-bubble-who">${esc(who)}</span>` : ""}
-      <span class="chat-bubble-text">${esc(r.text)}</span>
+      <span class="chat-bubble-text">${linkify(esc(r.text))}</span>
       <span class="chat-bubble-time">${fmtTime(r.at)}</span>
     </div>`;
   }).join("");
