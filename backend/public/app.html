@@ -55,6 +55,7 @@
         <button class="nav-tab" data-page="chatbot">Chatbot</button>
         <button class="nav-tab" data-page="quick">Quick Replies</button>
         <button class="nav-tab" data-page="unsub">Unsubscribers</button>
+        <button class="nav-tab" data-page="calls">Call Settings</button>
         <button class="nav-tab" data-page="extract">Chat Extract</button>
         <button class="nav-tab" data-page="chat">Chat</button>
         <button class="nav-tab" data-page="api">API</button>
@@ -90,16 +91,6 @@
       </div>
       <p id="pair-code" class="hidden" style="font-size:26px;font-weight:bold;letter-spacing:4px;margin:12px 0"></p>
       <p class="hint">On your phone: <b>WhatsApp → Linked devices → Link a device → Link with phone number instead</b>, then type this code.</p>
-    </div>
-
-    <div id="call-block" class="hidden" style="margin-top:14px;border-top:1px solid #e5e7eb;padding-top:12px">
-      <label class="switch"><input type="checkbox" id="call-reject" /> <b>Block WhatsApp calls</b> — incoming calls are cut automatically, customers can only chat</label>
-      <label for="call-message">Message sent to the caller after a blocked call (leave empty to send nothing)</label>
-      <textarea id="call-message" rows="3"></textarea>
-      <div class="row" style="gap:8px;align-items:center;margin-top:8px">
-        <button type="button" class="primary" id="call-save">Save call settings</button>
-        <span class="hint" id="call-status" role="status"></span>
-      </div>
     </div>
   </div>
 
@@ -772,6 +763,21 @@ Welcome! Choose an option below."></textarea>
         <textarea id="unsub-text" rows="8"></textarea>
         <button type="button" class="primary" id="unsub-save">Save unsubscribers</button>
         <p class="hint" id="unsub-status"></p>
+      </div>
+    </section>
+
+    <!-- ================= Call Settings ================= -->
+    <section id="page-calls" class="page hidden">
+      <div class="card">
+        <h2>Call Settings</h2>
+        <p class="hint">Works on the WhatsApp number linked to this server. The call button still shows on the customer's phone; the call is cut as soon as it rings.</p>
+        <label class="switch"><input type="checkbox" id="call-reject" /> <b>Block WhatsApp calls</b> — incoming calls are cut automatically, customers can only chat</label>
+        <label for="call-message">Message sent to the caller after a blocked call (leave empty to send nothing)</label>
+        <textarea id="call-message" rows="3"></textarea>
+        <div class="row" style="gap:8px;align-items:center;margin-top:8px">
+          <button type="button" class="primary" id="call-save">Save call settings</button>
+          <span class="hint" id="call-status" role="status"></span>
+        </div>
       </div>
     </section>
 

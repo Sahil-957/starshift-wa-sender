@@ -180,7 +180,7 @@ document.addEventListener("click", (e) => {
 });
 
 // ---------- Navigation ----------
-const PAGES = ["campaign", "sheet", "broadcast", "reports", "chatbot", "quick", "unsub", "extract", "chat", "api"];
+const PAGES = ["campaign", "sheet", "broadcast", "reports", "chatbot", "quick", "unsub", "calls", "extract", "chat", "api"];
 function showPage(page) {
   if (features[page] === false || !page) page = PAGES.find((candidate) => features[candidate] !== false) || null;
   if (!page) {
@@ -197,6 +197,7 @@ function showPage(page) {
   if (page === "reports") loadReports();
   if (page === "chat") openChatPage();
   if (page === "chatbot") loadBot();
+  if (page === "calls") loadCallSettings();
   if (page === "quick") renderQuick();
   if (page === "unsub") loadUnsub();
   if (page === "sheet") loadSheetJobs();
@@ -254,8 +255,6 @@ async function refreshStatus() {
     $("link-methods").classList.toggle("hidden", connected);
     $("connect").classList.toggle("hidden", connected || status.state === "qr" || pairing);
     $("unlink").classList.toggle("hidden", !connected);
-    $("call-block").classList.toggle("hidden", !connected);
-    if (connected && !callSettingsLoaded) loadCallSettings();
     if (status.state === "qr" || status.state === "connecting" || pairing) $("wa-panel").classList.remove("hidden");
     $("send").disabled = !connected;
     $("direct-send").disabled = !connected;
