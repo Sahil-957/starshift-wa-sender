@@ -1560,7 +1560,7 @@ async function answer(mobile, sock, bot, config, msg, { chatbotOn = true } = {})
     if (withinRate(rt, bot6Jid, 20)) {
       rt.sent.get(bot6Jid).push(Date.now());
       const website = String(bot3Settings.bot6Website || "").trim();
-      const button = /^https?:\/\//i.test(website) ? { title: String(bot3Settings.bot6ButtonText || "").trim() || "\u{1F310} Visit website", url: website } : null;
+      const button = /^https?:\/\//i.test(website) ? { title: String(bot3Settings.bot6ButtonText || "").trim() || "Visit Website", url: website } : null;
       if (button) await sendChoices(sock, jid, bot6Reply, [], button, null);
       else await sock.sendMessage(jid, { text: bot6Reply });
     }

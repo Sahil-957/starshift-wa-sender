@@ -725,7 +725,7 @@ async function loadCampaignBotLinkInfo() {
       bot4: { name: String(settings.bot4Name || "Table booking"), text: "table", title: "Book a table", url: settings.bot4Enabled && settings.bot4Branches?.[0] ? `${window.location.origin}/table-booking.html?mobile=${number}&branch=${encodeURIComponent(settings.bot4Branches[0].id)}` : "" },
       bot5: { name: String(settings.bot5Name || "Bot 5"), text: String(settings.bot5Keywords || "hi").split(",")[0].trim() || "hi", title: "Open Bot 5" },
       // Bot 6 is the website bot: in a campaign its button opens the website straight away.
-      bot6: { name: String(settings.bot6Name || "Bot 6"), text: String(settings.bot6Keywords || settings.bot6Name || "").split(",")[0].trim() || "hi", title: (String(settings.bot6ButtonText || "").trim().length <= 20 && String(settings.bot6ButtonText || "").trim()) || "Visit Site for Order", url: /^https?:\/\//i.test(String(settings.bot6Website || "").trim()) ? String(settings.bot6Website).trim() : "" },
+      bot6: { name: String(settings.bot6Name || "Bot 6"), text: String(settings.bot6Keywords || settings.bot6Name || "").split(",")[0].trim() || "hi", title: (String(settings.bot6ButtonText || "").trim().length <= 20 && String(settings.bot6ButtonText || "").trim()) || "Visit Website", url: /^https?:\/\//i.test(String(settings.bot6Website || "").trim()) ? String(settings.bot6Website).trim() : "" },
     };
     for (const id of ["bot1", "bot2", "bot3", "bot4", "bot5", "bot6"]) $("cta-bot-select").querySelector(`option[value="${id}"]`).textContent = campaignBotLinkInfo[id].name;
     updateCampaignBotLinkStatus();
