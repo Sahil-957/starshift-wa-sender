@@ -583,6 +583,7 @@ function applyForm(f) {
   $("cta-enabled").checked = !!f.ctaEnabled;
   if (f.ctaAction) $("cta-action").value = f.ctaAction;
   if (f.ctaBot) $("cta-bot-select").value = f.ctaBot;
+  applyBotLimit(); // a saved draft may name a bot / action this customer no longer has
   $("cta-location-url").value = f.ctaLocationUrl || "";
   $("cta-options").classList.toggle("hidden", !f.ctaEnabled);
   const savedCtaLabel = f.ctaLabel || "Join group";
@@ -734,7 +735,9 @@ async function loadCampaignBotLinkInfo() {
   }
 }
 function updateCampaignBotLinkStatus() {
-  const bot = campaignBotLinkInfo?.[$("cta-bot-select").value];
+  const ctaBots = $("cta-bot-select");
+  if (ctaBots.selectedOptions[0]?.hidden) ctaBots.value = [...ctaBots.options].find((option) => !option.hidden)?.value || ctaBots.value;
+  const bot =campaignBotLinkInfo?.[$("cta-bot-select").value];
   if ($("cta-action").value === "hotel") {
     const hotel = campaignBotLinkInfo?.bot4;
     $("cta-hotel-status").textContent = hotel?.url ? `Uses ${hotel.name}; booking opens only after the 50 metre location check.` : "Enable Bot 4 and save its shop coordinates to use the hotel booking button.";
