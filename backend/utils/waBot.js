@@ -1745,4 +1745,19 @@ function defaults() {
   return { settings: SwasBot.DEFAULT_SETTINGS, rules: SwasBot.DEFAULT_RULES };
 }
 
-module.exports = { callSettings, setCallSettings, sync, onMessages, current, appointments, interestedLeads, hotelBranches, hotelWelcomeTemplate, createHotelBooking, hotelBookings, defaults, isUnsubscribed };
+/** Each bot's display name for this account, as the dashboard's "Select bot" list shows it. */
+function botNames(mobile) {
+  const s = load(mobile).config?.settings || {};
+  const name = (value) => String(value || "").trim();
+  return {
+    1: "Bot 1 — Existing chatbot",
+    2: name(s.bot2SalonName) ? `Bot 2 - ${name(s.bot2SalonName)}` : "Bot 2 - Salon booking",
+    3: name(s.bot3CompanyName) ? `Bot 3 - ${name(s.bot3CompanyName)}` : "Bot 3 - Interested leads",
+    4: name(s.bot4Name) || "Bot 4 - Table booking",
+    5: name(s.bot5Name) || "Bot 5",
+    6: name(s.bot6Name) || "Bot 6",
+    7: "Bot 7", 8: "Bot 8", 9: "Bot 9", 10: "Bot 10",
+  };
+}
+
+module.exports = { botNames, callSettings, setCallSettings, sync, onMessages, current, appointments, interestedLeads, hotelBranches, hotelWelcomeTemplate, createHotelBooking, hotelBookings, defaults, isUnsubscribed };

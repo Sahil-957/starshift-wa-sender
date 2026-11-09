@@ -3,6 +3,7 @@ const userStore = require("../utils/userStore");
 const activation = require("../utils/activation");
 const { generatePassword, hashPassword } = require("../utils/password");
 const { FEATURES } = require("./auth");
+const waBot = require("../utils/waBot");
 
 // Mounted behind requireAdmin in server.js.
 const router = express.Router();
@@ -49,7 +50,7 @@ function passwordChanges(requested) {
 router.get("/users", (_req, res) => {
   // The admin number may be in users.json from the old OTP login; it's not a customer.
   const customers = userStore.list().filter((user) => user.mobile !== process.env.ADMIN_MOBILE);
-  res.json({ users: customers.map(publicUser) });
+  res.json({ users: customers.map((user) => ({ ...publicUser(user), botNames: waBot.botNames(user.mobile) })) });
 });
 
 // Adds an active customer on a 1/3/6/12-month plan. The password is only ever returned in this response.
