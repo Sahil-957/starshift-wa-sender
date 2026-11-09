@@ -58,6 +58,16 @@ function applyBotLimit() {
   if (!selector) return;
   [...selector.options].forEach((option) => { option.hidden = !allowedBots.has(Number(option.value)); });
   if (!allowedBots.has(Number(selector.value))) setSelectedBot(String([...allowedBots].sort((a, b) => a - b)[0] || 1));
+  // Button actions that belong to one bot only show when the customer has that bot.
+  const ctaAction = $("cta-action");
+  if (ctaAction) {
+    const needs = { book: 2, lead: 3, hotel: 4 };
+    [...ctaAction.options].forEach((option) => { option.hidden = !!needs[option.value] && !allowedBots.has(needs[option.value]); });
+    if (ctaAction.selectedOptions[0]?.hidden) {
+      ctaAction.value = "botlink";
+      ctaAction.dispatchEvent(new Event("change"));
+    }
+  }
   const ctaBots = $("cta-bot-select");
   if (ctaBots) {
     [...ctaBots.options].forEach((option) => { option.hidden = !allowedBots.has(Number(option.value.replace("bot", ""))); });
