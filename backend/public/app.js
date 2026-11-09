@@ -53,7 +53,7 @@ function applyFeatures() {
 }
 
 function applyBotLimit() {
-  document.querySelectorAll("[data-bot-slot]").forEach((label) => { label.hidden = !allowedBots.has(Number(label.dataset.botSlot)); });
+  document.querySelectorAll("[data-bot-slot]").forEach((label) => { label.classList.toggle("hidden", !allowedBots.has(Number(label.dataset.botSlot))); });
   const selector = $("bot-selector");
   if (!selector) return;
   [...selector.options].forEach((option) => { option.hidden = !allowedBots.has(Number(option.value)); });

@@ -83,6 +83,7 @@ router.post("/users", (req, res) => {
     bots,
     expiresAt: addMonths(Date.now(), months).toISOString(),
   });
+  waBot.giveAdminBotNames(mobile, bots);
   // The activation link is what the customer actually gets sent; the password is their backup.
   activation.issue(mobile);
   res.json({ user: publicUser(userStore.get(mobile)), password });
@@ -103,6 +104,7 @@ router.patch("/users/:mobile", (req, res) => {
     const bots = botList(req.body.bots);
     if (!bots) return res.status(400).json({ message: "Tick at least one bot for this customer." });
     changes.bots = bots;
+    waBot.giveAdminBotNames(user.mobile, bots);
   }
   if (req.body.features && typeof req.body.features === "object") {
     const features = { ...user.features };

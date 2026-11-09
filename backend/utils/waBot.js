@@ -1760,4 +1760,32 @@ function botNames(mobile) {
   };
 }
 
-module.exports = { botNames, callSettings, setCallSettings, sync, onMessages, current, appointments, interestedLeads, hotelBranches, hotelWelcomeTemplate, createHotelBooking, hotelBookings, defaults, isUnsubscribed };
+const BOT_NAME_FIELDS = { 2: "bot2SalonName", 3: "bot3CompanyName", 4: "bot4Name", 5: "bot5Name", 6: "bot6Name" };
+
+/**
+ * When the admin ticks bots for a customer, each ticked bot takes the admin's name for it (e.g. Bot 6
+ * "TiniVo"), so the customer sees it under that name. Only the name is copied - everything else stays
+ * blank - and a name the customer already chose is kept.
+ */
+function giveAdminBotNames(mobile, ticked = []) {
+  const adminSettings = load(process.env.ADMIN_MOBILE).config?.settings || {};
+  const bot = load(mobile);
+  const settings = bot.config?.settings
+    ? { ...bot.config.settings }
+    // No bot saved yet: start from the same blank setup the dashboard gives a new account.
+    : { bot1Name: "", autoUnsubscribe: true, stopKeywords: "6, stop, unsubscribe", startKeywords: "start", unsubscribeReply: SwasBot.DEFAULT_SETTINGS.unsubscribeReply, rewelcomeMinutes: 0 };
+  let changed = !bot.config?.settings;
+  for (const n of ticked) {
+    const field = BOT_NAME_FIELDS[n];
+    const adminName = String(adminSettings[field] || "").trim();
+    const own = String(settings[field] || "").trim();
+    if (!field || !adminName || (own && !/^Bot \d+$/i.test(own))) continue;
+    settings[field] = adminName;
+    changed = true;
+  }
+  if (!changed) return;
+  bot.config = { rules: [], footerKeywords: [], ...(bot.config || {}), settings };
+  save(mobile);
+}
+
+module.exports = { giveAdminBotNames, botNames, callSettings, setCallSettings, sync, onMessages, current, appointments, interestedLeads, hotelBranches, hotelWelcomeTemplate, createHotelBooking, hotelBookings, defaults, isUnsubscribed };
