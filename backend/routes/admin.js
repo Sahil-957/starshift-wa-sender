@@ -50,7 +50,8 @@ function passwordChanges(requested) {
 router.get("/users", (_req, res) => {
   // The admin number may be in users.json from the old OTP login; it's not a customer.
   const customers = userStore.list().filter((user) => user.mobile !== process.env.ADMIN_MOBILE);
-  res.json({ users: customers.map((user) => ({ ...publicUser(user), botNames: waBot.botNames(user.mobile) })) });
+  // Tick boxes are labelled with the admin account's own bot names (the bots the admin sets up for customers).
+  res.json({ users: customers.map(publicUser), botNames: waBot.botNames(process.env.ADMIN_MOBILE) });
 });
 
 // Adds an active customer on a 1/3/6/12-month plan. The password is only ever returned in this response.

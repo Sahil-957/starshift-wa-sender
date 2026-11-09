@@ -16,13 +16,15 @@ const dateLabel = (value) => value ? new Date(value).toLocaleDateString() : "No 
 async function loadCustomers() {
   $("page-error").textContent = "";
   try {
-    const { users } = await api("/admin/users");
+    const { users, botNames = {} } = await api("/admin/users");
+    // Label the "Add a customer" ticks with the same names, keeping what is already ticked.
+    $("new-bots").querySelectorAll("input").forEach((input) => { input.nextSibling.textContent = ` ${botNames[input.value] || `Bot ${input.value}`}`; });
     $("customer-count").textContent = `${users.length} account(s)`;
     $("customers").innerHTML = users.length ? users.map((u) => {
       const selectedCount = PAGE_OPTIONS.filter(([key]) => u.features?.[key] !== false).length;
       const permissionMenu = `<details class="permission-dropdown"><summary>Menu access (${selectedCount}/${PAGE_OPTIONS.length})</summary><div class="permission-panel"><b>Pages this customer can see</b>${PAGE_OPTIONS.map(([key, label]) => `<label class="permission-item"><input type="checkbox" data-permission="${key}" ${u.features?.[key] === false ? "" : "checked"}><span>${label}</span></label>`).join("")}<button type="button" class="primary" data-save-permissions="${esc(u.mobile)}">Save options</button></div></details>`;
       const userBots = Array.isArray(u.bots) ? u.bots.map(Number) : [1, 2, 3, 4, 5].slice(0, Number(u.maxBots) || 3);
-      const botLimit = `<details class="permission-dropdown"><summary>Bots (${userBots.length}/10)</summary><div class="permission-panel"><b>Bots this customer can see</b>${[1,2,3,4,5,6,7,8,9,10].map((n) => `<label class="permission-item"><input type="checkbox" data-bot-tick="${n}" ${userBots.includes(n) ? "checked" : ""}><span>${esc(u.botNames?.[n] || `Bot ${n}`)}</span></label>`).join("")}<button type="button" class="primary" data-save-bot-limit="${esc(u.mobile)}">Save bots</button></div></details>`;
+      const botLimit = `<details class="permission-dropdown"><summary>Bots (${userBots.length}/10)</summary><div class="permission-panel"><b>Bots this customer can see</b>${[1,2,3,4,5,6,7,8,9,10].map((n) => `<label class="permission-item"><input type="checkbox" data-bot-tick="${n}" ${userBots.includes(n) ? "checked" : ""}><span>${esc(botNames[n] || `Bot ${n}`)}</span></label>`).join("")}<button type="button" class="primary" data-save-bot-limit="${esc(u.mobile)}">Save bots</button></div></details>`;
       return `<tr><td><b>${esc(u.name || "Customer")}</b><br><span class="muted">+${esc(u.mobile)}</span></td><td>${dateLabel(u.expiresAt)}</td><td><span class="pill ${u.active ? "active" : ""}">${u.active ? "Active" : "Inactive"}</span></td><td><div class="actions">${permissionMenu}${botLimit}<button data-activation="${esc(u.mobile)}">Copy activation link</button><button data-renew="${esc(u.mobile)}">Renew</button><button data-toggle="${esc(u.mobile)}" data-active="${u.active}">${u.active ? "Deactivate" : "Activate"}</button><button data-password="${esc(u.mobile)}">Reset password</button><button data-delete="${esc(u.mobile)}" class="danger">Delete</button></div></td></tr>`;
     }).join("") : `<tr><td colspan="4">No customers yet.</td></tr>`;
     bindActions(users);
