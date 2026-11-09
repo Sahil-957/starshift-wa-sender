@@ -724,7 +724,8 @@ async function loadCampaignBotLinkInfo() {
       bot3: { name: String(settings.bot3CompanyName || "Bot 3"), text: "Interested", title: "Interested" },
       bot4: { name: String(settings.bot4Name || "Table booking"), text: "table", title: "Book a table", url: settings.bot4Enabled && settings.bot4Branches?.[0] ? `${window.location.origin}/table-booking.html?mobile=${number}&branch=${encodeURIComponent(settings.bot4Branches[0].id)}` : "" },
       bot5: { name: String(settings.bot5Name || "Bot 5"), text: String(settings.bot5Keywords || "hi").split(",")[0].trim() || "hi", title: "Open Bot 5" },
-      bot6: { name: String(settings.bot6Name || "Bot 6"), text: String(settings.bot6Keywords || settings.bot6Name || "").split(",")[0].trim() || "hi", title: "Open " + String(settings.bot6Name || "Bot 6") },
+      // Bot 6 is the website bot: in a campaign its button opens the website straight away.
+      bot6: { name: String(settings.bot6Name || "Bot 6"), text: String(settings.bot6Keywords || settings.bot6Name || "").split(",")[0].trim() || "hi", title: String(settings.bot6ButtonText || "").trim() || "Visit Website for order", url: /^https?:\/\//i.test(String(settings.bot6Website || "").trim()) ? String(settings.bot6Website).trim() : "" },
     };
     for (const id of ["bot1", "bot2", "bot3", "bot4", "bot5", "bot6"]) $("cta-bot-select").querySelector(`option[value="${id}"]`).textContent = campaignBotLinkInfo[id].name;
     updateCampaignBotLinkStatus();
@@ -742,6 +743,8 @@ function updateCampaignBotLinkStatus() {
   }
   $("cta-bot-select-status").textContent = $("cta-action").value === "lead"
     ? "Interested lead collection runs through Bot 3. Select Bot 3, or choose Open a bot link to use another bot."
+    : bot?.url ? `Button "${bot.title}" opens ${bot.url} directly.`
+    : $("cta-bot-select").value === "bot6" ? "Save the website link in Bot 6 first."
     : bot ? `Button opens ${bot.name} on WhatsApp. The customer sends ?${bot.text}? to start that bot.`
       : "Choose which bot's WhatsApp link to attach.";
 }
