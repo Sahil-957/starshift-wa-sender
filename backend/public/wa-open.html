@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="mr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#075e54" />
+  <title>Open WhatsApp</title>
+  <style>
+    :root { color-scheme: light; }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 16px; background: #eef6f3; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: #10302a; }
+    .card { width: 100%; max-width: 380px; background: #fff; border-radius: 16px; padding: 24px 20px; box-shadow: 0 8px 30px rgba(7, 94, 84, .12); text-align: center; }
+    h1 { font-size: 20px; margin: 0 0 6px; }
+    p { margin: 0 0 18px; color: #4b635d; font-size: 14px; line-height: 1.45; }
+    a.btn { display: block; padding: 14px 16px; margin: 10px 0; border-radius: 12px; font-weight: 600; font-size: 16px; text-decoration: none; }
+    .wa { background: #25d366; color: #fff; }
+    .wab { background: #075e54; color: #fff; }
+    .other { background: #f0f4f3; color: #075e54; font-size: 14px; }
+    .err { color: #b3261e; }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <h1 id="title">WhatsApp निवडा / Choose WhatsApp</h1>
+    <p id="hint">ज्या WhatsApp मध्ये तुमचा नोंदणीकृत नंबर आहे ते निवडा.<br />Choose the WhatsApp that has your registered number.</p>
+    <a class="btn wa" id="open-wa" href="#">WhatsApp</a>
+    <a class="btn wab" id="open-wab" href="#">WhatsApp Business</a>
+    <a class="btn other" id="open-web" href="#">Other / इतर</a>
+  </main>
+  <script>
+    (function () {
+      var params = new URLSearchParams(location.search);
+      var phone = String(params.get("phone") || "").replace(/\D/g, "");
+      var text = String(params.get("text") || "").slice(0, 200);
+      if (phone.length < 7 || phone.length > 15) {
+        document.getElementById("hint").textContent = "This link is invalid. Please scan the QR again.";
+        document.getElementById("hint").className = "err";
+        ["open-wa", "open-wab", "open-web"].forEach(function (id) { document.getElementById(id).style.display = "none"; });
+        return;
+      }
+      var query = "phone=" + phone + "&text=" + encodeURIComponent(text);
+      var web = "https://wa.me/" + phone + "?text=" + encodeURIComponent(text);
+      var android = /android/i.test(navigator.userAgent);
+      var intent = function (pkg) {
+        return "intent://send?" + query + "#Intent;scheme=whatsapp;package=" + pkg + ";S.browser_fallback_url=" + encodeURIComponent(web) + ";end";
+      };
+      document.getElementById("open-wa").href = android ? intent("com.whatsapp") : "whatsapp://send?" + query;
+      document.getElementById("open-wab").href = android ? intent("com.whatsapp.w4b") : "whatsapp-business://send?" + query;
+      document.getElementById("open-web").href = web;
+    })();
+  </script>
+</body>
+</html>

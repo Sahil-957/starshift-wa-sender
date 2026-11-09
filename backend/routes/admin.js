@@ -9,6 +9,7 @@ const router = express.Router();
 const MOBILE_RE = /^\d{10,15}$/;
 const PASSWORD_RE = /^\S{6,64}$/;
 const PLAN_MONTHS = [1, 3, 6, 12];
+const BOT_COUNTS = [1, 2, 3, 4, 5];
 
 // The token itself never leaves as a bare value - only wrapped in the link the admin shares.
 const publicUser = ({ passwordHash, activationToken, ...user }) => ({
@@ -50,10 +51,12 @@ router.post("/users", (req, res) => {
   const mobile = String(req.body.mobile || "").replace(/\D/g, "");
   const name = String(req.body.name || "").trim();
   const months = planMonths(req.body.months);
+  const maxBots = req.body.maxBots === undefined ? 3 : Number(req.body.maxBots);
   if (!MOBILE_RE.test(mobile)) {
     return res.status(400).json({ message: "Enter the mobile number with country code, e.g. 919876543210." });
   }
   if (!months) return res.status(400).json({ message: "Choose a validity of 1, 3, 6 or 12 months." });
+  if (!BOT_COUNTS.includes(maxBots)) return res.status(400).json({ message: "Choose 1 to 5 bots for this customer." });
   if (mobile === process.env.ADMIN_MOBILE) return res.status(400).json({ message: "That is the admin number." });
   if (userStore.get(mobile)) {
     return res.status(409).json({ message: "This customer already exists - use Reset password or Renew on their row." });
@@ -66,6 +69,7 @@ router.post("/users", (req, res) => {
     name,
     active: true,
     planMonths: months,
+    maxBots,
     expiresAt: addMonths(Date.now(), months).toISOString(),
   });
   // The activation link is what the customer actually gets sent; the password is their backup.
@@ -79,6 +83,11 @@ router.patch("/users/:mobile", (req, res) => {
   const changes = {};
   if (typeof req.body.active === "boolean") changes.active = req.body.active;
   if (typeof req.body.name === "string") changes.name = req.body.name.trim();
+  if (req.body.maxBots !== undefined) {
+    const maxBots = Number(req.body.maxBots);
+    if (!BOT_COUNTS.includes(maxBots)) return res.status(400).json({ message: "Choose 1 to 5 bots for this customer." });
+    changes.maxBots = maxBots;
+  }
   if (req.body.features && typeof req.body.features === "object") {
     const features = { ...user.features };
     for (const key of FEATURES) {

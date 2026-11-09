@@ -86,4 +86,49 @@ function lookupReply(mobile, senderNumber) {
   return lines.join("\n");
 }
 
-module.exports = { setFromRows, summary, clear, lookupReply };
+// ---- Bot 5: its own sheet. Keeps EVERY row of a number (a customer can have several rows). ----
+function bot5File(mobile) {
+  return path.join(DIR, `${String(mobile).replace(/\D/g, "")}-bot5-data.json`);
+}
+function bot5Load(mobile) {
+  try { return JSON.parse(fs.readFileSync(bot5File(mobile), "utf8")); } catch { return null; }
+}
+function bot5SetFromRows(mobile, rawRows) {
+  const rows = Array.isArray(rawRows) ? rawRows : [];
+  if (!rows.length) throw Object.assign(new Error("The sheet has no rows."), { status: 400 });
+  const headers = [...new Set(rows.flatMap((row) => Object.keys(row || {})))];
+  const mobileHeader = headers.find((h) => MOBILE_ALIASES.includes(String(h).trim().toLowerCase()))
+    || headers.find((h) => /mobile|phone|whats\s*app|contact\s*no|number/i.test(String(h)));
+  if (!mobileHeader) throw Object.assign(new Error("No mobile column found. Add a column named Mobile (or Number/Phone/WhatsApp)."), { status: 400 });
+  const dataHeaders = headers.filter((h) => String(h).trim() !== "" && !/^__EMPTY/.test(h));
+  const keyed = {};
+  let count = 0;
+  for (const row of rows) {
+    const k = key10(row[mobileHeader]);
+    if (k.length < 10) continue;
+    const entry = {};
+    for (const h of dataHeaders) entry[h] = String(row[h] ?? "").trim();
+    (keyed[k] || (keyed[k] = [])).push(entry);
+    count++;
+  }
+  if (!count) throw Object.assign(new Error("No valid 10-digit mobile numbers in the sheet."), { status: 400 });
+  const store = { headers: dataHeaders, mobileHeader, rows: keyed, count, customers: Object.keys(keyed).length, updatedAt: Date.now() };
+  writeJsonAtomic(bot5File(mobile), store);
+  return bot5Summary(mobile, store);
+}
+function bot5Summary(mobile, store = bot5Load(mobile)) {
+  if (!store) return { loaded: false, count: 0, customers: 0, headers: [], mobileHeader: "", updatedAt: null };
+  return { loaded: true, count: store.count || 0, customers: store.customers || Object.keys(store.rows || {}).length, headers: store.headers || [], mobileHeader: store.mobileHeader || "", updatedAt: store.updatedAt || null };
+}
+function bot5Clear(mobile) {
+  try { fs.unlinkSync(bot5File(mobile)); } catch { /* already gone */ }
+  return bot5Summary(mobile, null);
+}
+/** Every sheet row for this WhatsApp number (matched on the last 10 digits), or null. */
+function bot5Rows(mobile, senderNumber) {
+  const store = bot5Load(mobile);
+  const rows = store?.rows?.[key10(senderNumber)];
+  return rows?.length ? { headers: store.headers || [], rows } : null;
+}
+
+module.exports = { setFromRows, summary, clear, lookupReply, bot5SetFromRows, bot5Summary, bot5Clear, bot5Rows };

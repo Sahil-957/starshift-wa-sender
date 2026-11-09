@@ -229,7 +229,7 @@ async function sendRow(mobile, batchId, rowKey) {
 
   const target = { type: "number", phone: row.mobile };
   try {
-    await wa.send(mobile, { target, message, attachment });
+    await wa.send(mobile, { target, message, attachment, urlButton: batch.urlButton });
     update(mobile, batchId, (b) => {
       const t = b.rows.find((x) => x.key === rowKey);
       if (t) { t.status = "sent"; t.sentAt = Date.now(); t.failReason = undefined; }
@@ -380,6 +380,7 @@ function summarize(batch) {
     .reduce((min, r) => (min === null || r.sendAt < min ? r.sendAt : min), null);
   return {
     id: batch.id, name: batch.name, source: batch.source, sheetUrl: batch.sheetUrl || null,
+    urlButton: batch.urlButton || null,
     syncEnabled: !!batch.syncEnabled, status: batch.status, createdAt: batch.createdAt,
     lastSyncedAt: batch.lastSyncedAt || null, total: batch.rows.length, counts, nextSendAt: next,
     rows: batch.rows.map((r) => ({
@@ -405,6 +406,20 @@ function get(mobile, id) {
  * input (upload): { mode:"upload", name, rows:[ rawRowObjects ] }
  */
 async function create(mobile, input = {}) {
+  const rawButton = input.urlButton || null;
+  let urlButton = null;
+  if (rawButton) {
+    if (rawButton.action === "book") urlButton = { title: "Book", action: "book" };
+    const buttonUrl = String(rawButton.url || "").trim();
+    const title = String(rawButton.title || "").trim();
+    if (!urlButton && buttonUrl) {
+      let parsed;
+      try { parsed = new URL(buttonUrl); } catch { throw Object.assign(new Error("Enter a valid link starting with https:// or http://."), { status: 400 }); }
+      if (!["http:", "https:"].includes(parsed.protocol)) throw Object.assign(new Error("The link button must use http:// or https://."), { status: 400 });
+      if (!title || title.length > 20) throw Object.assign(new Error("Enter a button name (up to 20 characters)."), { status: 400 });
+      urlButton = { title, url: parsed.toString(), groupJid: String(rawButton.groupJid || "") };
+    }
+  }
   let rows, source, sheetUrl = null, syncEnabled = false;
   if (input.mode === "sheet") {
     sheetUrl = String(input.url || "").trim();
@@ -424,7 +439,7 @@ async function create(mobile, input = {}) {
   const batch = {
     id: crypto.randomUUID(),
     name: String(input.name || "").trim() || `Sheet ${new Date().toLocaleString()}`,
-    source, sheetUrl, syncEnabled,
+    source, sheetUrl, syncEnabled, urlButton,
     status: "active",
     createdAt: Date.now(),
     lastSyncedAt: source === "sheet" ? Date.now() : null,

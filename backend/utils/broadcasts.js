@@ -150,7 +150,7 @@ async function runBroadcast(mobile, id) {
       : r.source === "contact" ? { type: "contact", name: r.name }
       : { type: "number", phone: r.mobile };
     try {
-      await wa.send(mobile, { target, message: message || undefined, attachment });
+      await wa.send(mobile, { target, message: message || undefined, attachment, urlButton: b.urlButton });
       sent++;
     } catch (err) {
       failures.push({ name: r.name, mobile: r.mobile, reason: err.message || String(err) });
@@ -205,6 +205,28 @@ function normalizeTimes(raw) {
   return [...new Set(mins)].sort((a, b) => a - b);
 }
 
+function normalizeUrlButton(raw, hasFile) {
+  if (!raw) return null;
+  if (raw.action === "book") {
+    const locationUrl = String(raw.locationUrl || "").trim();
+    if (!locationUrl) throw Object.assign(new Error("Add the Google Maps location link for the Location button."), { status: 400 });
+    let parsed;
+    try { parsed = new URL(locationUrl); } catch { throw Object.assign(new Error("Enter a valid Google Maps link."), { status: 400 }); }
+    const mapHost = /(^|\.)(maps\.app\.goo\.gl|goo\.gl|google\.com|google\.co\.in)$/.test(parsed.hostname);
+    if (parsed.protocol !== "https:" || !mapHost || !/(maps|goo\.gl)/i.test(parsed.href)) throw Object.assign(new Error("Enter a valid Google Maps link."), { status: 400 });
+    return { title: "Book", action: "book", locationUrl: parsed.toString() };
+  }
+  const url = String(raw.url || "").trim();
+  const title = String(raw.title || "").trim();
+  if (!url) return null;
+  let parsed;
+  try { parsed = new URL(url); } catch { throw Object.assign(new Error("Enter a valid link starting with https:// or http://."), { status: 400 }); }
+  if (!["https:", "http:"].includes(parsed.protocol)) throw Object.assign(new Error("The button link must start with https:// or http://."), { status: 400 });
+  if (!hasFile) throw Object.assign(new Error("Attach a file to use a link button in Auto Broadcast."), { status: 400 });
+  if (!title || title.length > 20) throw Object.assign(new Error("Enter a button name (up to 20 characters)."), { status: 400 });
+  return { title, url: parsed.toString(), groupJid: String(raw.groupJid || "") };
+}
+
 // ---------- public API ----------
 function publicView(mobile, b) {
   const l = lists.list(mobile).find((x) => x.id === b.listId);
@@ -212,6 +234,7 @@ function publicView(mobile, b) {
     id: b.id, name: b.name, listId: b.listId, listName: l ? l.name : "(deleted list)",
     recipientCount: l ? (l.recipients || []).length : 0,
     caption: b.caption || "", times: (b.times || []).map(minutesToHHMM), frequency: b.frequency,
+    urlButton: b.urlButton || null,
     active: !!b.active, file: b.file || null, createdAt: b.createdAt,
     lastRunAt: b.lastRunAt || null, nextRunAt: b.nextRunAt || null, runs: (b.runs || []).slice(0, 5),
   };
@@ -232,6 +255,7 @@ function create(mobile, input = {}) {
   if (!FREQUENCIES.includes(input.frequency)) throw Object.assign(new Error("Choose daily, weekly, monthly or yearly."), { status: 400 });
   if (!recipientsFor(mobile, input.listId)) throw Object.assign(new Error("Pick a saved list for the recipients."), { status: 400 });
   const hasFile = !!(input.file && input.file.dataUrl);
+  const urlButton = normalizeUrlButton(input.urlButton, hasFile);
   if (!hasFile && !String(input.caption || "").trim()) {
     throw Object.assign(new Error("Add a file or a caption to send."), { status: 400 });
   }
@@ -245,6 +269,7 @@ function create(mobile, input = {}) {
     name: String(input.name || "").trim() || "Auto Broadcast",
     listId: input.listId,
     caption: String(input.caption || ""),
+    urlButton,
     times, frequency: input.frequency,
     active: input.active !== false,
     file: hasFile ? { name: input.file.name || "file", mimeType: input.file.mimeType || "application/octet-stream", updatedAt: now } : null,
@@ -263,6 +288,7 @@ function edit(mobile, id, changes = {}) {
     if (typeof changes.name === "string") x.name = changes.name.trim() || x.name;
     if (changes.listId && recipientsFor(mobile, changes.listId)) x.listId = changes.listId;
     if (typeof changes.caption === "string") x.caption = changes.caption;
+    if (changes.urlButton !== undefined) x.urlButton = normalizeUrlButton(changes.urlButton, !!x.file);
     if (changes.times !== undefined) { const t = normalizeTimes(changes.times); if (t.length) x.times = t; }
     if (FREQUENCIES.includes(changes.frequency)) x.frequency = changes.frequency;
     if (typeof changes.active === "boolean") x.active = changes.active;

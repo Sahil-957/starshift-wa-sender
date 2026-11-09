@@ -6,6 +6,7 @@ const cors = require("cors");
 const { router: authRoutes, requireAuth, requireAdmin } = require("./routes/auth");
 const adminRoutes = require("./routes/admin");
 const waRoutes = require("./routes/wa");
+const tableBookingRoutes = require("./routes/tableBooking");
 const campaignRoutes = require("./routes/campaigns");
 const listRoutes = require("./routes/lists");
 const draftRoutes = require("./routes/drafts");
@@ -31,6 +32,7 @@ const app = express();
 app.use(cors());
 // Sends carry the attachment inline, so this route takes far bigger bodies than the rest.
 app.use("/api/wa", express.json({ limit: "70mb" }), requireAuth, waRoutes);
+app.use("/api/table-booking", express.json(), tableBookingRoutes);
 // Creating a campaign posts the whole contact list plus any attachment, so this route takes a larger body.
 app.use("/api/campaigns", express.json({ limit: "60mb" }), requireAuth, campaignRoutes);
 app.use("/api/lists", express.json({ limit: "20mb" }), requireAuth, listRoutes);

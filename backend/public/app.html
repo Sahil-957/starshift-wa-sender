@@ -91,6 +91,16 @@
       <p id="pair-code" class="hidden" style="font-size:26px;font-weight:bold;letter-spacing:4px;margin:12px 0"></p>
       <p class="hint">On your phone: <b>WhatsApp → Linked devices → Link a device → Link with phone number instead</b>, then type this code.</p>
     </div>
+
+    <div id="call-block" class="hidden" style="margin-top:14px;border-top:1px solid #e5e7eb;padding-top:12px">
+      <label class="switch"><input type="checkbox" id="call-reject" /> <b>Block WhatsApp calls</b> — incoming calls are cut automatically, customers can only chat</label>
+      <label for="call-message">Message sent to the caller after a blocked call (leave empty to send nothing)</label>
+      <textarea id="call-message" rows="3"></textarea>
+      <div class="row" style="gap:8px;align-items:center;margin-top:8px">
+        <button type="button" class="primary" id="call-save">Save call settings</button>
+        <span class="hint" id="call-status" role="status"></span>
+      </div>
+    </div>
   </div>
 
   <main class="layout">
@@ -239,9 +249,48 @@
               <input id="attach" type="file" accept="image/*,video/*,application/pdf,.doc,.docx,.xls,.xlsx" class="hidden" />
               <button id="attach-clear" type="button" class="btn-secondary danger hidden">Remove</button>
             </div>
+            <div class="row" style="gap:8px;align-items:center;margin-top:8px">
+              <select id="saved-attachment-select" style="flex:1;min-width:180px"><option value="">Choose a saved attachment</option></select>
+            </div>
+            <p class="hint" id="saved-attachment-status">Attachments from your saved campaigns appear here.</p>
             <p class="hint" id="attach-info">Photo, video, PDF or document.</p>
             <label for="caption">Caption for attachment</label>
             <textarea id="caption" rows="2" placeholder="Optional — placeholders like {{name}} work here too. Left blank, the message is used."></textarea>
+            <label class="switch"><input id="cta-enabled" type="checkbox" /> Add a button</label>
+            <div id="cta-options" class="hidden">
+              <label for="cta-action">Button action</label>
+              <select id="cta-action"><option value="book">Book, Location and Contact</option><option value="lead">Interested (collect name, number and city)</option><option value="botlink">Open a bot link</option><option value="hotel">Hotel Table Booking</option></select>
+              <div id="cta-botlink-options" class="hidden">
+                <label for="cta-bot-select">Bot name</label>
+                <select id="cta-bot-select"><option value="bot1">Existing chatbot</option><option value="bot2">Bot 2</option><option value="bot3">Bot 3</option><option value="bot4">Bot 4</option><option value="bot5">Bot 5</option></select>
+                <p class="hint" id="cta-bot-select-status">Choose which bot's WhatsApp link to attach.</p>
+              </div>
+              <div id="cta-hotel-options" class="hidden"><p class="hint" id="cta-hotel-status">Uses the saved Bot 4 hotel name and 50 metre location check.</p></div>
+              <div id="cta-book-options">
+            <p class="hint">Add Book, Location and Contact buttons. Contact uses this connected WhatsApp number.</p>
+              <label for="cta-location-url">Google Maps location link</label>
+              <input id="cta-location-url" type="url" readonly placeholder="Save the Google Maps link in Bot 2 settings" />
+            <div class="hidden">
+              <label for="cta-label">Link button name</label>
+              <select id="cta-label">
+                <option value="Join group">Join group</option>
+                <option value="Open link">Open link</option>
+                <option value="Shop now">Shop now</option>
+                <option value="Book now">Book now</option>
+                <option value="Learn more">Learn more</option>
+                <option value="custom">Custom name…</option>
+              </select>
+              <input id="cta-custom-label" class="hidden" type="text" maxlength="20" placeholder="Button name (up to 20 characters)" />
+              <p class="hint" id="cta-bot-link-status">The active bot WhatsApp link will fill automatically when you tick this option.</p>
+              <select id="cta-group" class="hidden"><option value="">— Choose a group —</option></select>
+              <p class="hint hidden" id="cta-group-status">Select a group to fill its invite link automatically.</p>
+              <label for="cta-url">Button link</label>
+              <input id="cta-url" type="url" placeholder="https://example.com/group-invite" />
+              <p class="hint">Adds a clickable URL button below the media and caption.</p>
+              </div>
+              <p id="cta-lead-hint" class="hint hidden">Adds an Interested button. Enable Bot 3 and save the city question and thank-you reply there.</p>
+            </div>
+            </div>
           </div>
 
           <div class="card">
@@ -269,10 +318,14 @@
             <input id="campaign-name" type="text" placeholder="e.g. Diwali Offer Blast" />
             <div class="drafts-box">
               <div class="row" style="justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px">
-                <span class="opt-label" style="margin:0">Saved drafts <span class="hint" id="drafts-count" style="margin:0"></span></span>
-                <button type="button" class="btn-link" id="save-draft">Save as draft</button>
+                <span class="opt-label" style="margin:0">Saved campaigns <span class="hint" id="drafts-count" style="margin:0"></span></span>
+                <button type="button" class="btn-link" id="save-draft">Save campaign</button>
               </div>
-              <div class="pick-list" id="drafts-list"><p class="empty-note">No saved drafts yet.</p></div>
+              <div class="row" style="gap:8px;align-items:center">
+                <select id="drafts-select" style="flex:1;min-width:180px"><option value="">Choose a saved campaign</option></select>
+                <button type="button" class="btn-secondary" id="load-draft" disabled>Load</button>
+                <button type="button" class="btn-secondary danger" id="delete-draft" disabled>Delete</button>
+              </div>
             </div>
             <div class="campaign-buttons">
               <button id="send" class="primary" disabled>Save &amp; Start / Schedule</button>
@@ -315,6 +368,26 @@
           <button type="button" class="primary" id="sheet-sched-load">Load &amp; schedule</button>
         </div>
         <label class="switch" style="margin-top:8px"><input type="checkbox" id="sheet-sched-sync" checked /> Keep syncing — pick up new rows added to this sheet</label>
+
+        <label class="switch" style="margin-top:12px"><input type="checkbox" id="sheet-cta-enabled" /> Add Book button with each scheduled message</label>
+        <div id="sheet-cta-options" class="hidden">
+          <p class="hint">This button starts the booking conversation in WhatsApp chat. It does not open an external link.</p>
+          <div class="hidden">
+          <label for="sheet-cta-label">Link button name</label>
+          <select id="sheet-cta-label">
+            <option value="Join group">Join group</option><option value="Open link">Open link</option>
+            <option value="Shop now">Shop now</option><option value="Book now">Book now</option>
+            <option value="Learn more">Learn more</option><option value="custom">Custom name…</option>
+          </select>
+          <input id="sheet-cta-custom-label" class="hidden" type="text" maxlength="20" placeholder="Button name (up to 20 characters)" />
+          <p class="hint" id="sheet-cta-bot-link-status">The active bot WhatsApp link will fill automatically when you tick this option.</p>
+          <select id="sheet-cta-group" class="hidden"><option value="">— Choose a group —</option></select>
+          <p class="hint hidden" id="sheet-cta-group-status">Select a group to fill its invite link automatically.</p>
+          <label for="sheet-cta-url">Button link</label>
+          <input id="sheet-cta-url" type="url" placeholder="https://example.com/group-invite" />
+          <p class="hint">This button will be added to every scheduled row message.</p>
+          </div>
+        </div>
 
         <div class="divider">or upload Excel / CSV (one-time)</div>
         <div class="upload-row">
@@ -359,6 +432,28 @@
         <label for="bc-caption">Caption (optional)</label>
         <textarea id="bc-caption" rows="2" placeholder="Sent with the file. {{name}} works here too."></textarea>
 
+        <label class="switch"><input id="bc-cta-enabled" type="checkbox" /> Add Book button</label>
+        <div id="bc-cta-options" class="hidden">
+          <p class="hint">Add Book, Location and Contact buttons. Contact uses this connected WhatsApp number.</p>
+          <label for="bc-location-url">Google Maps location link</label>
+          <input id="bc-location-url" type="url" readonly placeholder="Save the Google Maps link in Bot 2 settings" />
+          <div class="hidden">
+          <label for="bc-cta-label">Link button name</label>
+          <select id="bc-cta-label">
+            <option value="Join group">Join group</option><option value="Open link">Open link</option>
+            <option value="Shop now">Shop now</option><option value="Book now">Book now</option>
+            <option value="Learn more">Learn more</option><option value="custom">Custom name…</option>
+          </select>
+          <input id="bc-cta-custom-label" class="hidden" type="text" maxlength="20" placeholder="Button name (up to 20 characters)" />
+          <p class="hint" id="bc-cta-bot-link-status">The active bot WhatsApp link will fill automatically when you tick this option.</p>
+          <select id="bc-cta-group" class="hidden"><option value="">— Choose a group —</option></select>
+          <p class="hint hidden" id="bc-cta-group-status">Select a group to fill its invite link automatically.</p>
+          <label for="bc-cta-url">Button link</label>
+          <input id="bc-cta-url" type="url" placeholder="https://example.com/group-invite" />
+          <p class="hint">Adds a clickable URL button below the media and caption.</p>
+          </div>
+        </div>
+
         <label style="margin-top:10px">📁 Folder (holds one file)</label>
         <div class="upload-row">
           <label for="bc-folder" class="file-btn">📁 Select a folder</label>
@@ -397,13 +492,29 @@
     <section id="page-chatbot" class="page hidden">
       <div class="card">
         <h2>Chatbot auto-replies</h2>
-        <label class="switch"><input type="checkbox" id="bot-enabled" /> Enable chatbot</label>
+        <label for="bot-selector">Select bot</label>
+        <select id="bot-selector"><option value="1">Bot 1 — Existing chatbot</option><option value="2">Bot 2 — My shop</option><option value="3">Bot 3 — Interested leads</option><option value="4">Bot 4</option><option value="5">Bot 5</option></select>
+        <div class="row" style="gap:12px;flex-wrap:wrap"><label class="switch" data-bot-slot="1"><input type="checkbox" id="bot1-enabled" class="bot-enabled" /> Enable Bot 1</label><label class="switch" data-bot-slot="2"><input type="checkbox" id="bot2-enabled" class="bot-enabled" /> Enable Bot 2</label><label class="switch" data-bot-slot="3"><input type="checkbox" id="bot3-enabled" class="bot-enabled" /> Enable Bot 3</label><label class="switch" data-bot-slot="4"><input type="checkbox" id="bot4-enabled" class="bot-enabled" /> Enable Bot 4</label><label class="switch" data-bot-slot="5"><input type="checkbox" id="bot5-enabled" class="bot-enabled" /> Enable Bot 5</label></div>
         <p class="hint">With the server WhatsApp linked, a reply goes out the moment a message arrives — nothing typed, browser closed is fine. Groups are ignored; each chat is answered at most a few times a minute.</p>
         <div id="bot-engine" class="bot-engine"></div>
+        <button type="button" class="primary" id="bot-save">Save selected bot settings</button>
+        <p class="hint" id="bot-status" role="status"></p>
       </div>
-      <div class="card">
+      <div class="card" data-bot-panel="1">
+        <h2>Chatbot link</h2>
+        <p class="hint">Generate this link and paste it into a campaign message or image caption. When a customer opens it, WhatsApp shows a prefilled “hi”; they tap Send to receive the chatbot menu.</p>
+        <div class="row" style="align-items:center;gap:8px">
+          <input id="bot-chat-link" type="url" readonly placeholder="Connect WhatsApp, then generate your link" style="flex:1;min-width:220px" />
+          <button type="button" class="btn-secondary" id="bot-link-generate">Generate link</button>
+          <button type="button" class="btn-secondary" id="bot-link-copy" disabled>Copy link</button>
+        </div>
+        <p class="hint" id="bot-link-status" role="status"></p>
+      </div>
+      <div class="card" data-bot-panel="1">
         <h2>Welcome menu</h2>
         <p class="hint">Sent when a customer greets you. Clear the keywords to turn it off.</p>
+        <label>Bot 1 name (shown as "Welcome to …")</label>
+        <input type="text" id="bot1-name" placeholder="Your business name" />
         <label>Welcome keywords (comma separated)</label>
         <input type="text" id="bot-welcome-kw" />
         <label>Welcome message <span class="muted" id="welcome-lang-note"></span></label>
@@ -423,7 +534,132 @@
         <label>Re-send the welcome menu after this many minutes of silence (0 = off)</label>
         <input type="number" id="bot-rewelcome" min="0" max="1440" />
       </div>
-      <div class="card">
+      <div class="card" data-bot-panel="2">
+        <h2 id="bot2-title">Bot 2: Salon booking</h2>
+        <p class="hint">Enable any combination of bots. Each enabled bot can reply on the same WhatsApp number. Bot 2 checks the date, opening days, time range, and duplicate bookings before confirming.</p>
+        <label>Bot / shop name</label><input id="bot2-salon-name" placeholder="My shop" />
+        <p class="hint">Edit this name to update the Bot 2 heading, bot replies, booking QR and linked WhatsApp profile.</p>
+        <label for="bot2-map-location">Google Maps location link (save once)</label><input id="bot2-map-location" type="url" placeholder="https://maps.app.goo.gl/..." />
+        <p class="hint">Saved Campaign and Auto Broadcast messages use this link for their Location button.</p>
+        <label>Services and prices (one per line or comma-separated, e.g. Haircut-300, Facial-500)</label><textarea id="bot2-salon-services" rows="4"></textarea>
+        <label>Opening days</label><input id="bot2-salon-days" placeholder="Mon-Sat" />
+        <label>First available booking date</label><input id="bot2-start-date" type="date" />
+        <label>Salon opening time</label><input id="bot2-open-time" type="time" />
+        <label>Salon closing time</label><input id="bot2-close-time" type="time" />
+        <label>Break time from (optional)</label><input id="bot2-break-from" type="time" />
+        <label>Break time to (optional)</label><input id="bot2-break-to" type="time" />
+        <p class="hint">Appointments will not be offered during this interval, for example 1:00 PM to 2:00 PM.</p>
+        <label>Default workers available for each time slot (1–10)</label><input id="bot2-default-workers" type="number" min="1" max="10" value="1" />
+        <label>Set a different worker count for a date</label>
+        <div class="row" style="align-items:center;gap:8px">
+          <input id="bot2-worker-date" type="date" style="flex:1;min-width:180px" />
+          <input id="bot2-worker-count" type="number" min="1" max="10" value="1" aria-label="Workers available on this date" style="width:140px" />
+          <button type="button" class="btn-secondary" id="bot2-worker-add">Add date</button>
+        </div>
+        <div id="bot2-worker-schedule-list" class="hint" aria-live="polite"></div>
+        <p class="hint">Each worker has their own slot. For example, 2 workers show 1:00 PM · Worker 1 and 1:00 PM · Worker 2. A confirmed booking reserves that worker and time.</p>
+        <label>Booking alert WhatsApp number (country code included, optional)</label><input id="bot2-notify-number" type="tel" placeholder="919876543210" />
+        <p class="hint">The daily date-wise Excel report (booked and cancelled appointments) is sent to this WhatsApp number at 11:59 PM India time.</p>
+        <label for="bot2-summary-interval">Repeat booking summary (minutes, 0 to turn off)</label><input id="bot2-summary-interval" type="number" min="0" max="1440" step="1" value="0" />
+        <p class="hint">New bookings still send one immediate alert. Set this to 0 to stop repeated booking updates.</p>
+        <label>Start / welcome message (shown with Book Appointment buttons)</label><textarea id="bot2-start-message" rows="2" placeholder="💈 *{{salon}}*
+Welcome! Choose an option below."></textarea>
+        <label>Thank-you message after confirmation</label><textarea id="bot2-thankyou-message" rows="2" placeholder="Thank you, {{name}}! 🙏"></textarea>
+        <label>Welcome message after confirmation</label><textarea id="bot2-welcome-message" rows="2" placeholder="Welcome to {{salon}} — we look forward to seeing you."></textarea>
+        <p class="hint">Placeholders: {{name}}, {{salon}}, {{service}}, {{date}}, {{time}}.</p>
+        <label>Customer booking link</label>
+        <div class="row" style="align-items:center;gap:8px">
+          <input id="bot2-chat-link" type="url" readonly placeholder="Save and enable Bot 2, then generate the booking link" style="flex:1;min-width:220px" />
+          <button type="button" class="btn-secondary" id="bot2-link-generate">Generate link</button>
+          <button type="button" class="btn-secondary" id="bot2-qr-generate">Generate QR</button>
+          <button type="button" class="btn-secondary" id="bot2-link-copy" disabled>Copy link</button>
+        </div>
+        <div id="bot2-qr-result" class="row hidden" style="align-items:center;gap:12px;margin-top:10px">
+          <div style="width:264px;padding:8px;text-align:center;border:1px solid #dce7e4;border-radius:8px;background:#fff">
+            <img id="bot2-booking-qr" alt="QR code for the customer booking link" width="240" height="240" style="display:block;object-fit:contain;margin:0 auto" />
+            <div id="bot2-qr-name" style="margin-top:6px;font-weight:600;overflow-wrap:anywhere"></div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-start">
+            <button type="button" class="btn-secondary hidden" id="bot2-qr-copy">Copy QR image</button>
+            <button type="button" class="btn-secondary" id="bot2-qr-download">Download QR image</button>
+          </div>
+        </div>
+        <div class="row" style="align-items:center;gap:8px;margin-top:10px">
+          <button type="button" class="btn-secondary" id="bot2-bookings-export">Generate bookings sheet</button>
+          <span class="hint" id="bot2-bookings-status" role="status"></span>
+        </div>
+        <label for="bot2-report-date">Generate date-wise report</label>
+        <div class="row" style="align-items:center;gap:8px">
+          <input id="bot2-report-date" type="date" style="width:220px" />
+          <button type="button" class="btn-secondary" id="bot2-date-report-export">Generate date report</button>
+          <span class="hint" id="bot2-date-report-status" role="status"></span>
+        </div>
+        <p class="hint" id="bot2-link-status" role="status"></p>
+        <p class="hint">Set the first booking date and salon hours with the date and time pickers. WhatsApp customers can choose an available date and 30-minute time slot from numbered options, or type their own. Send “cancel” during booking to stop. Confirmed bookings are saved on the server and sent to the alert number when configured.</p>
+      </div>
+      <div class="card" data-bot-panel="3">
+        <h2 id="bot3-title">Bot 3: Interested leads</h2>
+        <p class="hint">Add the Interested button to a campaign. When someone taps it, Bot 3 saves their WhatsApp name and number, asks their city, and stores the answer with India date and time.</p>
+        <label>Bot name / company name</label><input id="bot3-company-name" placeholder="Your company name" />
+        <label>Trigger keywords (comma separated, optional)</label><input id="bot3-keywords" placeholder="hours, location, contact" />
+        <label>Auto-reply for trigger keywords (optional)</label><textarea id="bot3-reply" rows="3" placeholder="Optional keyword reply"></textarea>
+        <label>Question to ask for city</label><textarea id="bot3-city-question" rows="2" placeholder="कृपया तुमच्या शहराचे नाव सांगा."></textarea>
+        <label>Reply after city is received</label><textarea id="bot3-thankyou" rows="3" placeholder="धन्यवाद! {{shop}} चे प्रतिनिधी 24 तासांच्या आत तुमच्याशी संपर्क करतील."></textarea>
+        <label>Reply if customer taps Interested again (within 24 hours)</label><textarea id="bot3-duplicate-reply" rows="3" placeholder="Leave empty for the default reply"></textarea>
+        <label>Thank-you message after confirmation</label><textarea id="bot3-final-thankyou" rows="2" placeholder="Thank you, {{name}}! 🙏"></textarea>
+        <label>Welcome message after confirmation</label><textarea id="bot3-final-welcome" rows="2" placeholder="Welcome to {{shop}} — we look forward to seeing you."></textarea>
+        <p class="hint">Placeholders: {{name}}, {{number}}, {{city}}, {{shop}}. Thank-you and Welcome are added at the top of the reply after city.</p>
+        <label>Send enquiry details to WhatsApp number (optional)</label><input id="bot3-notify-number" type="tel" inputmode="tel" placeholder="Country code + mobile number" />
+        <label>Send consolidated Excel every (minutes)</label><input id="bot3-report-interval" type="number" min="1" max="1440" step="1" placeholder="e.g. 60" />
+        <label>Daily final Excel send time (India time)</label><input id="bot3-report-time" type="time" />
+        <label>Also send daily Excel report to email (optional)</label><input id="bot3-report-email" type="email" placeholder="name@example.com" />
+        <p class="hint">Updated Excel files go to the WhatsApp number above and configured email. At the daily final time, one compulsory full-day report is sent (even if there were no enquiries). Periodic reports stop at that time and do not send again until the next day. Email needs the server mail service to be configured.</p>
+        <button type="button" class="btn-secondary" id="bot3-leads-export">Download interested leads Excel</button>
+        <span class="hint" id="bot3-leads-status" role="status"></span>
+      </div>
+      <div class="card" data-bot-panel="4">
+        <h2 id="bot4-title">Bot 4: Table booking</h2>
+        <p class="hint">Customers scan the branch QR to open WhatsApp. Their WhatsApp name and number are picked up automatically; the bot asks for party size and current location, then sends the queue number and branch welcome after a location check within 50 metres.</p>
+        <label>Hotel / shop name</label><input id="bot4-shop-name" placeholder="Your hotel / shop name" />
+        <label>Welcome message</label><textarea id="bot4-welcome" rows="3" placeholder="Welcome to {{shop}}, {{branch}}!"></textarea>
+        <p class="hint">Message placeholders: {{shop}}, {{branch}}, {{queue}}, {{name}}, and {{members}}.</p>
+        <label>Thank-you message after confirmation</label><textarea id="bot4-thankyou-message" rows="2" placeholder="Thank you, {{name}}! 🙏"></textarea>
+        <label>Welcome message after confirmation</label><textarea id="bot4-welcome-message" rows="2" placeholder="Welcome to *{{shop}} - {{branch}}*."></textarea>
+        <p class="hint">Placeholders: {{name}}, {{shop}}, {{branch}}, {{members}}, {{queue}}, {{wait}}, {{time}}.</p>
+        <p class="hint">Add one entry per branch. Customers must be within 50 metres of that branch to book. Use the exact map pin coordinates and include the country code in the WhatsApp number.</p>
+        <div id="bot4-branches"></div>
+        <button type="button" class="btn-secondary" id="bot4-add-branch">＋ Add branch</button>
+        <span id="bot4-link-status" class="hint" role="status"></span>
+        <div class="row" style="align-items:center;gap:8px;margin-top:10px"><button type="button" class="btn-secondary" id="bot4-bookings-export">Download booking register Excel</button><span class="hint" id="bot4-bookings-status" role="status"></span></div>
+      </div>
+      <div class="card" data-bot-panel="5">
+        <h2 id="bot5-title">Bot 5</h2>
+        <p class="hint">Customer details from Excel. Upload a sheet with a Mobile column. Share the link / QR - when the customer's WhatsApp number is in the sheet, the bot shows <b>Continue</b>, <b>Location</b> and <b>Contact</b>. Continue sends that customer's details (all their rows).</p>
+        <label>Bot 5 name</label><input id="bot5-name" placeholder="My Bot 5" />
+        <div class="divider">Upload customer sheet (Excel / CSV)</div>
+        <div class="upload-row">
+          <label for="bot5-data-file" class="file-btn">Upload Excel / CSV</label>
+          <input id="bot5-data-file" type="file" accept=".xlsx,.xls,.csv" class="hidden" />
+          <button type="button" class="btn-secondary danger hidden" id="bot5-data-clear">Clear sheet</button>
+        </div>
+        <p class="hint" id="bot5-data-status" style="margin-top:8px"></p>
+        <label>Columns to send (keys, comma separated - leave empty to send all)</label><textarea id="bot5-columns" rows="2" placeholder="Name, Loan Amount, Due Date"></textarea>
+        <p class="hint" id="bot5-columns-hint"></p>
+        <label>Link / QR text (trigger keyword)</label><input id="bot5-keywords" placeholder="my details" />
+        <label>Welcome message (shown with Continue / Location / Contact)</label><textarea id="bot5-reply" rows="2" placeholder="Welcome {{name}}! Tap Continue to see your details."></textarea>
+        <label>Message above the details</label><textarea id="bot5-details-title" rows="2" placeholder="Your details:"></textarea>
+        <label>Reply if number is not in the sheet</label><textarea id="bot5-not-found" rows="2" placeholder="Your WhatsApp number is not registered with us. Please contact us."></textarea>
+        <p class="hint">Placeholders: {{name}} (WhatsApp name), {{number}}, {{shop}} (Bot 5 name). Location uses the Google Maps link saved in Bot 2; Contact uses the linked WhatsApp number.</p>
+        <label>Customer link</label>
+        <div class="row" style="align-items:center;gap:8px">
+          <input id="bot5-chat-link" type="url" readonly placeholder="Save and enable Bot 5, then generate the link" style="flex:1;min-width:220px" />
+          <button type="button" class="btn-secondary" id="bot5-link-generate">Generate link &amp; QR</button>
+          <button type="button" class="btn-secondary" id="bot5-link-copy" disabled>Copy link</button>
+        </div>
+        <div class="hidden" id="bot5-qr-wrap" style="margin-top:10px"><img id="bot5-qr" alt="Bot 5 QR code" style="width:220px;max-width:100%" /><div><a id="bot5-qr-download" class="btn-secondary" download="bot5-qr.png">Download QR</a></div></div>
+        <p class="hint" id="bot5-link-status" role="status"></p>
+      </div>
+      <div class="card" data-bot-panel="1">
         <h2>Customer lookup (loan details etc.)</h2>
         <p class="hint">Attach a sheet keyed by <b>mobile number</b> (columns like Name, Loan Amount, Interest, Total Outstanding). When a customer whose number is in the sheet sends the keyword below, the bot replies with <b>their own row</b>. Numbers not in the sheet get the “not registered” message.</p>
         <label class="switch"><input type="checkbox" id="bot-lookup-enabled" /> Enable customer lookup</label>
@@ -447,7 +683,7 @@
         <p class="hint" id="bot-data-status" style="margin-top:8px"></p>
       </div>
 
-      <div class="card">
+      <div class="card" data-bot-panel="1">
         <h2>Keyword rules</h2>
         <p class="hint">Checked top to bottom; the first match replies. A number keyword (menu option) must be the whole message.</p>
         <div id="rule-list" class="pick-list tall"></div>
@@ -461,17 +697,15 @@
         <textarea id="rule-reply-en" rows="3"></textarea>
         <button type="button" class="btn-secondary" id="rule-add" style="margin-top:10px">Add rule</button>
       </div>
-      <div class="card">
+      <div class="card" data-bot-panel="1">
         <h2>Unsubscribe (STOP / START)</h2>
         <label class="switch"><input type="checkbox" id="bot-auto-unsub" /> Move anyone who sends STOP to the Unsubscribers list</label>
         <label>STOP keywords</label><input type="text" id="bot-stop-kw" />
         <label>START keywords</label><input type="text" id="bot-start-kw" />
         <label>STOP reply</label><textarea id="bot-unsub-reply" rows="3"></textarea>
         <label>STOP reply — English (for bilingual)</label><textarea id="bot-unsub-reply-en" rows="3"></textarea>
-        <button type="button" class="primary" id="bot-save">Save chatbot</button>
-        <p class="hint" id="bot-status"></p>
       </div>
-      <div class="card">
+      <div class="card" data-bot-panel="1">
         <h2>Test reply</h2>
         <p class="hint">Type what a customer might send to see the reply the bot would pick. Nothing is sent. (Tick “Enable chatbot” above for rules to apply.)</p>
         <div class="sheet-row">

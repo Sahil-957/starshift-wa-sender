@@ -23,10 +23,15 @@ function roleOf(mobile) {
   return isAdmin(mobile) ? "admin" : "customer";
 }
 
+function maxBotsOf(user) {
+  const value = Number(user?.maxBots);
+  return Number.isInteger(value) && value >= 1 && value <= 5 ? value : 3;
+}
+
 // Premium add-ons the seller can switch on/off per customer. By default a flag that was never set counts
 // as ON, so existing customers keep what they already use; the admin turns one OFF to gate it behind a
 // higher plan. Opt-in add-ons are the reverse — OFF until the admin turns them on (a true pro extra).
-const FEATURES = ["chatbot", "extract", "chat"];
+const FEATURES = ["campaign", "sheet", "broadcast", "reports", "chatbot", "quick", "unsub", "extract", "chat", "api"];
 const OPT_IN_FEATURES = new Set(); // (none) — every add-on defaults ON; admin turns one OFF to gate it
 function featuresOf(user) {
   const out = {};
@@ -69,16 +74,17 @@ function requireAuth(req, res, next) {
 
   const { mobile, iat } = payload;
   let expiresAt = null;
+  const currentUser = isAdmin(mobile) ? null : userStore.get(mobile);
   if (!isAdmin(mobile)) {
-    const user = userStore.get(mobile);
+    const user = currentUser;
     const problem = accessProblem(user);
     if (problem) return res.status(403).json({ message: problem });
     const changedAt = Math.floor(Date.parse(user.passwordChangedAt || 0) / 1000);
     if (changedAt > iat) return res.status(401).json({ message: "Your password was changed. Please log in again." });
     expiresAt = user.expiresAt || null;
   }
-  const features = isAdmin(mobile) ? featuresOf(null) : featuresOf(userStore.get(mobile));
-  req.auth = { mobile, role: roleOf(mobile), expiresAt, features };
+  const features = isAdmin(mobile) ? featuresOf(null) : featuresOf(currentUser);
+  req.auth = { mobile, role: roleOf(mobile), expiresAt, features, maxBots: isAdmin(mobile) ? 5 : maxBotsOf(currentUser) };
   next();
 }
 
@@ -123,6 +129,7 @@ router.post("/login", (req, res) => {
     role: roleOf(mobile),
     expiresAt: isAdmin(mobile) ? null : user.expiresAt || null,
     features: isAdmin(mobile) ? featuresOf(null) : featuresOf(user),
+    maxBots: isAdmin(mobile) ? 5 : maxBotsOf(user),
   });
 });
 
@@ -143,7 +150,7 @@ router.post("/activate", (req, res) => {
   const now = new Date().toISOString();
   userStore.upsert(user.mobile, { activationUsedAt: now, lastLoginAt: now });
   const token = jwt.sign({ mobile: user.mobile, role: "customer" }, process.env.JWT_SECRET, { expiresIn: "30d" });
-  res.json({ token, mobile: user.mobile, role: "customer", expiresAt: user.expiresAt || null, name: user.name || "", features: featuresOf(user) });
+  res.json({ token, mobile: user.mobile, role: "customer", expiresAt: user.expiresAt || null, name: user.name || "", features: featuresOf(user), maxBots: maxBotsOf(user) });
 });
 
 // Sends a one-time code to the customer's own number so they can set a new password themselves.

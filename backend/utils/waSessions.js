@@ -13,10 +13,15 @@ const {
   useMultiFileAuthState,
   DisconnectReason,
   fetchLatestBaileysVersion,
+  generateWAMessageFromContent,
+  generateMessageIDV2,
+  prepareWAMessageMedia,
+  isJidGroup,
 } = require("@whiskeysockets/baileys");
 const waBot = require("./waBot");
 const chatStore = require("./chatStore");
 const { writeJsonAtomic } = require("./atomicWrite");
+const waInteractive = require("./waInteractive");
 
 const SESSIONS_DIR = path.join(__dirname, "..", "data", "wa-sessions");
 const logger = pino({ level: "silent" });
@@ -66,6 +71,13 @@ function saveNames(mobile, names) {
 }
 const looksNumeric = (s) => /^\+?[\d\s()-]+$/.test(s);
 
+// Only expose real phone-number JIDs as mobile numbers. WhatsApp's newer @lid
+// identifiers are numeric too, but they are private IDs and must never be shown
+// or sent as phone numbers.
+function phoneFromJid(jid) {
+  return /^(\d{7,15})(?::\d+)?@s\.whatsapp\.net$/.exec(jid || "")?.[1] || "";
+}
+
 /** Reads WhatsApp's saved @lid -> phone map for a group sender; "" if there's no mapping on disk. */
 function lidPhoneFromFile(mobile, lidJid) {
   const lid = /^(\d+)@lid$/.exec(lidJid || "")?.[1];
@@ -90,6 +102,14 @@ function status(mobile) {
     pairingCode: s.state === "pairing" ? s.pairingCode : undefined,
     me: s.me,
   };
+}
+
+/** Apply the configured shop name to the linked WhatsApp profile so customers recognize the account. */
+async function updateProfileName(mobile, name) {
+  const session = sessions.get(mobile);
+  if (!session?.sock || session.state !== "open") return false;
+  await session.sock.updateProfileName(String(name || "").trim());
+  return true;
 }
 
 /** opts.pairingPhone: link by entering a code on the phone instead of scanning the QR (that number's code). */
@@ -140,6 +160,25 @@ async function connect(mobile, opts = {}) {
     if (session.sock !== sock) return; // a superseded socket stays quiet
     chatStore.record(mobile, event.messages); // keep a copy for Chat Extract
     waBot.onMessages(mobile, sock, event);
+  });
+  // "Block WhatsApp calls": cut every incoming call and send the caller one chat-only note
+  // (at most once per 10 minutes per caller, so repeated rings don't spam them).
+  const callNotes = new Map();
+  sock.ev.on("call", async (calls) => {
+    if (session.sock !== sock) return;
+    const settings = waBot.callSettings(mobile);
+    if (!settings.reject) return;
+    for (const call of calls || []) {
+      if (call.status !== "offer" || call.isGroup) continue;
+      try { await sock.rejectCall(call.id, call.from); }
+      catch (error) { console.warn(`[calls ${mobile}] reject failed:`, error.message || error); }
+      const text = String(settings.message || "").trim();
+      const to = call.callerPn || call.from;
+      if (!text || Date.now() - (callNotes.get(to) || 0) < 10 * 60 * 1000) continue;
+      callNotes.set(to, Date.now());
+      try { await sock.sendMessage(to, { text }); }
+      catch (error) { console.warn(`[calls ${mobile}] chat-only note failed:`, error.message || error); }
+    }
   });
   sock.ev.on("contacts.upsert", remember);
   sock.ev.on("contacts.update", remember);
@@ -243,7 +282,7 @@ function mediaContent({ dataUrl, name, mimeType }, caption) {
 }
 
 /** target: { type: "number" | "group" | "contact" | "jid", phone?, name?, jid? }. quotedId replies to a message. */
-async function send(mobile, { target, message, attachment, quotedId }) {
+async function send(mobile, { target, message, attachment, quotedId, urlButton }) {
   const session = openSocket(mobile);
   const jid =
     target.type === "group"
@@ -260,9 +299,44 @@ async function send(mobile, { target, message, attachment, quotedId }) {
 
   if (attachment?.dataUrl) {
     // Same rule as the WhatsApp Web path: the caption, or the message when there is no caption.
-    await session.sock.sendMessage(jid, mediaContent(attachment, attachment.caption || message || undefined), opts);
+    const caption = attachment.caption || message || undefined;
+    if (urlButton?.action === "lead") {
+      await session.sock.sendMessage(jid, mediaContent(attachment, caption), opts);
+      await waInteractive.sendChoices(session.sock, jid, "Interested?", [{ id: "swas_b3_interested", title: urlButton.title || "Interested" }]);
+    } else if (urlButton?.action === "book") {
+      await session.sock.sendMessage(jid, mediaContent(attachment, caption), opts);
+      await waInteractive.sendChoices(session.sock, jid, "", [{ id: "swas_b2_open_menu", title: urlButton.title || "Book" }], urlButton.locationUrl ? { title: "Location", url: urlButton.locationUrl } : null, { title: "Contact", phoneNumber: `+${String(mobile).replace(/\D/g, "")}` });
+    } else if (urlButton?.url) {
+      const media = mediaContent(attachment, undefined);
+      const mediaKey = Object.keys(media).find((key) => ["image", "video", "document"].includes(key));
+      if (!mediaKey) throw new Error("Link buttons are supported for image, video, PDF and document attachments.");
+      const prepared = await prepareWAMessageMedia({ [mediaKey]: media[mediaKey], mimetype: media.mimetype, fileName: media.fileName }, {
+        upload: session.sock.waUploadToServer, logger: session.sock.logger, jid,
+      });
+      const mediaMessage = prepared[`${mediaKey}Message`];
+      const userJid = session.sock.authState?.creds?.me?.id || session.sock.user?.id;
+      const messageId = generateMessageIDV2(userJid);
+      const outgoing = generateWAMessageFromContent(jid, {
+        interactiveMessage: {
+          header: { [`${mediaKey}Message`]: mediaMessage, hasMediaAttachment: true },
+          body: { text: String(caption || "") },
+          nativeFlowMessage: {
+            messageVersion: 1,
+            buttons: [{ name: "cta_url", buttonParamsJson: JSON.stringify({ display_text: urlButton.title, url: urlButton.url }) }],
+          },
+        },
+      }, { logger: session.sock.logger, userJid, messageId });
+      const additionalNodes = [{ tag: "biz", attrs: {}, content: [{ tag: "interactive", attrs: { type: "native_flow", v: "1" }, content: [{ tag: "native_flow", attrs: { v: "9", name: "mixed" } }] }] }];
+      if (!isJidGroup(jid)) additionalNodes.push({ tag: "bot", attrs: { biz_bot: "1" } });
+      await session.sock.relayMessage(jid, outgoing.message, { messageId: outgoing.key.id, additionalNodes, ...opts });
+    } else {
+      await session.sock.sendMessage(jid, mediaContent(attachment, caption), opts);
+    }
   } else {
-    await session.sock.sendMessage(jid, { text: message }, opts);
+    if (urlButton?.action === "lead") await waInteractive.sendChoices(session.sock, jid, String(message || ""), [{ id: "swas_b3_interested", title: urlButton.title || "Interested" }]);
+    else if (urlButton?.action === "book") await waInteractive.sendChoices(session.sock, jid, String(message || ""), [{ id: "swas_b2_open_menu", title: urlButton.title || "Book" }], urlButton.locationUrl ? { title: "Location", url: urlButton.locationUrl } : null, { title: "Contact", phoneNumber: `+${String(mobile).replace(/\D/g, "")}` });
+    else if (urlButton?.url) await waInteractive.sendChoices(session.sock, jid, String(message || ""), [], urlButton);
+    else await session.sock.sendMessage(jid, { text: message }, opts);
   }
   return jid; // the resolved chat jid (may be @lid); the live-chat UI uses it to open the new thread
 }
@@ -272,6 +346,18 @@ async function sendText(fromMobile, toNumber, text) {
   const session = openSocket(fromMobile); // throws a clear error if that account isn't linked
   const jid = await numberJid(session, toNumber); // also checks the number is on WhatsApp
   await session.sock.sendMessage(jid, { text });
+}
+
+/** Sends an Excel document from one linked account to a phone number. */
+async function sendDocument(fromMobile, toNumber, data, fileName, caption = "") {
+  const session = openSocket(fromMobile);
+  const jid = await numberJid(session, toNumber);
+  await session.sock.sendMessage(jid, {
+    document: Buffer.isBuffer(data) ? data : Buffer.from(data),
+    mimetype: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    fileName: fileName || "report.xlsx",
+    caption: caption || undefined,
+  });
 }
 
 /** Saved contacts the server's WhatsApp knows, as [{ name, number }] - for the dashboard's Contact picker. */
@@ -289,8 +375,9 @@ function contacts(mobile) {
   return Object.keys(byJid)
     .map((jid) => ({
       name: names[jid] || byJid[jid].filter((n) => !looksNumeric(n)).sort((a, b) => b.length - a.length)[0] || "",
-      number: jid.split("@")[0],
+      number: phoneFromJid(jid) || lidPhoneFromFile(mobile, jid),
     }))
+    .filter((contact) => contact.number)
     .sort((a, b) => (b.name ? 1 : 0) - (a.name ? 1 : 0) || (a.name || a.number).localeCompare(b.name || b.number));
 }
 
@@ -303,6 +390,17 @@ async function groups(mobile) {
     .map((g) => ({ name: g.subject || "", jid: g.id }))
     .filter((g) => g.name)
     .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/** Creates the invite URL for a group the linked account currently belongs to. */
+async function groupInviteLink(mobile, groupJid) {
+  const session = openSocket(mobile);
+  if (!String(groupJid || "").endsWith("@g.us")) throw new Error("Choose a WhatsApp group first.");
+  const participating = await session.sock.groupFetchAllParticipating();
+  if (!participating[groupJid]) throw new Error("This WhatsApp account is not a member of that group.");
+  const code = await session.sock.groupInviteCode(groupJid);
+  if (!code) throw new Error("Could not get an invite link for this group. Check the group permissions.");
+  return `https://chat.whatsapp.com/${code}`;
 }
 
 /** All members of one group as [{ name, number, role }] - for exporting a group's contacts to Excel. */
@@ -458,4 +556,4 @@ function restoreAll() {
   startBatch();
 }
 
-module.exports = { connect, status, logout, send, sendText, contacts, groups, groupMembers, chatList, chatExport, fetchHistory, restoreAll };
+module.exports = { connect, status, updateProfileName, logout, send, sendText, sendDocument, contacts, groups, groupInviteLink, groupMembers, chatList, chatExport, fetchHistory, restoreAll };

@@ -189,7 +189,7 @@ async function advance(mobile, id) {
 
     let result;
     try {
-      await wa.send(mobile, { target, message, attachment });
+      await wa.send(mobile, { target, message, attachment, urlButton: campaign.urlButton });
       result = { success: true };
     } catch (err) {
       // A drop mid-send (WhatsApp reconnecting) shouldn't burn the recipient: keep them pending and retry.
@@ -338,6 +338,32 @@ function create(mobile, input = {}) {
   // attachment: { dataUrl, name, mimeType }. With a file attached, the message may be empty (it becomes the caption).
   const att = input.attachment;
   const hasAttachment = !!(att && att.dataUrl);
+  const rawButton = input.urlButton || {};
+  const buttonUrl = String(rawButton.url || "").trim();
+  const buttonTitle = String(rawButton.title || "").trim();
+  let urlButton = null;
+  if (rawButton.action === "lead") {
+    const title = String(rawButton.title || "Interested").trim();
+    if (!title || title.length > 20) throw Object.assign(new Error("The button name must be 20 characters or fewer."), { status: 400 });
+    urlButton = { title, action: "lead" };
+  } else if (rawButton.action === "book") {
+    const title = String(rawButton.title || "Book").trim();
+    if (title.length > 20) throw Object.assign(new Error("The button name must be 20 characters or fewer."), { status: 400 });
+    const locationUrl = String(rawButton.locationUrl || "").trim();
+    if (!locationUrl) throw Object.assign(new Error("Add the Google Maps location link for the Location button."), { status: 400 });
+    let parsed;
+    try { parsed = new URL(locationUrl); } catch { throw Object.assign(new Error("Enter a valid Google Maps link."), { status: 400 }); }
+    const mapHost = /(^|\.)(maps\.app\.goo\.gl|goo\.gl|google\.com|google\.co\.in)$/.test(parsed.hostname);
+    if (parsed.protocol !== "https:" || !mapHost || !/(maps|goo\.gl)/i.test(parsed.href)) throw Object.assign(new Error("Enter a valid Google Maps link."), { status: 400 });
+    urlButton = { title, action: "book", locationUrl: parsed.toString() };
+  } else if (buttonUrl) {
+    let parsed;
+    try { parsed = new URL(buttonUrl); } catch { throw Object.assign(new Error("Enter a valid link starting with https:// or http://."), { status: 400 }); }
+    if (!["https:", "http:"].includes(parsed.protocol)) throw Object.assign(new Error("The button link must start with https:// or http://."), { status: 400 });
+    if (!hasAttachment) throw Object.assign(new Error("Attach an image, video or document to use a link button."), { status: 400 });
+    if (!buttonTitle || buttonTitle.length > 20) throw Object.assign(new Error("Enter a button name (up to 20 characters)."), { status: 400 });
+    urlButton = { title: buttonTitle, url: parsed.toString() };
+  }
   if (!String(input.messageTemplate || "").trim() && !input.footer?.enabled && !hasAttachment) {
     throw Object.assign(new Error("Write a message or attach a file to send."), { status: 400 });
   }
@@ -374,6 +400,7 @@ function create(mobile, input = {}) {
     name: String(input.name || "Campaign").trim() || "Campaign",
     messageTemplate: String(input.messageTemplate || ""),
     caption: String(input.caption || ""),
+    urlButton,
     footer: input.footer || { enabled: false, text: "" },
     attachment: hasAttachment ? { name: att.name || "file", mimeType: att.mimeType || "application/octet-stream" } : null,
     repeat: { mode: repeatMode, anchorDay: new Date(repeatBase).getDate(), until: Number(input.repeat?.until) || null },
