@@ -8,3 +8,7 @@
 .bot-ticks { display: grid; gap: 6px; }
 #new-bots { display: flex; flex-wrap: wrap; gap: 6px 14px; }
 #new-bots label { display: inline-flex; align-items: center; gap: 4px; font-weight: normal; }
+/* Bot tick boxes in "Add a customer": a full-width row of "Bot n — name" ticks. */
+#create-form .bot-ticks { grid-column: 1 / -1; }
+#new-bots { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 6px 14px; }
+#new-bots label { white-space: nowrap; }
