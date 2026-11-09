@@ -130,22 +130,23 @@ function shouldAskLanguageOnEntry(bot, jid, botId, text, config) {
 function intendedBotId(mobile, bot, jid, text, config, chatbotOn, contact) {
   if (!chatbotOn) return "";
   const settings = bot.config?.settings || {};
-  const allowed = accountBotLimit(mobile);
+  const allowed = accountBots(mobile);
   const normalized = SwasBot.normalize(text);
   const visible = String(text || "").replace(/\u2063[\u200b\u200c]+\u2063/g, "").trim();
-  if (allowed >= 4 && (bot.hotelBookingFlows?.[jid] || (settings.bot4Enabled && /^table\s+book\s+.+$/i.test(visible)))) return "4";
-  if (allowed >= 2 && bot.bookingFlows?.[jid]) return "2";
-  if (allowed >= 3 && (bot.interestFlows?.[jid] || text === "b3interested" || normalized === SwasBot.normalize(settings.bot3InterestedLabel || "Interested") || SwasBot.keywordList(settings.bot3Keywords).includes(normalized))) return settings.bot3Enabled ? "3" : "";
+  if (allowed.has(4) && (bot.hotelBookingFlows?.[jid] || (settings.bot4Enabled && /^table\s+book\s+.+$/i.test(visible)))) return "4";
+  if (allowed.has(2) && bot.bookingFlows?.[jid]) return "2";
+  if (allowed.has(3) && (bot.interestFlows?.[jid] || text === "b3interested" || normalized === SwasBot.normalize(settings.bot3InterestedLabel || "Interested") || SwasBot.keywordList(settings.bot3Keywords).includes(normalized))) return settings.bot3Enabled ? "3" : "";
   const salonName = SwasBot.normalize(settings.bot2SalonName || "");
   const salonStart = [salonName, salonName.split(/\s+/)[0], "book", "b2book", "b2startmenu", "new booking", "click here to book", "click here to book again", "b2myappointments", "status", "my booking", "my bookings", "my appointment", "my appointments", "appointment status", "booking status", "manage appointment"].filter(Boolean).includes(normalized)
     || ((normalized.includes("cancel")) && (normalized.includes("appointment") || normalized.includes("booking")));
-  if (allowed >= 2 && settings.bot2SalonEnabled) {
+  if (allowed.has(2) && settings.bot2SalonEnabled) {
     if (salonStart) return "2";
     const probe = { ...bot, bookingFlows: structuredClone(bot.bookingFlows || {}), bookings: structuredClone(bot.bookings || []) };
     if (salonReply(probe, jid, text, contact, settings, mobile) !== null) return "2";
   }
-  if (allowed >= 5 && settings.bot5Enabled && (text === "b5continue" || SwasBot.keywordList(settings.bot5Keywords || "my details").includes(normalized))) return "5";
-  if (allowed >= 4 && settings.bot4Enabled && SwasBot.keywordList(settings.bot4Keywords).includes(normalized)) return "4";
+  if (allowed.has(6) && settings.bot6Enabled && bot6Keywords(settings).includes(normalized)) return "6";
+  if (allowed.has(5) && settings.bot5Enabled && (text === "b5continue" || SwasBot.keywordList(settings.bot5Keywords || "my details").includes(normalized))) return "5";
+  if (allowed.has(4) && settings.bot4Enabled && SwasBot.keywordList(settings.bot4Keywords).includes(normalized)) return "4";
   const last = bot.sessions?.[jid] || 0;
   const action = SwasBot.matchMessage(text, config, { inSession: !!last, idleMs: last ? Date.now() - last : null, lang: bot.langs?.[jid] || "" });
   return action ? "1" : "";
@@ -188,11 +189,13 @@ function sync(mobile, { config, unsubscribers, since = 0 } = {}) {
   if (config) {
     const previousSettings = bot.config?.settings || {};
     const settings = { ...(config.settings || {}) };
-    const allowedBots = accountBotLimit(mobile);
-    if (allowedBots < 2) settings.bot2SalonEnabled = false;
-    if (allowedBots < 3) settings.bot3Enabled = false;
-    if (allowedBots < 4) settings.bot4Enabled = false;
-    if (allowedBots < 5) settings.bot5Enabled = false;
+    const allowedBots = accountBots(mobile);
+    if (!allowedBots.has(1)) settings.enabled = false;
+    if (!allowedBots.has(2)) settings.bot2SalonEnabled = false;
+    if (!allowedBots.has(3)) settings.bot3Enabled = false;
+    if (!allowedBots.has(4)) settings.bot4Enabled = false;
+    if (!allowedBots.has(5)) settings.bot5Enabled = false;
+    if (!allowedBots.has(6)) settings.bot6Enabled = false;
     // Bot 1, Bot 2 and Bot 3 have independent switches; preserve every selected bot.
     settings.bot2SummaryIntervalMinutes = Math.min(1440, Math.max(0, Math.floor(Number(settings.bot2SummaryIntervalMinutes) || 0)));
     const destinationChanged = String(previousSettings.bot2NotifyNumber || "") !== String(settings.bot2NotifyNumber || "");
@@ -210,7 +213,7 @@ function sync(mobile, { config, unsubscribers, since = 0 } = {}) {
     bot.unsubscribers = bot.changes.reduce(applyChange, unsubscribers.map(String));
   }
   save(mobile);
-  return { changes: bot.changes, seq: bot.seq, active: buildConfig(bot).enabled || !!bot.config?.settings?.bot2SalonEnabled || !!bot.config?.settings?.bot3Enabled || !!bot.config?.settings?.bot4Enabled || !!bot.config?.settings?.bot5Enabled };
+  return { changes: bot.changes, seq: bot.seq, active: buildConfig(bot).enabled || !!bot.config?.settings?.bot2SalonEnabled || !!bot.config?.settings?.bot3Enabled || !!bot.config?.settings?.bot4Enabled || !!bot.config?.settings?.bot5Enabled || !!bot.config?.settings?.bot6Enabled };
 }
 
 function messageText(msg, bot, jid) {
@@ -363,10 +366,19 @@ function settingsNumber(value) {
   return digits.length >= 7 && digits.length <= 15 ? digits : "";
 }
 
-function accountBotLimit(mobile) {
-  if (mobile === process.env.ADMIN_MOBILE) return 5;
-  const count = Number(userStore.get(mobile)?.maxBots);
-  return Number.isInteger(count) && count >= 1 && count <= 5 ? count : 3;
+/** The bot numbers this account may use: the admin's ticks (1-10), or Bots 1..count for older accounts. */
+function accountBots(mobile) {
+  if (mobile === process.env.ADMIN_MOBILE) return new Set([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+  const user = userStore.get(mobile);
+  if (Array.isArray(user?.bots)) return new Set(user.bots.map(Number));
+  const count = Number(user?.maxBots);
+  const limit = Number.isInteger(count) && count >= 1 && count <= 5 ? count : 3;
+  return new Set(Array.from({ length: limit }, (_, i) => i + 1));
+}
+
+/** Bot 6's link / QR text: its keywords, or its name when no keyword is set. */
+function bot6Keywords(settings = {}) {
+  return SwasBot.keywordList(settings.bot6Keywords || settings.bot6Name || "");
 }
 
 function hotelBookingNow() {
@@ -826,7 +838,7 @@ async function sendDailyInterestedLeadReports() {
     const mobile = file.slice(0, -5);
     const bot = load(mobile);
     const settings = bot.config?.settings || {};
-    if (!settings.bot3Enabled || accountBotLimit(mobile) < 3) continue;
+    if (!settings.bot3Enabled || !accountBots(mobile).has(3)) continue;
     const sendAt = /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(String(settings.bot3ReportTime || "")) ? String(settings.bot3ReportTime).split(":").map(Number).reduce((h, m) => h * 60 + m) : -1;
     if (sendAt < 0 || dailyReportInFlight.has(`leads:${mobile}`)) continue;
     const waRecipient = settingsNumber(settings.bot3NotifyNumber);
@@ -1226,11 +1238,12 @@ async function answer(mobile, sock, bot, config, msg, { chatbotOn = true } = {})
     .some((keyword) => normalizedText === SwasBot.normalize(keyword));
   const choosingLanguage = Boolean(bot.languagePrompt?.[jid]);
   const bot3Settings = bot.config?.settings || {};
-  const allowedBots = accountBotLimit(mobile);
-  const bot2Selected = allowedBots >= 2 && !!bot3Settings.bot2SalonEnabled;
-  const bot3Selected = allowedBots >= 3 && !!bot3Settings.bot3Enabled;
-  const bot4Selected = allowedBots >= 4 && !!bot3Settings.bot4Enabled;
-  const bot5Selected = allowedBots >= 5 && !!bot3Settings.bot5Enabled;
+  const allowedBots = accountBots(mobile);
+  const bot2Selected = allowedBots.has(2) && !!bot3Settings.bot2SalonEnabled;
+  const bot3Selected = allowedBots.has(3) && !!bot3Settings.bot3Enabled;
+  const bot4Selected = allowedBots.has(4) && !!bot3Settings.bot4Enabled;
+  const bot5Selected = allowedBots.has(5) && !!bot3Settings.bot5Enabled;
+  const bot6Selected = allowedBots.has(6) && !!bot3Settings.bot6Enabled;
   const finalMapUrl = String(bot3Settings.bot2GoogleMapsUrl || "").trim();
   const finalPhone = String(sock.user?.id || sock.authState?.creds?.me?.id || "").split(/[:@]/)[0].replace(/\D/g, "") || String(mobile || "").replace(/\D/g, "");
   const finalUrlButton = /^https:\/\//i.test(finalMapUrl) ? { title: "\u{1F4CD} Location", url: finalMapUrl } : null;
@@ -1427,10 +1440,18 @@ async function answer(mobile, sock, bot, config, msg, { chatbotOn = true } = {})
       bot5Reply = [intro, blocks.join("\n\n")].filter(Boolean).join("\n\n");
     }
   }
+  // Bot 6: a simple website bot - the link / QR text gets the welcome message with a website button.
+  let bot6Reply = null;
+  if (bot6Selected && !bot5Reply && !hotelOwnMessage && chatbotOn && !unsubscribed && bot6Keywords(bot3Settings).includes(SwasBot.normalize(text))) {
+    const shop = String(bot3Settings.bot6Name || "").trim();
+    bot6Reply = String(bot3Settings.bot6Welcome || (shop ? `Welcome to ${shop}!` : "Welcome!"))
+      .replace(/\{\{\s*name\s*\}\}/gi, contact.name || "")
+      .replace(/\{\{\s*shop\s*\}\}/gi, shop);
+  }
   // Data lookup (e.g. "1" -> this customer's own loan details) takes priority over the normal rules,
   // but it's part of the chatbot add-on — skip it when the add-on is gated off (footer STOP only).
   const pageRequest = /^__menu_page_([123])$/.exec(text);
-  const action = salonAction || bot3Reply || bot3FlowReply || bot4FlowReply || bot4Reply || bot5Reply ? null : pageRequest
+  const action = salonAction || bot3Reply || bot3FlowReply || bot4FlowReply || bot4Reply || bot5Reply || bot6Reply ? null : pageRequest
     ? { type: "menupage", page: Number(pageRequest[1]), label: "Menu page" }
     : (chatbotOn ? lookupAction(mobile, bot.config?.settings, text, contact.number) : null)
       || SwasBot.matchMessage(text, config, {
@@ -1439,7 +1460,7 @@ async function answer(mobile, sock, bot, config, msg, { chatbotOn = true } = {})
       idleMs,
       lang: choosingLanguage ? "" : lang,
     });
-  if (!action && !salonAction && !bot3Reply && !bot3FlowReply && !bot4FlowReply && !bot4Reply && !bot5Reply) {
+  if (!action && !salonAction && !bot3Reply && !bot3FlowReply && !bot4FlowReply && !bot4Reply && !bot5Reply && !bot6Reply) {
     console.log(`[bot ${mobile}] ${who}: "${text}" - no reply${unsubscribed ? " (unsubscribed)" : ""}`);
     return;
   }
@@ -1534,6 +1555,16 @@ async function answer(mobile, sock, bot, config, msg, { chatbotOn = true } = {})
       else await sock.sendMessage(jid, { text: bot5Reply });
     }
   }
+  if (bot6Reply) {
+    const bot6Jid = `${jid}:bot6`;
+    if (withinRate(rt, bot6Jid, 20)) {
+      rt.sent.get(bot6Jid).push(Date.now());
+      const website = String(bot3Settings.bot6Website || "").trim();
+      const button = /^https?:\/\//i.test(website) ? { title: String(bot3Settings.bot6ButtonText || "").trim() || "\u{1F310} Visit website", url: website } : null;
+      if (button) await sendChoices(sock, jid, bot6Reply, [], button, null);
+      else await sock.sendMessage(jid, { text: bot6Reply });
+    }
+  }
   for (const [number, reply] of [[4, bot4Reply]]) {
     if (!reply) continue;
     const botJid = `${jid}:bot${number}`;
@@ -1557,7 +1588,7 @@ async function answer(mobile, sock, bot, config, msg, { chatbotOn = true } = {})
     if (Date.now() - at > SwasBot.LIMITS.sessionMs) delete bot.sessions[chat];
   }
   save(mobile);
-  console.log(`[bot ${mobile}] ${who}: "${text}" -> ${action?.label || (bot4FlowReply ? "Bot 4 table booking" : "Bot 2 salon booking")}`);
+  console.log(`[bot ${mobile}] ${who}: "${text}" -> ${action?.label || (bot6Reply ? "Bot 6 website" : bot5Reply ? "Bot 5 lookup" : bot4FlowReply ? "Bot 4 table booking" : "Bot 2 salon booking")}`);
 }
 
 /** Baileys' messages.upsert handler for one account's socket. */
@@ -1575,8 +1606,8 @@ async function onMessages(mobile, sock, { messages, type }) {
 
   // Nothing to do unless the chatbot is on, or there are campaign footer STOP keywords to honour.
   // Sending is server-side now, so we can't rely on the extension's WhatsApp Web tab to catch a STOP.
-  const allowedBots = accountBotLimit(mobile);
-  const extraBotActive = allowedBots >= 4 && bot.config?.settings?.bot4Enabled || allowedBots >= 5 && bot.config?.settings?.bot5Enabled;
+  const allowedBots = accountBots(mobile);
+  const extraBotActive = allowedBots.has(4) && bot.config?.settings?.bot4Enabled || allowedBots.has(5) && bot.config?.settings?.bot5Enabled || allowedBots.has(6) && bot.config?.settings?.bot6Enabled;
   if (!SwasBot.isActive(config) && !(addonOn && (bot.config?.settings?.bot2SalonEnabled || bot.config?.settings?.bot3Enabled || extraBotActive))) return;
   for (const msg of messages || []) {
     try {

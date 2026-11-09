@@ -4,3 +4,7 @@
 .actions button.feat-off{background:#f3efe0;color:#8a6d1a}
 
 .permission-dropdown{position:relative;display:inline-block}.permission-dropdown summary{list-style:none;background:#e8f2e2;color:#34552b;border-radius:7px;padding:10px 13px;font:600 12px Arial;cursor:pointer;white-space:nowrap}.permission-dropdown summary::-webkit-details-marker{display:none}.permission-panel{position:static;width:min(245px,80vw);max-height:70vh;overflow:auto;margin-top:6px;padding:12px;background:#fff;border:1px solid #dce4dc;border-radius:9px;box-shadow:0 8px 24px #213b2426}.permission-panel>b{display:block;margin-bottom:8px;font-size:12px}.permission-item{display:flex;align-items:center;gap:8px;padding:6px 2px;font-size:12px;font-weight:normal}.permission-item input{display:inline-block;width:auto;margin:0;accent-color:#16966d}.permission-panel [data-save-permissions]{width:100%;margin-top:8px}
+
+.bot-ticks { display: grid; gap: 6px; }
+#new-bots { display: flex; flex-wrap: wrap; gap: 6px 14px; }
+#new-bots label { display: inline-flex; align-items: center; gap: 4px; font-weight: normal; }

@@ -28,6 +28,13 @@ function maxBotsOf(user) {
   return Number.isInteger(value) && value >= 1 && value <= 5 ? value : 3;
 }
 
+const ALL_BOTS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+/** The bot numbers (1-10) the admin ticked for this customer. Older accounts only have a count: Bots 1..count. */
+function allowedBotsOf(user) {
+  if (Array.isArray(user?.bots)) return ALL_BOTS.filter((n) => user.bots.map(Number).includes(n));
+  return ALL_BOTS.slice(0, maxBotsOf(user));
+}
+
 // Premium add-ons the seller can switch on/off per customer. By default a flag that was never set counts
 // as ON, so existing customers keep what they already use; the admin turns one OFF to gate it behind a
 // higher plan. Opt-in add-ons are the reverse — OFF until the admin turns them on (a true pro extra).
@@ -84,7 +91,7 @@ function requireAuth(req, res, next) {
     expiresAt = user.expiresAt || null;
   }
   const features = isAdmin(mobile) ? featuresOf(null) : featuresOf(currentUser);
-  req.auth = { mobile, role: roleOf(mobile), expiresAt, features, maxBots: isAdmin(mobile) ? 5 : maxBotsOf(currentUser) };
+  req.auth = { mobile, role: roleOf(mobile), expiresAt, features, maxBots: isAdmin(mobile) ? 5 : maxBotsOf(currentUser), bots: isAdmin(mobile) ? ALL_BOTS : allowedBotsOf(currentUser) };
   next();
 }
 
@@ -130,6 +137,7 @@ router.post("/login", (req, res) => {
     expiresAt: isAdmin(mobile) ? null : user.expiresAt || null,
     features: isAdmin(mobile) ? featuresOf(null) : featuresOf(user),
     maxBots: isAdmin(mobile) ? 5 : maxBotsOf(user),
+    bots: isAdmin(mobile) ? ALL_BOTS : allowedBotsOf(user),
   });
 });
 
@@ -150,7 +158,7 @@ router.post("/activate", (req, res) => {
   const now = new Date().toISOString();
   userStore.upsert(user.mobile, { activationUsedAt: now, lastLoginAt: now });
   const token = jwt.sign({ mobile: user.mobile, role: "customer" }, process.env.JWT_SECRET, { expiresIn: "30d" });
-  res.json({ token, mobile: user.mobile, role: "customer", expiresAt: user.expiresAt || null, name: user.name || "", features: featuresOf(user), maxBots: maxBotsOf(user) });
+  res.json({ token, mobile: user.mobile, role: "customer", expiresAt: user.expiresAt || null, name: user.name || "", features: featuresOf(user), maxBots: maxBotsOf(user), bots: allowedBotsOf(user) });
 });
 
 // Sends a one-time code to the customer's own number so they can set a new password themselves.

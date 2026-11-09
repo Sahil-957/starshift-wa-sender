@@ -493,8 +493,8 @@
       <div class="card">
         <h2>Chatbot auto-replies</h2>
         <label for="bot-selector">Select bot</label>
-        <select id="bot-selector"><option value="1">Bot 1 — Existing chatbot</option><option value="2">Bot 2 — My shop</option><option value="3">Bot 3 — Interested leads</option><option value="4">Bot 4</option><option value="5">Bot 5</option></select>
-        <div class="row" style="gap:12px;flex-wrap:wrap"><label class="switch" data-bot-slot="1"><input type="checkbox" id="bot1-enabled" class="bot-enabled" /> Enable Bot 1</label><label class="switch" data-bot-slot="2"><input type="checkbox" id="bot2-enabled" class="bot-enabled" /> Enable Bot 2</label><label class="switch" data-bot-slot="3"><input type="checkbox" id="bot3-enabled" class="bot-enabled" /> Enable Bot 3</label><label class="switch" data-bot-slot="4"><input type="checkbox" id="bot4-enabled" class="bot-enabled" /> Enable Bot 4</label><label class="switch" data-bot-slot="5"><input type="checkbox" id="bot5-enabled" class="bot-enabled" /> Enable Bot 5</label></div>
+        <select id="bot-selector"><option value="1">Bot 1 — Existing chatbot</option><option value="2">Bot 2 — My shop</option><option value="3">Bot 3 — Interested leads</option><option value="4">Bot 4</option><option value="5">Bot 5</option><option value="6">Bot 6</option><option value="7">Bot 7</option><option value="8">Bot 8</option><option value="9">Bot 9</option><option value="10">Bot 10</option></select>
+        <div class="row" style="gap:12px;flex-wrap:wrap"><label class="switch" data-bot-slot="1"><input type="checkbox" id="bot1-enabled" class="bot-enabled" /> Enable Bot 1</label><label class="switch" data-bot-slot="2"><input type="checkbox" id="bot2-enabled" class="bot-enabled" /> Enable Bot 2</label><label class="switch" data-bot-slot="3"><input type="checkbox" id="bot3-enabled" class="bot-enabled" /> Enable Bot 3</label><label class="switch" data-bot-slot="4"><input type="checkbox" id="bot4-enabled" class="bot-enabled" /> Enable Bot 4</label><label class="switch" data-bot-slot="5"><input type="checkbox" id="bot5-enabled" class="bot-enabled" /> Enable Bot 5</label><label class="switch" data-bot-slot="6"><input type="checkbox" id="bot6-enabled" class="bot-enabled" /> Enable Bot 6</label></div>
         <p class="hint">With the server WhatsApp linked, a reply goes out the moment a message arrives — nothing typed, browser closed is fine. Groups are ignored; each chat is answered at most a few times a minute.</p>
         <div id="bot-engine" class="bot-engine"></div>
         <button type="button" class="primary" id="bot-save">Save selected bot settings</button>
@@ -658,6 +658,40 @@ Welcome! Choose an option below."></textarea>
         </div>
         <div class="hidden" id="bot5-qr-wrap" style="margin-top:10px"><img id="bot5-qr" alt="Bot 5 QR code" style="width:220px;max-width:100%" /><div><a id="bot5-qr-download" class="btn-secondary" download="bot5-qr.png">Download QR</a></div></div>
         <p class="hint" id="bot5-link-status" role="status"></p>
+      </div>
+      <div class="card" data-bot-panel="6">
+        <h2 id="bot6-title">Bot 6</h2>
+        <p class="hint">Website bot. Share the link / QR: the customer gets your welcome message with a button that opens your website.</p>
+        <label>Shop name</label><input id="bot6-name" placeholder="Your shop name" />
+        <label>Welcome message</label><textarea id="bot6-welcome" rows="3" placeholder="Welcome to {{shop}}! Tap the button below to visit our website."></textarea>
+        <p class="hint">Placeholders: {{name}} (customer's WhatsApp name), {{shop}} (shop name).</p>
+        <label>Website link</label><input id="bot6-website" type="url" placeholder="https://www.example.com" />
+        <label>Button text</label><input id="bot6-button-text" placeholder="🌐 Visit website" />
+        <label>Link / QR text (what the customer sends; leave empty to use the shop name)</label><input id="bot6-keywords" placeholder="Shop name" />
+        <label>Customer link</label>
+        <div class="row" style="align-items:center;gap:8px">
+          <input id="bot6-chat-link" type="url" readonly placeholder="Save and enable Bot 6, then generate the link" style="flex:1;min-width:220px" />
+          <button type="button" class="btn-secondary" id="bot6-link-generate">Generate link &amp; QR</button>
+          <button type="button" class="btn-secondary" id="bot6-link-copy" disabled>Copy link</button>
+        </div>
+        <div class="hidden" id="bot6-qr-wrap" style="margin-top:10px"><img id="bot6-qr" alt="Bot 6 QR code" style="width:220px;max-width:100%" /><div><a id="bot6-qr-download" class="btn-secondary" download="bot6-qr.png">Download QR</a></div></div>
+        <p class="hint" id="bot6-link-status" role="status"></p>
+      </div>
+      <div class="card" data-bot-panel="7">
+        <h2>Bot 7</h2>
+        <p class="hint">This bot is blank for now. Ask Starshift to set it up for your business.</p>
+      </div>
+      <div class="card" data-bot-panel="8">
+        <h2>Bot 8</h2>
+        <p class="hint">This bot is blank for now. Ask Starshift to set it up for your business.</p>
+      </div>
+      <div class="card" data-bot-panel="9">
+        <h2>Bot 9</h2>
+        <p class="hint">This bot is blank for now. Ask Starshift to set it up for your business.</p>
+      </div>
+      <div class="card" data-bot-panel="10">
+        <h2>Bot 10</h2>
+        <p class="hint">This bot is blank for now. Ask Starshift to set it up for your business.</p>
       </div>
       <div class="card" data-bot-panel="1">
         <h2>Customer lookup (loan details etc.)</h2>

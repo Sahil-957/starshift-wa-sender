@@ -21,7 +21,8 @@ async function loadCustomers() {
     $("customers").innerHTML = users.length ? users.map((u) => {
       const selectedCount = PAGE_OPTIONS.filter(([key]) => u.features?.[key] !== false).length;
       const permissionMenu = `<details class="permission-dropdown"><summary>Menu access (${selectedCount}/${PAGE_OPTIONS.length})</summary><div class="permission-panel"><b>Pages this customer can see</b>${PAGE_OPTIONS.map(([key, label]) => `<label class="permission-item"><input type="checkbox" data-permission="${key}" ${u.features?.[key] === false ? "" : "checked"}><span>${label}</span></label>`).join("")}<button type="button" class="primary" data-save-permissions="${esc(u.mobile)}">Save options</button></div></details>`;
-      const botLimit = `<label class="muted">Bots allowed <select data-bot-limit="${esc(u.mobile)}">${[1,2,3,4,5].map((count) => `<option value="${count}" ${Number(u.maxBots || 3) === count ? "selected" : ""}>${count}</option>`).join("")}</select></label><button data-save-bot-limit="${esc(u.mobile)}">Save bot limit</button>`;
+      const userBots = Array.isArray(u.bots) ? u.bots.map(Number) : [1, 2, 3, 4, 5].slice(0, Number(u.maxBots) || 3);
+      const botLimit = `<details class="permission-dropdown"><summary>Bots (${userBots.length}/10)</summary><div class="permission-panel"><b>Bots this customer can see</b>${[1,2,3,4,5,6,7,8,9,10].map((n) => `<label class="permission-item"><input type="checkbox" data-bot-tick="${n}" ${userBots.includes(n) ? "checked" : ""}><span>Bot ${n}</span></label>`).join("")}<button type="button" class="primary" data-save-bot-limit="${esc(u.mobile)}">Save bots</button></div></details>`;
       return `<tr><td><b>${esc(u.name || "Customer")}</b><br><span class="muted">+${esc(u.mobile)}</span></td><td>${dateLabel(u.expiresAt)}</td><td><span class="pill ${u.active ? "active" : ""}">${u.active ? "Active" : "Inactive"}</span></td><td><div class="actions">${permissionMenu}${botLimit}<button data-activation="${esc(u.mobile)}">Copy activation link</button><button data-renew="${esc(u.mobile)}">Renew</button><button data-toggle="${esc(u.mobile)}" data-active="${u.active}">${u.active ? "Deactivate" : "Activate"}</button><button data-password="${esc(u.mobile)}">Reset password</button><button data-delete="${esc(u.mobile)}" class="danger">Delete</button></div></td></tr>`;
     }).join("") : `<tr><td colspan="4">No customers yet.</td></tr>`;
     bindActions(users);
@@ -30,9 +31,10 @@ async function loadCustomers() {
 function bindActions(users) {
   $("customers").querySelectorAll("[data-save-bot-limit]").forEach((button) => button.addEventListener("click", async () => {
     const mobile = button.dataset.saveBotLimit;
-    const maxBots = Number(button.closest("tr").querySelector("[data-bot-limit]").value);
+    const bots = [...button.closest(".permission-panel").querySelectorAll("[data-bot-tick]:checked")].map((input) => Number(input.dataset.botTick));
+    if (!bots.length) return alert("Tick at least one bot.");
     button.disabled = true;
-    try { await api(`/admin/users/${mobile}`, "PATCH", { maxBots }); await loadCustomers(); } catch (error) { alert(error.message); } finally { button.disabled = false; }
+    try { await api(`/admin/users/${mobile}`, "PATCH", { bots }); await loadCustomers(); } catch (error) { alert(error.message); } finally { button.disabled = false; }
   }));
   $("customers").querySelectorAll("[data-save-permissions]").forEach((button) => button.addEventListener("click", async () => {
     const features = {};
@@ -68,7 +70,7 @@ function bindActions(users) {
 $("create-form").addEventListener("submit", async (event) => {
   event.preventDefault(); $("create-status").textContent = "Creating account…"; $("created-result").classList.add("hidden");
   try {
-    const { user, password } = await api("/admin/users", "POST", { name: $("new-name").value.trim(), mobile: $("new-mobile").value.replace(/\D/g, ""), months: Number($("new-months").value), maxBots: Number($("new-max-bots").value) });
+    const { user, password } = await api("/admin/users", "POST", { name: $("new-name").value.trim(), mobile: $("new-mobile").value.replace(/\D/g, ""), months: Number($("new-months").value), bots: [...document.querySelectorAll("#new-bots input:checked")].map((input) => Number(input.value)) });
     $("create-status").textContent = "Customer created. Share the activation link and temporary password securely.";
     $("created-result").innerHTML = `<b>${esc(user.name || "Customer")} · +${esc(user.mobile)}</b><br>Temporary password: <code>${esc(password)}</code><br>Activation link: <a href="${esc(user.activationLink)}">${esc(user.activationLink)}</a>`;
     $("created-result").classList.remove("hidden"); $("create-form").reset(); await loadCustomers();

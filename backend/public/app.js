@@ -42,6 +42,7 @@ async function autoFillBotLink(inputId, statusId) {
 // Premium add-ons the seller can switch off per account; an unset flag means on.
 let features = {};
 let maxBots = 3;
+let allowedBots = new Set([1, 2, 3]);
 function applyFeatures() {
   document.querySelectorAll(".nav-tab[data-page]").forEach((tab) => {
     const page = tab.dataset.page;
@@ -52,18 +53,20 @@ function applyFeatures() {
 }
 
 function applyBotLimit() {
-  document.querySelectorAll("[data-bot-slot]").forEach((label) => { label.hidden = Number(label.dataset.botSlot) > maxBots; });
+  document.querySelectorAll("[data-bot-slot]").forEach((label) => { label.hidden = !allowedBots.has(Number(label.dataset.botSlot)); });
   const selector = $("bot-selector");
   if (!selector) return;
-  [...selector.options].forEach((option) => { option.hidden = Number(option.value) > maxBots; });
-  if (Number(selector.value) > maxBots) setSelectedBot("1");
+  [...selector.options].forEach((option) => { option.hidden = !allowedBots.has(Number(option.value)); });
+  if (!allowedBots.has(Number(selector.value))) setSelectedBot(String([...allowedBots].sort((a, b) => a - b)[0] || 1));
   const ctaBots = $("cta-bot-select");
-  if (ctaBots) [...ctaBots.options].forEach((option) => { option.hidden = Number(option.value.replace("bot", "")) > maxBots; });
+  if (ctaBots) [...ctaBots.options].forEach((option) => { option.hidden = !allowedBots.has(Number(option.value.replace("bot", ""))); });
 }
 
-function signedIn(mobile, role, feats, botLimit = 3) {
+function signedIn(mobile, role, feats, botLimit = 3, bots = null) {
   features = feats || {};
   maxBots = role === "admin" ? 5 : Math.max(1, Math.min(5, Number(botLimit) || 3));
+  allowedBots = new Set(role === "admin" ? [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    : Array.isArray(bots) && bots.length ? bots.map(Number) : Array.from({ length: maxBots }, (_, i) => i + 1));
   document.body.classList.remove("locked");
   $("login-view").classList.add("hidden");
   $("forgot-view").classList.add("hidden");
@@ -114,7 +117,7 @@ $("login-form").addEventListener("submit", async (event) => {
     const result = await api("/auth/login", "POST", { mobile, password: $("password").value });
     token = result.token;
     sessionStorage.setItem(tokenKey, token);
-    signedIn(result.mobile, result.role, result.features, result.maxBots);
+    signedIn(result.mobile, result.role, result.features, result.maxBots, result.bots);
   } catch (error) {
     $("login-error").textContent = error.message;
   }
@@ -1484,7 +1487,7 @@ function updateExtraBotNameDisplay(number) {
   const option = document.querySelector(`#bot-selector option[value="${number}"]`);
   if (option) option.textContent = name;
 }
-for (const number of [4, 5]) $(`bot${number}-name`)?.addEventListener("input", () => updateExtraBotNameDisplay(number));
+for (const number of [4, 5, 6]) $(`bot${number}-name`)?.addEventListener("input", () => updateExtraBotNameDisplay(number));
 $("bot4-shop-name")?.addEventListener("input", () => updateExtraBotNameDisplay(4));
 
 function renderBot4Settings(settings) {
@@ -1634,7 +1637,7 @@ function renderBotUI() {
   $("bot4-thankyou-message").value = s.bot4ThankYouMessage || "";
   $("bot4-welcome-message").value = s.bot4WelcomeMessage || "";
   $("bot3-thankyou").value = s.bot3ThankYou || "à¤§à¤¨à¥à¤¯à¤µà¤¾à¤¦! {{shop}} à¤šà¥‡ à¤ªà¥à¤°à¤¤à¤¿à¤¨à¤¿à¤§à¥€ 24 à¤¤à¤¾à¤¸à¤¾à¤‚à¤šà¥à¤¯à¤¾ à¤†à¤¤ à¤¤à¥à¤®à¤šà¥à¤¯à¤¾à¤¶à¥€ à¤¸à¤‚à¤ªà¤°à¥à¤• à¤•à¤°à¤¤à¥€à¤².";
-  for (const number of [4, 5]) {
+  for (const number of [4, 5, 6]) {
     const nameInput = number === 4 ? $("bot4-shop-name") : $(`bot${number}-name`);
     nameInput.value = s[`bot${number}Name`] || (number === 4 ? "" : `Bot ${number}`);
     if (number === 5) {
@@ -1645,6 +1648,10 @@ function renderBotUI() {
     updateExtraBotNameDisplay(number);
   }
   renderBot4Settings(s);
+  $("bot6-welcome").value = s.bot6Welcome || "";
+  $("bot6-website").value = s.bot6Website || "";
+  $("bot6-button-text").value = s.bot6ButtonText || "";
+  $("bot6-keywords").value = s.bot6Keywords || "";
   $("bot5-columns").value = s.bot5Columns || "";
   $("bot5-details-title").value = s.bot5DetailsTitle || "";
   $("bot5-not-found").value = s.bot5NotFound || "";
@@ -1786,6 +1793,23 @@ $("bot5-link-generate").addEventListener("click", async () => {
     status.textContent = $("bot5-enabled").checked ? "Link and QR ready. Save Bot 5 settings before sharing." : "Link and QR ready. Turn ON 'Enable Bot 5' at the top and Save, otherwise the bot will not reply.";
   } catch (error) { status.textContent = error.message || String(error); }
 });
+$("bot6-link-generate").addEventListener("click", async () => {
+  const status = $("bot6-link-status");
+  try {
+    const waStatus = await api("/wa/status");
+    const number = String(waStatus.me || "").replace(/\D/g, "");
+    if (waStatus.state !== "open" || !number) throw new Error("Link Server WhatsApp first, then generate the link.");
+    const keyword = ($("bot6-keywords").value.split(",")[0] || "").trim() || $("bot6-name").value.trim();
+    if (!keyword) throw new Error("Enter the shop name (or the link / QR text) first.");
+    const link = `${window.location.origin}/wa-open.html?phone=${number}&text=${encodeURIComponent(keyword)}`;
+    $("bot6-chat-link").value = link; $("bot6-link-copy").disabled = false;
+    const qr = await api("/wa/bot/booking-qr", "POST", { url: link });
+    $("bot6-qr").src = qr.dataUrl; $("bot6-qr-download").href = qr.dataUrl;
+    $("bot6-qr-wrap").classList.remove("hidden");
+    status.textContent = $("bot6-enabled").checked ? "Link and QR ready. Save Bot 6 settings before sharing." : "Link and QR ready. Turn ON 'Enable Bot 6' at the top and Save, otherwise the bot will not reply.";
+  } catch (error) { status.textContent = error.message || String(error); }
+});
+$("bot6-link-copy").addEventListener("click", async () => { await navigator.clipboard.writeText($("bot6-chat-link").value); $("bot6-link-status").textContent = "Link copied."; });
 $("bot5-link-copy").addEventListener("click", async () => { await navigator.clipboard.writeText($("bot5-chat-link").value); $("bot5-link-status").textContent = "Link copied."; });
 
 $("bot4-bookings-export").addEventListener("click", async () => {
@@ -2072,7 +2096,7 @@ function readBotUI() {
     bot3DuplicateReply: $("bot3-duplicate-reply").value.trim(),
     bot3FinalThankYou: $("bot3-final-thankyou").value.trim(),
     bot3FinalWelcome: $("bot3-final-welcome").value.trim(),
-    bot4Enabled: maxBots >= 4 && $("bot4-enabled").checked,
+    bot4Enabled: allowedBots.has(4) && $("bot4-enabled").checked,
     bot4Name: $("bot4-shop-name").value.trim(),
     bot4Branches: readBot4Branches(),
     bot4Keywords: "table",
@@ -2087,7 +2111,13 @@ function readBotUI() {
     bot4Latitude: readBot4Branches()[0]?.latitude || "",
     bot4Longitude: readBot4Branches()[0]?.longitude || "",
     bot4NotifyNumber: readBot4Branches()[0]?.notifyNumber || "",
-    bot5Enabled: maxBots >= 5 && $("bot5-enabled").checked,
+    bot5Enabled: allowedBots.has(5) && $("bot5-enabled").checked,
+    bot6Enabled: allowedBots.has(6) && $("bot6-enabled").checked,
+    bot6Name: $("bot6-name").value.trim(),
+    bot6Welcome: $("bot6-welcome").value.trim(),
+    bot6Website: $("bot6-website").value.trim(),
+    bot6ButtonText: $("bot6-button-text").value.trim(),
+    bot6Keywords: $("bot6-keywords").value.trim(),
     bot5Name: $("bot5-name").value.trim(),
     bot5Keywords: $("bot5-keywords").value.trim() || "my details",
     bot5Columns: $("bot5-columns").value.trim(),
@@ -2759,4 +2789,4 @@ $("chat-attach-input").addEventListener("change", async (e) => {
 });
 
 // ---------- Boot ----------
-if (token) api("/auth/me").then((me) => signedIn(me.mobile, me.role, me.features, me.maxBots)).catch(() => signOut());
+if (token) api("/auth/me").then((me) => signedIn(me.mobile, me.role, me.features, me.maxBots, me.bots)).catch(() => signOut());
