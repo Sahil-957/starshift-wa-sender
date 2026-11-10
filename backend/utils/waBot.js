@@ -147,7 +147,11 @@ function intendedBotId(mobile, bot, jid, text, config, chatbotOn, contact) {
   const allowed = accountBots(mobile);
   const normalized = SwasBot.normalize(text);
   const visible = String(text || "").replace(/\u2063[\u200b\u200c]+\u2063/g, "").trim();
-  if (allowed.has(4) && (bot.hotelBookingFlows?.[jid] || (settings.bot4Enabled && /^table\s+book\s+.+$/i.test(visible)))) return "4";
+  const hotelStep = bot.hotelBookingFlows?.[jid]?.step;
+  if (allowed.has(4) && hotelStep === "branch" && (text === "b4branchesmore" || String(text).startsWith("b4branch:")
+    || ["more branches", "आणखी शाखा"].includes(normalized)
+    || hotelBranches(mobile).some((entry) => SwasBot.normalize(entry.name) === normalized))) return "4";
+  if (allowed.has(4) && ((hotelStep && hotelStep !== "branch") || (settings.bot4Enabled && /^table\s+book\s+.+$/i.test(visible)))) return "4";
   if (allowed.has(4) && settings.bot4Enabled && (text === "b4open" || String(text).startsWith("b4branch:"))) return "4";
   // A bot's own exact keyword wins over Bot 2's catch-all checks below.
   if (allowed.has(6) && settings.bot6Enabled && bot6Keywords(settings).includes(normalized)) return "6";
@@ -291,6 +295,7 @@ function messageText(msg, bot, jid) {
       const selected = JSON.parse(nativeReply.paramsJson);
       // Campaign "bot link" button: acts as if the customer typed the bot's keyword.
       if (/^swas_start:./.test(String(selected.id || ""))) return String(selected.id).slice("swas_start:".length);
+      if (selected.id === "swas_b4_branches_more") return "b4branchesmore";
       if (/^swas_b4_branch_./.test(String(selected.id || ""))) return `b4branch:${String(selected.id).slice("swas_b4_branch_".length)}`;
       const mappedMenuReply = menuButtonReply(selected.id);
       if (mappedMenuReply) return mappedMenuReply;
@@ -1288,11 +1293,17 @@ async function answer(mobile, sock, bot, config, msg, { chatbotOn = true } = {})
   const hotelBookTap = false;
   const hotelConfirmTap = false;
   // Campaign "Book a table" button: no location check, branch chosen by button (or the only branch).
-  const tableTap = bot4Selected && (text === "b4open" || text.startsWith("b4branch:"));
-  const tapBranch = !tableTap ? null
+  // While the branch buttons are showing, a tap may arrive as the branch name instead of its id.
+  const branchStep = hotelFlow?.step === "branch" ? hotelFlow : null;
+  const branchByName = branchStep ? hotelBranchesForAccount.find((entry) => SwasBot.normalize(entry.name) === normalizedText) || null : null;
+  const moreBranches = !!branchStep && (text === "b4branchesmore" || ["more branches", "आणखी शाखा"].includes(normalizedText));
+  if (branchStep && !branchByName && !moreBranches && !text.startsWith("b4branch:")) { delete hotelFlows[jid]; save(mobile); } // customer moved on
+  const tableTap = bot4Selected && (text === "b4open" || text.startsWith("b4branch:") || !!branchByName || moreBranches);
+  const tapBranch = !tableTap || moreBranches ? null
+    : branchByName ? branchByName
     : text.startsWith("b4branch:") ? hotelBranchesForAccount.find((entry) => String(entry.id) === text.slice(9)) || null
     : hotelBranchesForAccount.length === 1 ? hotelBranchesForAccount[0] : null;
-  const hotelOwnMessage = bot4Selected && (!!hotelFlow || hotelStartText || tableTap);
+  const hotelOwnMessage = bot4Selected && (!!hotelFlows[jid] || hotelStartText || tableTap);
   const interestedLabel = SwasBot.normalize(bot3Settings.bot3InterestedLabel || "Interested");
   const interestedTap = text === "b3interested" || normalizedText === interestedLabel || normalizedText === "interested";
   const otherBotChosen = ["3", "4", "5", "6"].includes(currentBotId); // never let the salon answer for them
@@ -1309,8 +1320,15 @@ async function answer(mobile, sock, bot, config, msg, { chatbotOn = true } = {})
   let bot4CallButton = null;
   let bot4RepeatConfirmation = false;
   if (chatbotOn && !unsubscribed && tableTap && !tapBranch) {
-    bot4FlowReply = !hotelBranchesForAccount.length ? "Table booking is not set up yet." : lang === "mr" ? "शाखा निवडा:" : "Choose a branch:";
-    bot4Choices = hotelBranchesForAccount.slice(0, 3).map((entry) => ({ id: `swas_b4_branch_${entry.id}`, title: String(entry.name || "Branch").slice(0, 20) }));
+    // WhatsApp shows at most 3 buttons: up to 3 branches fit; more go 2 per page + "More branches" (wraps round).
+    const all = hotelBranchesForAccount;
+    const pages = all.length <= 3 ? 1 : Math.ceil(all.length / 2);
+    const page = moreBranches ? ((Number(branchStep.page) || 0) + 1) % pages : 0;
+    const shown = all.length <= 3 ? all : all.slice(page * 2, page * 2 + 2);
+    bot4FlowReply = !all.length ? "Table booking is not set up yet." : lang === "mr" ? "शाखा निवडा:" : "Choose a branch:";
+    bot4Choices = shown.map((entry) => ({ id: `swas_b4_branch_${entry.id}`, title: String(entry.name || "Branch").slice(0, 20) }));
+    if (pages > 1) bot4Choices.push({ id: "swas_b4_branches_more", title: lang === "mr" ? "आणखी शाखा" : "More branches" });
+    if (all.length) { hotelFlows[jid] = { step: "branch", page, startedAt: Date.now() }; save(mobile); }
   } else if (chatbotOn && !unsubscribed && bot4Selected && (hotelStartText || tableTap)) {
     const startBranch = tableTap ? tapBranch : hotelBranch;
     const verified = tableTap ? { distanceMeters: null } : hotelBranch && tableBookingTokens.consume(hotelToken, mobile, hotelBranch.id);
