@@ -291,6 +291,9 @@ function messageText(msg, bot, jid) {
       const salonAction = { swas_b2_services_more: "b2servicesmore", swas_b2_dates_more: "b2datesmore", swas_b2_times_more: "b2timesmore", swas_b2_confirm: "b2confirm", swas_b2_cancel: "b2cancel" }[selected.id];
       if (salonAction) return salonAction;
       if (selected.id === "swas_b2_start") return "b2book";
+      // Interested (Bot 3), the campaign Book button, Bot 5 Continue, etc.
+      const mappedButton = salonSelection(selected.id);
+      if (mappedButton) return mappedButton;
       if (/^\d$/.test(String(selected.id || ""))) return bot?.bookingFlows?.[jid] ? `legacy${selected.id}` : String(selected.id);
       if (/^swas_lang_[12]$/.test(String(selected.id || ""))) return String(selected.id).slice(-1);
       if (/^swas_menu_[1-6]$/.test(String(selected.id || ""))) return bot?.bookingFlows?.[jid] ? `legacy${String(selected.id).slice(-1)}` : String(selected.id).slice(-1);
