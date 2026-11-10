@@ -1631,8 +1631,36 @@ $("bot4-branches").addEventListener("click", async (event) => {
   } catch (error) { $("bot4-link-status").textContent = error.message || String(error); }
 });
 
+// Marathi copies of the bots' customer-facing texts. Each field gets a "in Marathi" twin; the bot sends
+// it when the customer picked मराठी (and the main text when they picked English or the twin is empty).
+const MR_TEXT_FIELDS = {
+  "bot2-salon-name": "bot2SalonName", "bot2-salon-services": "bot2SalonServices", "bot2-start-message": "bot2StartMessage",
+  "bot2-thankyou-message": "bot2ThankYouMessage", "bot2-welcome-message": "bot2WelcomeMessage",
+  "bot3-reply": "bot3Reply", "bot3-city-question": "bot3CityQuestion", "bot3-thankyou": "bot3ThankYou",
+  "bot3-duplicate-reply": "bot3DuplicateReply", "bot3-final-thankyou": "bot3FinalThankYou", "bot3-final-welcome": "bot3FinalWelcome",
+  "bot4-welcome": "bot4Welcome", "bot4-thankyou-message": "bot4ThankYouMessage", "bot4-welcome-message": "bot4WelcomeMessage",
+  "bot5-name": "bot5Name", "bot5-reply": "bot5Reply", "bot5-details-title": "bot5DetailsTitle", "bot5-not-found": "bot5NotFound",
+  "bot6-name": "bot6Name", "bot6-welcome": "bot6Welcome", "bot6-button-text": "bot6ButtonText",
+};
+function addMarathiTextFields() {
+  for (const id of Object.keys(MR_TEXT_FIELDS)) {
+    const field = $(id);
+    if (!field || $(`${id}-mr`)) continue;
+    const twin = field.cloneNode(false);
+    twin.id = `${id}-mr`;
+    twin.value = "";
+    twin.placeholder = id === "bot2-salon-services" ? "Same services in Marathi, same order (e.g. केस कापणे-300)" : "Same text in Marathi (sent when the customer picks मराठी)";
+    const label = document.createElement("label");
+    label.htmlFor = twin.id;
+    label.textContent = "↳ in Marathi (मराठी)";
+    field.after(label, twin);
+  }
+}
+addMarathiTextFields();
+
 function renderBotUI() {
   const s = botSettings || {};
+  for (const [id, key] of Object.entries(MR_TEXT_FIELDS)) if ($(`${id}-mr`)) $(`${id}-mr`).value = s[`${key}Mr`] || "";
   const today = new Date();
   const localToday = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
   const salonHours = String(s.bot2SalonHours || "");
@@ -2190,6 +2218,7 @@ function readBotUI() {
     lookupKeywords: $("bot-lookup-kw").value,
     notRegisteredMessage: $("bot-lookup-notreg").value,
   };
+  for (const [id, key] of Object.entries(MR_TEXT_FIELDS)) if ($(`${id}-mr`)) botSettings[`${key}Mr`] = $(`${id}-mr`).value.trim();
 }
 
 // ---------- Chatbot data-lookup sheet ----------

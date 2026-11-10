@@ -105,6 +105,49 @@ function buildConfig(bot) {
 
 function salonMarathiText(value) {
   return String(value || "")
+    .replace(/Booking cancelled\. To start again, tap \*Book\* or send BOOK\./g, "बुकिंग रद्द झाले. पुन्हा सुरू करण्यासाठी *Book* दाबा किंवा BOOK पाठवा.")
+    .replace(/There are no appointments linked to this WhatsApp number yet\. Send hi to see available services\./g, "या WhatsApp नंबरवर अजून कोणतीही अपॉइंटमेंट नाही. सेवा पाहण्यासाठी hi पाठवा.")
+    .replace(/You have no confirmed appointments to cancel\./g, "रद्द करण्यासाठी कोणतीही निश्चित अपॉइंटमेंट नाही.")
+    .replace(/I couldn't match that time\. Please choose one of the Cancel time buttons again:/g, "ती वेळ जुळली नाही. कृपया रद्द करण्याच्या बटणांपैकी एक पुन्हा निवडा:")
+    .replace(/Cancel this appointment\?/g, "ही अपॉइंटमेंट रद्द करायची?")
+    .replace(/Your appointment is still confirmed\./g, "तुमची अपॉइंटमेंट अजूनही निश्चित आहे.")
+    .replace(/This appointment is no longer confirmed\./g, "ही अपॉइंटमेंट आता निश्चित नाही.")
+    .replace(/Your appointment is cancelled\./g, "तुमची अपॉइंटमेंट रद्द झाली आहे.")
+    .replace(/Thank you for letting us know! 💈 Hope to see you again soon\./g, "आम्हाला आधी कळवल्याबद्दल धन्यवाद! 💈 लवकरच पुन्हा भेट द्या.")
+    .replace(/Tap the button below to book again\./g, "पुन्हा अपॉइंटमेंट बुक करण्यासाठी खालील बटण दाबा.")
+    .replace(/The salon has not added its services yet\. Please contact the salon directly\./g, "सलूनची सेवा यादी अजून जोडलेली नाही. कृपया थेट सलूनशी संपर्क करा.")
+    .replace(/There are no available appointment times on upcoming dates\. Please contact the salon\./g, "पुढील तारखांना कोणतीही वेळ उपलब्ध नाही. कृपया सलूनशी संपर्क करा.")
+    .replace(/There are no more available appointment dates\. Please contact the salon\./g, "आणखी तारखा उपलब्ध नाहीत. कृपया सलूनशी संपर्क करा.")
+    .replace(/Which time would you like\? Send it like 10:30 AM\. Salon hours: please contact us\./g, "कोणती वेळ हवी आहे? 10:30 AM अशा स्वरूपात पाठवा. सलूनची वेळ: कृपया संपर्क करा.")
+    .replace(/Which time would you like\? Send it like 10:30 AM\. Salon hours:/g, "कोणती वेळ हवी आहे? 10:30 AM अशा स्वरूपात पाठवा. सलूनची वेळ:")
+    .replace(/This slot was just booked\. Please choose another available slot:/g, "हा स्लॉट नुकताच बुक झाला. दुसरा उपलब्ध स्लॉट निवडा:")
+    .replace(/Please type your name to complete the booking\./g, "बुकिंग पूर्ण करण्यासाठी कृपया तुमचे नाव लिहा.")
+    .replace(/Please type your name using letters, for example Rahul Patil\./g, "कृपया तुमचे नाव अक्षरांत लिहा, उदा. राहुल पाटील.")
+    .replace(/Review your appointment/g, "तुमची अपॉइंटमेंट तपासा")
+    .replace(/Please confirm your booking\./g, "कृपया बुकिंग निश्चित करा.")
+    .replace(/Appointment Confirmed!/g, "अपॉइंटमेंट निश्चित झाली!")
+    .replace(/Welcome to (.+?) — we look forward to seeing you\./g, "$1 मध्ये आपले स्वागत आहे — लवकरच भेटू.")
+    .replace(/Thank you, /g, "धन्यवाद, ")
+    .replace(/Your appointments/g, "तुमच्या अपॉइंटमेंट्स")
+    .replace(/There are no active appointments\./g, "कोणतीही सक्रिय अपॉइंटमेंट नाही.")
+    .replace(/Tap an appointment below if you want to cancel it\./g, "रद्द करायची असल्यास खालील अपॉइंटमेंट दाबा.")
+    .replace(/ — Confirmed/g, " — निश्चित")
+    .replace(/^Date:/gm, "तारीख:")
+    .replace(/^Time:/gm, "वेळ:")
+    .replace(/^Name:/gm, "नाव:")
+    .replace(/^Mobile:/gm, "मोबाईल:")
+    .replace(/Date: /g, "तारीख: ")
+    .replace(/Time: /g, "वेळ: ")
+    .replace(/^(→ )?Yes, cancel$/g, "$1हो, रद्द करा")
+    .replace(/^Keep appointment$/g, "अपॉइंटमेंट ठेवा")
+    .replace(/^(→ )?Confirm Booking$/g, "$1बुकिंग निश्चित करा")
+    .replace(/^Cancel$/g, "रद्द करा")
+    .replace(/^(→ )?Cancel (\d)/g, "$1रद्द करा $2")
+    .replace(/^(→ )?New booking$/g, "$1नवीन बुकिंग")
+    .replace(/^(→ )?Click here to book$/g, "$1बुक करण्यासाठी येथे दाबा")
+    .replace(/^(→ )?More appointments$/g, "$1आणखी अपॉइंटमेंट्स")
+    .replace(/^📍 Location$/g, "📍 लोकेशन")
+    .replace(/^📞 Contact$/g, "📞 संपर्क")
     .replace(/Welcome! Choose an option below\./g, "\\u0938\\u094d\\u0935\\u093e\\u0917\\u0924 \\u0906\\u0939\\u0947! \\u0916\\u093e\\u0932\\u0940\\u0932 \\u092a\\u0930\\u094d\\u092f\\u093e\\u092f \\u0928\\u093f\\u0935\\u0921\\u093e.")
     .replace(/Welcome to (.+?)!/g, "$1 \u092e\u0927\u094d\u092f\u0947 \u0906\u092a\u0932\u0947 \u0938\u094d\u0935\u093e\u0917\u0924 \u0906\u0939\u0947!")
     .replace(/Thank you for choosing us\./g, "\\u0906\\u092e\\u091a\\u0940 \\u0928\\u093f\\u0935\\u0921 \\u0915\\u0947\\u0932\\u094d\\u092f\\u093e\\u092c\\u0926\\u094d\\u0926\\u0932 \\u0927\\u0928\\u094d\\u092f\\u0935\\u093e\\u0926.")
@@ -648,7 +691,8 @@ function salonChoicePage(values, page, kind, labelFor, details = "") {
   const start = page * pageSize;
   const slice = values.slice(start, start + pageSize);
   const choices = slice.map((value, index) => ({ id: `swas_b2_${kind}_${start + index}`, title: salonForwardTitle(labelFor(value)) }));
-  if (start + pageSize < values.length) {
+  // Services and dates wrap round: the last page keeps a More button back to the first.
+  if (start + pageSize < values.length || (kind !== "time" && values.length > pageSize)) {
     const more = kind === "service" ? "services" : kind === "date" ? "dates" : "times";
     choices.push({ id: `swas_b2_${more}_more`, title: salonForwardTitle(more === "services" ? "More services" : more === "dates" ? "More dates" : "More times") });
   }
@@ -950,6 +994,15 @@ function salonBookingStatusMessage(bookings, page = 0) {
 
 /** WhatsApp salon booking flow. Accepts services as one per line or comma-separated. */
 function salonReply(bot, jid, text, contact, settings, ownerNumber = "") {
+  text = String(text || "").replace(/^\s*(?:→\s*)?रद्द करा\s+(?=\d)/, "cancel ");
+  // Marathi button labels (a tap can arrive as its label) -> the English words the steps below check.
+  const marathiLabel = {
+    "आणखी सेवा": "more services", "आणखी तारखा": "more dates", "आणखी वेळा": "more times", "पुढची तारीख": "next date",
+    "आणखी अपॉइंटमेंट्स": "more appointments", "नवीन बुकिंग": "new booking", "बुक करण्यासाठी येथे दाबा": "click here to book",
+    "अपॉइंटमेंट बुक करा": "b2book", "माझ्या अपॉइंटमेंट्स": "b2myappointments", "बुकिंग निश्चित करा": "confirm booking",
+    "अपॉइंटमेंट ठेवा": "keep appointment", "हो, रद्द करा": "yes cancel", "हो रद्द करा": "yes cancel", "रद्द करा": "cancel",
+  }[String(text).replace(/^\s*→\s*/, "").trim()];
+  if (marathiLabel) text = marathiLabel;
   if (!settings?.bot2SalonEnabled) return null;
   const input = SwasBot.normalize(text);
   if (SwasBot.keywordList(settings.stopKeywords).includes(input) || SwasBot.keywordList(settings.startKeywords).includes(input)) return null;
@@ -987,7 +1040,7 @@ function salonReply(bot, jid, text, contact, settings, ownerNumber = "") {
   const wantsBooking = flow?.step !== "confirm" && (/((^| )(book|booking)( |$))/.test(input) || input === "b2book" || input.includes("\u0905\u092a\u0949\u0907\u0902\u091f\u092e\u0947\u0902\u091f") || input.includes("\u092c\u0941\u0915\u093f\u0902\u0917") || input.includes("\u092c\u0941\u0915 \u0915\u0930\u093e"));
   if (wantsBooking) {
     const services = String(settings.bot2SalonServices || "").split(/\r?\n|;|,\s*(?=[\p{L}])/u).map((s) => s.trim()).filter(Boolean);
-    if (!services.length) return "सलूनची सेवा यादी अजून जोडलेली नाही. कृपया थेट सलूनशी संपर्क करा.";
+    if (!services.length) return "The salon has not added its services yet. Please contact the salon directly.";
     bot.bookingFlows[jid] = { step: "service", services, name: "", number: contact.number, servicePage: 0 };
     return salonChoicePage(services, 0, "service", salonServiceButtonLabel, `💈 ${settings.bot2SalonName || "Salon"}`);
   }
@@ -1018,16 +1071,16 @@ function salonReply(bot, jid, text, contact, settings, ownerNumber = "") {
   }
   if (flow.step === "cancelConfirm") {
     const booking = salonCustomerBookings(bot, contact.number).find((item) => item.id === flow.cancelBookingId && item.status === "confirmed");
-    if (input === "b2cancelkeep" || input === "keep appointment") {
+    if (input === "b2cancelkeep" || input === "keep appointment" || input === "अपॉइंटमेंट ठेवा") {
       delete bot.bookingFlows[jid];
       return "Your appointment is still confirmed.";
     }
-    if (input !== "b2cancelconfirm" && input !== "confirm cancellation" && input !== "yes cancel") return null;
+    if (input !== "b2cancelconfirm" && input !== "confirm cancellation" && input !== "yes cancel" && input !== "हो रद्द करा") return null;
     if (!booking) { delete bot.bookingFlows[jid]; return "This appointment is no longer confirmed."; }
     booking.status = "cancelled";
     booking.cancelledAt = Date.now();
     delete bot.bookingFlows[jid];
-    return { reply: `🙏 तुमची appointment cancel झाली आहे.\n\n✂️ सेवा: ${booking.service}\n📅 तारीख: ${salonBookingDate(booking)}\n⏰ वेळ: ${salonBookingTime(booking)}\n\nआम्हाला आधी कळवल्याबद्दल धन्यवाद! 💈 लवकरच पुन्हा भेट द्या.\n\nपुन्हा appointment book करण्यासाठी खालील बटणावर क्लिक करा.`, choices: [{ id: "swas_b2_rebook_menu", title: salonForwardTitle("Click here to book") }], persist: true };
+    return { reply: `🙏 Your appointment is cancelled.\n\n✂️ Service: ${booking.service}\n📅 Date: ${salonBookingDate(booking)}\n⏰ Time: ${salonBookingTime(booking)}\n\nThank you for letting us know! 💈 Hope to see you again soon.\n\nTap the button below to book again.`, choices: [{ id: "swas_b2_rebook_menu", title: salonForwardTitle("Click here to book") }], persist: true };
   }
   if (flow.step === "service") {
     if (["b2servicesmore", "more services", "swas b2 services more"].includes(input)) {
@@ -1076,7 +1129,7 @@ function salonReply(bot, jid, text, contact, settings, ownerNumber = "") {
       flow.timePage = 0;
       return salonTimeChoicePage(flow, settings);
     }
-    return `कोणती वेळ हवी आहे? 10:30 AM अशा स्वरूपात पाठवा. सलूनची वेळ: ${settings.bot2SalonHours || "कृपया संपर्क करा"}.`;
+    return `Which time would you like? Send it like 10:30 AM. Salon hours: ${settings.bot2SalonHours || "please contact us"}.`;
   }
   if (flow.step === "time") {
     if (["b2nextdate", "next date", "next available date"].includes(input)) {
@@ -1117,7 +1170,7 @@ function salonReply(bot, jid, text, contact, settings, ownerNumber = "") {
     const taken = (bot.bookings || []).some((b) => b.status === "confirmed" && (b.dateKey || salonDateKey(b.date)) === flow.dateKey && (b.timeKey || salonTime(b.time)?.label) === time.label && (b.worker || "Worker 1") === worker);
     if (taken) {
       const page = salonChoicePage(salonTimeChoices(settings.bot2SalonHours, bot, flow.dateKey, settings), 0, "time", salonTimeChoiceLabel);
-      return { reply: "हा slot नुकताच book झाला. दुसरा available slot निवडा:", choices: page.choices };
+      return { reply: "This slot was just booked. Please choose another available slot:", choices: page.choices };
     }
     flow.time = selectedSlot?.timeLabel || String(text).trim(); flow.timeKey = time.label; flow.worker = worker;
     const profileName = String(contact.name || "").trim().replace(/\s+/g, " ");
@@ -1139,7 +1192,7 @@ function salonReply(bot, jid, text, contact, settings, ownerNumber = "") {
     return { reply: `Review your appointment\n\n${settings.bot2SalonName || "Shop"}\nService: ${flow.service}\nDate: ${flow.date}\nTime: ${flow.time}\nName: ${flow.customerName}\nMobile: ${customerMobile}\n\nPlease confirm your booking.`, choices: [{ id: "swas_b2_confirm", title: salonForwardTitle("Confirm Booking") }, { id: "swas_b2_cancel", title: "Cancel" }] };
   }
   if (flow.step === "confirm") {
-    if (!["yes", "confirm", "confirm booking", "b2confirm", "swas b2 confirm", "हो", "होय"].includes(input)) return null;
+    if (!["yes", "confirm", "confirm booking", "b2confirm", "swas b2 confirm", "हो", "होय", "बुकिंग निश्चित करा"].includes(input)) return null;
     const worker = flow.worker || "Worker 1";
     const slotTaken = (bot.bookings || []).some((b) => b.status === "confirmed" && (b.dateKey || salonDateKey(b.date)) === flow.dateKey && (b.timeKey || salonTime(b.time)?.label) === flow.timeKey && (b.worker || "Worker 1") === worker);
     if (slotTaken) {
@@ -1287,7 +1340,8 @@ async function answer(mobile, sock, bot, config, msg, { chatbotOn = true } = {})
   const isGreeting = SwasBot.keywordList(bot.config?.settings?.welcomeKeywords)
     .some((keyword) => normalizedText === SwasBot.normalize(keyword));
   const choosingLanguage = Boolean(bot.languagePrompt?.[jid]);
-  const bot3Settings = bot.config?.settings || {};
+  const rawBotSettings = bot.config?.settings || {};
+  const bot3Settings = localizedSettings(rawBotSettings, lang);
   const allowedBots = accountBots(mobile);
   const bot2Selected = allowedBots.has(2) && !!bot3Settings.bot2SalonEnabled;
   const bot3Selected = allowedBots.has(3) && !!bot3Settings.bot3Enabled;
@@ -1328,7 +1382,7 @@ async function answer(mobile, sock, bot, config, msg, { chatbotOn = true } = {})
   const myTableTap = bot4Selected && (text === "b4mybooking" || text.startsWith("b4cancel:"));
   const hotelOwnMessage = bot4Selected && (!!hotelFlows[jid] || hotelStartText || tableTap || myTableTap);
   const interestedLabel = SwasBot.normalize(bot3Settings.bot3InterestedLabel || "Interested");
-  const interestedTap = text === "b3interested" || normalizedText === interestedLabel || normalizedText === "interested";
+  const interestedTap = text === "b3interested" || normalizedText === interestedLabel || normalizedText === SwasBot.normalize(rawBotSettings.bot3InterestedLabel || "Interested") || normalizedText === "interested";
   const otherBotChosen = ["3", "4", "5", "6"].includes(currentBotId); // never let the salon answer for them
   let salonAction = chatbotOn && !unsubscribed && !interestedTap && !hotelOwnMessage && !otherBotChosen && bot2Selected ? salonReply(bot, jid, text, contact, bot3Settings, mobile) : null;
   if (lang === "mr" && salonAction) {
@@ -1453,11 +1507,11 @@ async function answer(mobile, sock, bot, config, msg, { chatbotOn = true } = {})
     save(mobile);
   }
   if (chatbotOn && !unsubscribed && bot3Selected && !hotelOwnMessage && leadFlow?.step === "city" && interestedTap) {
-    bot3FlowReply = bot3Settings.bot3CityQuestion || "कृपया तुमच्या शहराचे नाव सांगा.";
+    bot3FlowReply = bot3Settings.bot3CityQuestion || (lang === "mr" ? "कृपया तुमच्या शहराचे नाव सांगा." : "Please tell us your city name.");
   } else if (chatbotOn && !unsubscribed && bot3Selected && !hotelOwnMessage && leadFlow?.step === "city") {
     const city = String(text || "").trim().replace(/\s+/g, " ");
     if (city.length < 2 || city.length > 100) {
-      bot3FlowReply = bot3Settings.bot3CityQuestion || "कृपया तुमच्या शहराचे नाव सांगा.";
+      bot3FlowReply = bot3Settings.bot3CityQuestion || (lang === "mr" ? "कृपया तुमच्या शहराचे नाव सांगा." : "Please tell us your city name.");
     } else {
       const now = Date.now();
       const parts = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(new Date(now));
@@ -1477,7 +1531,7 @@ async function answer(mobile, sock, bot, config, msg, { chatbotOn = true } = {})
       await notifyInterestedLead(mobile, bot3Settings, lead);
       bot3RepeatInterested = true;
       bot3FlowReply = [bot3Settings.bot3FinalThankYou, bot3Settings.bot3FinalWelcome].map((value) => String(value || "").trim()).filter(Boolean).join("\n");
-      bot3FlowReply = (bot3FlowReply ? bot3FlowReply + "\n\n" : "") + String(bot3Settings.bot3ThankYou || "धन्यवाद! आमचे प्रतिनिधी 24 तासांच्या आत तुमच्याशी संपर्क करतील.")
+      bot3FlowReply = (bot3FlowReply ? bot3FlowReply + "\n\n" : "") + String(bot3Settings.bot3ThankYou || (lang === "mr" ? "धन्यवाद! आमचे प्रतिनिधी 24 तासांच्या आत तुमच्याशी संपर्क करतील." : "Thank you! Our representative will contact you within 24 hours."))
         .replace(/\{\{\s*name\s*\}\}/gi, lead.name)
         .replace(/\{\{\s*number\s*\}\}/gi, lead.number)
         .replace(/\{\{\s*city\s*\}\}/gi, lead.city)
@@ -1505,7 +1559,7 @@ async function answer(mobile, sock, bot, config, msg, { chatbotOn = true } = {})
       save(mobile);
       await notifyInterestedLead(mobile, bot3Settings, duplicateLead);
       bot3RepeatInterested = true;
-      bot3FlowReply = String(bot3Settings.bot3DuplicateReply || "तुम्ही आधीच Interested नोंदवले आहे. {{shop}} कंपनीचे प्रतिनिधी 24 तासांत तुम्हाला कॉल करतील. धन्यवाद.")
+      bot3FlowReply = String(bot3Settings.bot3DuplicateReply || (lang === "mr" ? "तुम्ही आधीच Interested नोंदवले आहे. {{shop}} कंपनीचे प्रतिनिधी 24 तासांत तुम्हाला कॉल करतील. धन्यवाद." : "You have already registered your interest. A {{shop}} representative will call you within 24 hours. Thank you."))
         .replace(/\{\{\s*name\s*\}\}/gi, previousLead.name || "")
         .replace(/\{\{\s*number\s*\}\}/gi, previousLead.number || "")
         .replace(/\{\{\s*city\s*\}\}/gi, previousLead.city || "")
@@ -1513,7 +1567,7 @@ async function answer(mobile, sock, bot, config, msg, { chatbotOn = true } = {})
     } else {
       leadFlows[jid] = { step: "city", name: String(contact.name || "").trim() || "WhatsApp user", number: contact.number || "", startedAt: now };
       save(mobile);
-      bot3FlowReply = bot3Settings.bot3CityQuestion || "कृपया तुमच्या शहराचे नाव सांगा.";
+      bot3FlowReply = bot3Settings.bot3CityQuestion || (lang === "mr" ? "कृपया तुमच्या शहराचे नाव सांगा." : "Please tell us your city name.");
     }
   }
   const bot3Keywords = SwasBot.keywordList(bot3Settings.bot3Keywords);
@@ -1618,7 +1672,8 @@ async function answer(mobile, sock, bot, config, msg, { chatbotOn = true } = {})
     if (withinRate(rt, bot2Jid, 20)) {
       rt.sent.get(bot2Jid).push(Date.now());
       if (salonAction.booking || salonAction.persist) save(mobile);
-      if (salonAction.choices || salonAction.urlButton) await sendChoices(sock, jid, salonAction.reply, salonAction.choices || [], salonAction.urlButton, salonAction.callButton ? finalCallButton || salonAction.callButton : null);
+      const salonMr = (button) => (button && lang === "mr" ? { ...button, title: salonMarathiText(button.title) } : button);
+      if (salonAction.choices || salonAction.urlButton) await sendChoices(sock, jid, salonAction.reply, salonAction.choices || [], salonMr(salonAction.urlButton), salonAction.callButton ? finalCallButton || salonMr(salonAction.callButton) : null);
       else await sock.sendMessage(jid, { text: typeof salonAction === "string" ? salonAction : salonAction.reply });
       if (salonAction.followUp?.choices?.length) await sendChoices(sock, jid, salonAction.followUp.reply, salonAction.followUp.choices);
       const cancelledBooking = salonAction.persist ? (bot.bookings || []).find((entry) => entry.status === "cancelled" && String(entry.number || "").replace(/\D/g, "") === String(contact.number || "").replace(/\D/g, "") && Date.now() - Number(entry.cancelledAt || 0) < 10000) : null;
@@ -1791,6 +1846,19 @@ function hotelConfirmationMessage(settings = {}, booking = {}, lang = "en") {
   }
   if (lang === "mr") return `\u2705 *\u091f\u0947\u092c\u0932 \u092c\u0941\u0915\u093f\u0902\u0917 \u0928\u093f\u0936\u094d\u091a\u093f\u0924 \u091d\u093e\u0932\u0947!*\n\n\u0927\u0928\u094d\u092f\u0935\u093e\u0926, ${booking.name || "Guest"}! \u{1F64F}\n*${shop} - ${booking.branchName || "Branch"}* \u092f\u0947\u0925\u0947 \u0906\u092a\u0932\u0947 \u0938\u094d\u0935\u093e\u0917\u0924 \u0906\u0939\u0947.\n\n\u{1F465} \u0938\u0926\u0938\u094d\u092f: ${booking.members}\n\u{1F3AB} \u0930\u093e\u0902\u0917 \u0915\u094d\u0930\u092e\u093e\u0902\u0915: ${booking.queueNo}\n\u23F3 \u0905\u0902\u0926\u093e\u091c\u0947 \u092a\u094d\u0930\u0924\u0940\u0915\u094d\u0937\u093e: ${booking.estimatedWaitMinutes} \u092e\u093f\u0928\u093f\u091f\u0947\n\u{1F552} \u0905\u092a\u0947\u0915\u094d\u0937\u093f\u0924 \u0935\u0947\u0933: ${booking.time}\n\n\u0906\u092e\u094d\u0939\u0940 \u0906\u092a\u0932\u0940 \u0938\u0947\u0935\u093e \u0915\u0930\u0923\u094d\u092f\u093e\u0938 \u0909\u0924\u094d\u0938\u0941\u0915 \u0906\u0939\u094b\u0924!`;
   return `\u2705 *Table Booking Confirmed!*\n\nThank you, ${booking.name || "Guest"}! \u{1F64F}\nWelcome to *${shop} - ${booking.branchName || "Branch"}*.\n\n\u{1F465} Members: ${booking.members}\n\u{1F3AB} Queue number: ${booking.queueNo}\n\u23F3 Estimated wait: ${booking.estimatedWaitMinutes} minutes\n\u{1F552} Expected time: ${booking.time}\n\nWe look forward to serving you!`;
+}
+
+/** Bot texts the owner can also write in Marathi (saved as <key>Mr). */
+const MR_TEXT_KEYS = ["bot2SalonName", "bot2SalonServices", "bot2StartMessage", "bot2ThankYouMessage", "bot2WelcomeMessage",
+  "bot3Reply", "bot3CityQuestion", "bot3ThankYou", "bot3DuplicateReply", "bot3FinalThankYou", "bot3FinalWelcome",
+  "bot4Name", "bot4Welcome", "bot4ThankYouMessage", "bot4WelcomeMessage",
+  "bot5Name", "bot5Reply", "bot5DetailsTitle", "bot5NotFound", "bot6Name", "bot6Welcome", "bot6ButtonText"];
+/** Settings as the customer should see them: the Marathi text wherever one is saved and Marathi was chosen. */
+function localizedSettings(settings = {}, lang = "") {
+  if (lang !== "mr") return settings;
+  const out = { ...settings };
+  for (const key of MR_TEXT_KEYS) if (String(settings[`${key}Mr`] || "").trim()) out[key] = settings[`${key}Mr`];
+  return out;
 }
 
 /** A branch's name for the customer: its Marathi name when Marathi was chosen and one is saved. */
