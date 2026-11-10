@@ -1531,6 +1531,7 @@ $("bot4-shop-name")?.addEventListener("input", () => updateExtraBotNameDisplay(4
 
 function renderBot4Settings(settings) {
   $("bot4-shop-name").value = settings.bot4Name || "";
+  $("bot4-shop-name-mr").value = settings.bot4NameMr || "";
   const welcome = settings.bot4Welcome || "Welcome to {{shop}}, {{branch}}! Tap Book a table to join today's queue.";
   $("bot4-welcome").value = /\{\{\s*branch\s*\}\}/i.test(welcome) ? welcome : welcome.replace(/\{\{\s*shop\s*\}\}/i, "{{shop}}, {{branch}}");
   const branches = Array.isArray(settings.bot4Branches) && settings.bot4Branches.length ? settings.bot4Branches : [{
@@ -2140,6 +2141,7 @@ function readBotUI() {
     bot3FinalWelcome: $("bot3-final-welcome").value.trim(),
     bot4Enabled: allowedBots.has(4) && $("bot4-enabled").checked,
     bot4Name: $("bot4-shop-name").value.trim(),
+    bot4NameMr: $("bot4-shop-name-mr").value.trim(),
     bot4Branches: readBot4Branches(),
     bot4Keywords: "table",
     bot4Reply: "",
