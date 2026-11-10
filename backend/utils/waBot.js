@@ -106,6 +106,7 @@ function buildConfig(bot) {
 function salonMarathiText(value) {
   return String(value || "")
     .replace(/Welcome! Choose an option below\./g, "\\u0938\\u094d\\u0935\\u093e\\u0917\\u0924 \\u0906\\u0939\\u0947! \\u0916\\u093e\\u0932\\u0940\\u0932 \\u092a\\u0930\\u094d\\u092f\\u093e\\u092f \\u0928\\u093f\\u0935\\u0921\\u093e.")
+    .replace(/Welcome to (.+?)!/g, "$1 \u092e\u0927\u094d\u092f\u0947 \u0906\u092a\u0932\u0947 \u0938\u094d\u0935\u093e\u0917\u0924 \u0906\u0939\u0947!")
     .replace(/Thank you for choosing us\./g, "\\u0906\\u092e\\u091a\\u0940 \\u0928\\u093f\\u0935\\u0921 \\u0915\\u0947\\u0932\\u094d\\u092f\\u093e\\u092c\\u0926\\u094d\\u0926\\u0932 \\u0927\\u0928\\u094d\\u092f\\u0935\\u093e\\u0926.")
     .replace(/Please choose a service to book your appointment\./g, "\\u092c\\u0941\\u0915\\u093f\\u0902\\u0917\\u0938\\u093e\\u0920\\u0940 \\u0938\\u0947\\u0935\\u093e \\u0928\\u093f\\u0935\\u0921\\u093e.")
     .replace(/Choose an appointment date/g, "\\u0905\\u092a\\u0949\\u0907\\u0902\\u091f\\u092e\\u0947\\u0902\\u091f\\u091a\\u0940 \\u0924\\u093e\\u0930\\u0940\\u0916 \\u0928\\u093f\\u0935\\u0921\\u093e")
@@ -1217,7 +1218,7 @@ async function answer(mobile, sock, bot, config, msg, { chatbotOn = true } = {})
     }
   }
   // Some WhatsApp clients send the Continue button tap as its plain label instead of its id.
-  if (bot.config?.settings?.bot5Enabled && SwasBot.normalize(text) === "continue") text = "b5continue";
+  if (bot.config?.settings?.bot5Enabled && ["continue", "\u092a\u0941\u0922\u0947"].includes(SwasBot.normalize(text))) text = "b5continue";
   const contact = { name: msg.pushName || "", number: await phoneOf(sock, msg.key) };
   const who = contact.number || contact.name || jid;
   const unsubscribed = bot.unsubscribers.some((entry) => SwasBot.isSameContact(entry, contact));
@@ -1295,8 +1296,10 @@ async function answer(mobile, sock, bot, config, msg, { chatbotOn = true } = {})
   const bot6Selected = allowedBots.has(6) && !!bot3Settings.bot6Enabled;
   const finalMapUrl = String(bot3Settings.bot2GoogleMapsUrl || "").trim();
   const finalPhone = String(sock.user?.id || sock.authState?.creds?.me?.id || "").split(/[:@]/)[0].replace(/\D/g, "") || String(mobile || "").replace(/\D/g, "");
-  const finalUrlButton = /^https:\/\//i.test(finalMapUrl) ? { title: "\u{1F4CD} Location", url: finalMapUrl } : null;
-  const finalCallButton = finalPhone ? { title: "\u{1F4DE} Contact", phoneNumber: `+${finalPhone}` } : null;
+  const locationTitle = lang === "mr" ? "\u{1F4CD} \u0932\u094b\u0915\u0947\u0936\u0928" : "\u{1F4CD} Location";
+  const contactTitle = lang === "mr" ? "\u{1F4DE} \u0938\u0902\u092a\u0930\u094d\u0915" : "\u{1F4DE} Contact";
+  const finalUrlButton = /^https:\/\//i.test(finalMapUrl) ? { title: locationTitle, url: finalMapUrl } : null;
+  const finalCallButton = finalPhone ? { title: contactTitle, phoneNumber: `+${finalPhone}` } : null;
   const leadFlows = bot.interestFlows || (bot.interestFlows = {});
   const leadFlow = leadFlows[jid];
   const hotelFlows = bot.hotelBookingFlows || (bot.hotelBookingFlows = {});
@@ -1529,10 +1532,10 @@ async function answer(mobile, sock, bot, config, msg, { chatbotOn = true } = {})
     const found = botData.bot5Rows(mobile, contact.number);
     const fill = (value) => String(value || "").replace(/\{\{\s*name\s*\}\}/gi, contact.name || "").replace(/\{\{\s*number\s*\}\}/gi, contact.number || "").replace(/\{\{\s*shop\s*\}\}/gi, bot3Settings.bot5Name || "");
     if (!found) {
-      bot5Reply = fill(bot3Settings.bot5NotFound || "Your WhatsApp number is not registered with us. Please contact us.");
+      bot5Reply = fill(bot3Settings.bot5NotFound || (lang === "mr" ? "\u0924\u0941\u092e\u091a\u093e WhatsApp \u0928\u0902\u092c\u0930 \u0906\u092e\u091a\u094d\u092f\u093e\u0915\u0921\u0947 \u0928\u094b\u0902\u0926\u0932\u0947\u0932\u093e \u0928\u093e\u0939\u0940. \u0915\u0943\u092a\u092f\u093e \u0906\u092e\u091a\u094d\u092f\u093e\u0936\u0940 \u0938\u0902\u092a\u0930\u094d\u0915 \u0915\u0930\u093e." : "Your WhatsApp number is not registered with us. Please contact us."));
     } else if (text !== "b5continue") {
-      bot5Reply = fill(bot3Settings.bot5Reply || "Welcome {{name}}! Tap Continue to see your details.");
-      bot5Choices = [{ id: "swas_b5_continue", title: "Continue" }];
+      bot5Reply = fill(bot3Settings.bot5Reply || (lang === "mr" ? "\u0906\u092a\u0932\u0947 \u0938\u094d\u0935\u093e\u0917\u0924 \u0906\u0939\u0947 {{name}}! \u0924\u0941\u092e\u091a\u0940 \u092e\u093e\u0939\u093f\u0924\u0940 \u092a\u093e\u0939\u0923\u094d\u092f\u093e\u0938\u093e\u0920\u0940 \u092a\u0941\u0922\u0947 \u0926\u093e\u092c\u093e." : "Welcome {{name}}! Tap Continue to see your details."));
+      bot5Choices = [{ id: "swas_b5_continue", title: lang === "mr" ? "\u092a\u0941\u0922\u0947" : "Continue" }];
     } else {
       const wanted = String(bot3Settings.bot5Columns || "").split(/[,\n]/).map((item) => item.trim()).filter(Boolean);
       const byName = new Map(found.headers.map((header) => [SwasBot.normalize(header), header]));
@@ -1541,7 +1544,7 @@ async function answer(mobile, sock, bot, config, msg, { chatbotOn = true } = {})
         const lines = columns.filter((header) => String(row[header] ?? "").trim() !== "").map((header) => `*${header}:* ${row[header]}`);
         return (found.rows.length > 1 ? `*${index + 1}.*\n` : "") + (lines.join("\n") || "-");
       });
-      const intro = fill(bot3Settings.bot5DetailsTitle || "Your details:");
+      const intro = fill(bot3Settings.bot5DetailsTitle || (lang === "mr" ? "\u0924\u0941\u092e\u091a\u0940 \u092e\u093e\u0939\u093f\u0924\u0940:" : "Your details:"));
       bot5Reply = [intro, blocks.join("\n\n")].filter(Boolean).join("\n\n");
     }
   }
@@ -1549,7 +1552,7 @@ async function answer(mobile, sock, bot, config, msg, { chatbotOn = true } = {})
   let bot6Reply = null;
   if (bot6Selected && !bot5Reply && !hotelOwnMessage && chatbotOn && !unsubscribed && bot6Keywords(bot3Settings).includes(SwasBot.normalize(text))) {
     const shop = String(bot3Settings.bot6Name || "").trim();
-    bot6Reply = String(bot3Settings.bot6Welcome || (shop ? `Welcome to ${shop}!` : "Welcome!"))
+    bot6Reply = String(bot3Settings.bot6Welcome || (lang === "mr" ? (shop ? `${shop} \u092e\u0927\u094d\u092f\u0947 \u0906\u092a\u0932\u0947 \u0938\u094d\u0935\u093e\u0917\u0924 \u0906\u0939\u0947!` : "\u0906\u092a\u0932\u0947 \u0938\u094d\u0935\u093e\u0917\u0924 \u0906\u0939\u0947!") : shop ? `Welcome to ${shop}!` : "Welcome!"))
       .replace(/\{\{\s*name\s*\}\}/gi, contact.name || "")
       .replace(/\{\{\s*shop\s*\}\}/gi, shop);
   }
@@ -1653,8 +1656,8 @@ async function answer(mobile, sock, bot, config, msg, { chatbotOn = true } = {})
     // Bot 5's own Location / Contact (from its settings), else the account-wide ones.
     const bot5MapUrl = String(bot3Settings.bot5LocationUrl || "").trim();
     const bot5Phone = settingsNumber(bot3Settings.bot5Contact);
-    const bot5UrlButton = /^https:\/\//i.test(bot5MapUrl) ? { title: "\u{1F4CD} Location", url: bot5MapUrl } : finalUrlButton;
-    const bot5CallButton = bot5Phone ? { title: "\u{1F4DE} Contact", phoneNumber: `+${bot5Phone}` } : finalCallButton;
+    const bot5UrlButton = /^https:\/\//i.test(bot5MapUrl) ? { title: locationTitle, url: bot5MapUrl } : finalUrlButton;
+    const bot5CallButton = bot5Phone ? { title: contactTitle, phoneNumber: `+${bot5Phone}` } : finalCallButton;
     if (withinRate(rt, bot5Jid, 20)) {
       rt.sent.get(bot5Jid).push(Date.now());
       if (bot5Reply.length > 1000) {
@@ -1670,7 +1673,7 @@ async function answer(mobile, sock, bot, config, msg, { chatbotOn = true } = {})
     if (withinRate(rt, bot6Jid, 20)) {
       rt.sent.get(bot6Jid).push(Date.now());
       const website = String(bot3Settings.bot6Website || "").trim();
-      const button = /^https?:\/\//i.test(website) ? { title: String(bot3Settings.bot6ButtonText || "").trim() || "Visit Website", url: website } : null;
+      const button = /^https?:\/\//i.test(website) ? { title: String(bot3Settings.bot6ButtonText || "").trim() || (lang === "mr" ? "\u0935\u0947\u092c\u0938\u093e\u0907\u091f \u092a\u0939\u093e" : "Visit Website"), url: website } : null;
       if (button) await sendChoices(sock, jid, bot6Reply, [], button, null);
       else await sock.sendMessage(jid, { text: bot6Reply });
     }
