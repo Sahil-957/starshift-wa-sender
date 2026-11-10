@@ -1567,6 +1567,7 @@ function addBot4BranchCard(branch = {}) {
   card.className = "card bot4-branch-card"; card.dataset.branchId = id; card.style.margin = "12px 0";
   card.innerHTML = `<h3>Branch</h3>
     <label>Branch name</label><input data-field="name" value="${escHtml(branch.name || "")}" placeholder="Baner" />
+    <label>Branch name in Marathi (shown when the customer picks मराठी)</label><input data-field="nameMr" value="${escHtml(branch.nameMr || "")}" placeholder="बाणेर" />
     <div class="row" style="gap:10px;flex-wrap:wrap"><div class="field"><label>Opening time</label><input data-field="openTime" type="time" value="${escHtml(branch.openTime || "10:00")}" /></div><div class="field"><label>Closing time</label><input data-field="closeTime" type="time" value="${escHtml(branch.closeTime || "23:00")}" /></div><div class="field"><label>Minutes per queue wait cycle</label><input data-field="waitMinutes" type="number" min="1" max="240" value="${Number(branch.waitMinutes) || 15}" /></div></div>
     <div class="row" style="gap:10px;flex-wrap:wrap"><div class="field"><label>Number of tables</label><input data-field="tableCount" type="number" min="1" max="500" value="${Number(branch.tableCount) > 0 ? Number(branch.tableCount) : ""}" placeholder="Enter table count" /></div><div class="field"><label>Total seating capacity (all tables)</label><input data-field="seatingCapacity" type="number" min="1" max="2000" value="${Number(branch.seatingCapacity) > 0 ? Number(branch.seatingCapacity) : ""}" placeholder="Enter total seats" /></div></div>
     <p class="hint">Fill in both values. Queue wait is estimated from available tables, total seats, and minutes per wait cycle.</p>
@@ -1581,7 +1582,7 @@ function addBot4BranchCard(branch = {}) {
 function readBot4Branches() {
   return [...document.querySelectorAll(".bot4-branch-card")].map((card) => {
     const read = (key) => card.querySelector(`[data-field="${key}"]`).value.trim();
-    return { id: card.dataset.branchId, name: read("name"), openTime: read("openTime"), closeTime: read("closeTime"), waitMinutes: Math.min(240, Math.max(1, Number(read("waitMinutes")) || 15)), tableCount: Math.min(500, Math.max(0, Number(read("tableCount")) || 0)), seatingCapacity: Math.min(2000, Math.max(0, Number(read("seatingCapacity")) || 0)), latitude: read("latitude"), longitude: read("longitude"), notifyNumber: read("notifyNumber") };
+    return { id: card.dataset.branchId, name: read("name"), nameMr: read("nameMr"), openTime: read("openTime"), closeTime: read("closeTime"), waitMinutes: Math.min(240, Math.max(1, Number(read("waitMinutes")) || 15)), tableCount: Math.min(500, Math.max(0, Number(read("tableCount")) || 0)), seatingCapacity: Math.min(2000, Math.max(0, Number(read("seatingCapacity")) || 0)), latitude: read("latitude"), longitude: read("longitude"), notifyNumber: read("notifyNumber") };
   });
 }
 $("bot4-add-branch").addEventListener("click", () => addBot4BranchCard());

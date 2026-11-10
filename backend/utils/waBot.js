@@ -152,7 +152,7 @@ function intendedBotId(mobile, bot, jid, text, config, chatbotOn, contact) {
   const hotelStep = bot.hotelBookingFlows?.[jid]?.step;
   if (allowed.has(4) && hotelStep === "branch" && (text === "b4branchesmore" || String(text).startsWith("b4branch:")
     || ["more branches", "आणखी शाखा"].includes(normalized)
-    || hotelBranches(mobile).some((entry) => SwasBot.normalize(entry.name) === normalized))) return "4";
+    || hotelBranches(mobile).some((entry) => [entry.name, entry.nameMr].filter(Boolean).some((name) => SwasBot.normalize(name) === normalized)))) return "4";
   if (allowed.has(4) && ((hotelStep && hotelStep !== "branch") || (settings.bot4Enabled && /^table\s+book\s+.+$/i.test(visible)))) return "4";
   if (allowed.has(4) && settings.bot4Enabled && (text === "b4open" || text === "b4mybooking" || String(text).startsWith("b4branch:") || String(text).startsWith("b4cancel:"))) return "4";
   // A bot's own exact keyword wins over Bot 2's catch-all checks below.
@@ -1317,7 +1317,7 @@ async function answer(mobile, sock, bot, config, msg, { chatbotOn = true } = {})
   // Campaign "Book a table" button: no location check, branch chosen by button (or the only branch).
   // While the branch buttons are showing, a tap may arrive as the branch name instead of its id.
   const branchStep = hotelFlow?.step === "branch" ? hotelFlow : null;
-  const branchByName = branchStep ? hotelBranchesForAccount.find((entry) => SwasBot.normalize(entry.name) === normalizedText) || null : null;
+  const branchByName = branchStep ? hotelBranchesForAccount.find((entry) => [entry.name, entry.nameMr].filter(Boolean).some((name) => SwasBot.normalize(name) === normalizedText)) || null : null;
   const moreBranches = !!branchStep && (text === "b4branchesmore" || ["more branches", "आणखी शाखा"].includes(normalizedText));
   if (branchStep && !branchByName && !moreBranches && !text.startsWith("b4branch:")) { delete hotelFlows[jid]; save(mobile); } // customer moved on
   const tableTap = bot4Selected && (text === "b4open" || text.startsWith("b4branch:") || !!branchByName || moreBranches);
@@ -1343,6 +1343,7 @@ async function answer(mobile, sock, bot, config, msg, { chatbotOn = true } = {})
   let bot4CallButton = null;
   let bot4RepeatConfirmation = false;
   if (chatbotOn && !unsubscribed && myTableTap) {
+    const shownBranch = (entry) => branchLabel(hotelBranchesForAccount.find((item) => String(item.id) === String(entry.branchId)) || { name: entry.branchName }, lang) || entry.branchName;
     // "My table booking": today's active bookings with a Cancel button each; a Cancel tap cancels it.
     const today = hotelBookingNow().dateKey;
     const mine = (bot.hotelBookings || []).filter((entry) => (entry.jid === jid || (contact.number && entry.number === contact.number)) && entry.dateKey === today && ["Pending", "Confirmed"].includes(entry.status));
@@ -1355,8 +1356,8 @@ async function answer(mobile, sock, bot, config, msg, { chatbotOn = true } = {})
         booking.cancelledAt = Date.now();
         save(mobile);
         bot4FlowReply = mr
-          ? `\u274c \u0924\u0941\u092e\u091a\u0947 \u091f\u0947\u092c\u0932 \u092c\u0941\u0915\u093f\u0902\u0917 #${booking.queueNo} (${booking.branchName}) \u0930\u0926\u094d\u0926 \u091d\u093e\u0932\u0947.`
-          : `\u274c Your table booking #${booking.queueNo} (${booking.branchName}) is cancelled.`;
+          ? `\u274c \u0924\u0941\u092e\u091a\u0947 \u091f\u0947\u092c\u0932 \u092c\u0941\u0915\u093f\u0902\u0917 #${booking.queueNo} (${shownBranch(booking)}) \u0930\u0926\u094d\u0926 \u091d\u093e\u0932\u0947.`
+          : `\u274c Your table booking #${booking.queueNo} (${shownBranch(booking)}) is cancelled.`;
         const branch = hotelBranchesForAccount.find((entry) => String(entry.id) === String(booking.branchId));
         const ownerNumber = settingsNumber(branch?.notifyNumber || bot3Settings.bot4NotifyNumber);
         if (ownerNumber) {
@@ -1370,7 +1371,7 @@ async function answer(mobile, sock, bot, config, msg, { chatbotOn = true } = {})
     } else {
       const shown = mine.slice(-3);
       bot4FlowReply = (mr ? "\u{1F4CB} *\u0924\u0941\u092e\u091a\u0947 \u0906\u091c\u091a\u0947 \u091f\u0947\u092c\u0932 \u092c\u0941\u0915\u093f\u0902\u0917*" : "\u{1F4CB} *Your table booking today*") + "\n\n"
-        + shown.map((entry) => `#${entry.queueNo} \u00b7 ${entry.branchName} \u00b7 ${entry.members} ${mr ? "\u0938\u0926\u0938\u094d\u092f" : "members"} \u00b7 ${entry.time}`).join("\n");
+        + shown.map((entry) => `#${entry.queueNo} \u00b7 ${shownBranch(entry)} \u00b7 ${entry.members} ${mr ? "\u0938\u0926\u0938\u094d\u092f" : "members"} \u00b7 ${entry.time}`).join("\n");
       bot4Choices = shown.map((entry) => ({ id: `swas_b4_cancel_${entry.id}`, title: `${mr ? "\u0930\u0926\u094d\u0926 \u0915\u0930\u093e" : "Cancel"} ${entry.queueNo}` }));
     }
   } else if (chatbotOn && !unsubscribed && tableTap && !tapBranch) {
@@ -1380,17 +1381,17 @@ async function answer(mobile, sock, bot, config, msg, { chatbotOn = true } = {})
     const page = moreBranches ? ((Number(branchStep.page) || 0) + 1) % pages : 0;
     const shown = all.length <= 3 ? all : all.slice(page * 2, page * 2 + 2);
     bot4FlowReply = !all.length ? "Table booking is not set up yet." : lang === "mr" ? "शाखा निवडा:" : "Choose a branch:";
-    bot4Choices = shown.map((entry) => ({ id: `swas_b4_branch_${entry.id}`, title: String(entry.name || "Branch").slice(0, 20) }));
+    bot4Choices = shown.map((entry) => ({ id: `swas_b4_branch_${entry.id}`, title: (branchLabel(entry, lang) || "Branch").slice(0, 20) }));
     if (pages > 1) bot4Choices.push({ id: "swas_b4_branches_more", title: lang === "mr" ? "आणखी शाखा" : "More branches" });
     if (all.length) { hotelFlows[jid] = { step: "branch", page, startedAt: Date.now() }; save(mobile); }
   } else if (chatbotOn && !unsubscribed && bot4Selected && (hotelStartText || tableTap)) {
     const startBranch = tableTap ? tapBranch : hotelBranch;
     const verified = tableTap ? { distanceMeters: null } : hotelBranch && tableBookingTokens.consume(hotelToken, mobile, hotelBranch.id);
     if (!verified) bot4FlowReply = lang === "mr" ? "\u0932\u094b\u0915\u0947\u0936\u0928 \u091a\u0947\u0915 \u0915\u093e\u0932\u092c\u093e\u0939\u094d\u092f \u091d\u093e\u0932\u093e. \u0915\u0943\u092a\u092f\u093e \u0936\u093e\u0916\u0947\u091a\u093e QR \u092a\u0941\u0928\u094d\u0939\u093e \u0938\u094d\u0915\u0945\u0928 \u0915\u0930\u093e." : "This location check has expired or is invalid. Please scan the branch QR again while at the branch.";
-    else if (!isBranchHotelOpen(startBranch)) bot4FlowReply = lang === "mr" ? [bot3Settings.bot4Name, startBranch.name].filter(Boolean).join(", ") + " \u092f\u0947\u0925\u0947 \u0938\u0927\u094d\u092f\u093e \u092c\u0941\u0915\u093f\u0902\u0917 \u092c\u0902\u0926 \u0906\u0939\u0947. \u0915\u0943\u092a\u092f\u093e \u0938\u0941\u0930\u0942 \u0905\u0938\u0924\u093e\u0928\u093e \u092a\u0941\u0928\u094d\u0939\u093e \u092a\u094d\u0930\u092f\u0924\u094d\u0928 \u0915\u0930\u093e." : "Bookings for " + startBranch.name + " are closed. Please try again during opening hours.";
+    else if (!isBranchHotelOpen(startBranch)) bot4FlowReply = lang === "mr" ? [bot3Settings.bot4Name, branchLabel(startBranch, lang)].filter(Boolean).join(", ") + " \u092f\u0947\u0925\u0947 \u0938\u0927\u094d\u092f\u093e \u092c\u0941\u0915\u093f\u0902\u0917 \u092c\u0902\u0926 \u0906\u0939\u0947. \u0915\u0943\u092a\u092f\u093e \u0938\u0941\u0930\u0942 \u0905\u0938\u0924\u093e\u0928\u093e \u092a\u0941\u0928\u094d\u0939\u093e \u092a\u094d\u0930\u092f\u0924\u094d\u0928 \u0915\u0930\u093e." : "Bookings for " + startBranch.name + " are closed. Please try again during opening hours.";
     else {
       hotelFlows[jid] = { step: "members", branchId: startBranch.id, name: contact.name || "WhatsApp customer", number: contact.number || "", distanceMeters: verified.distanceMeters, startedAt: Date.now() };
-      bot4FlowReply = lang === "mr" ? [bot3Settings.bot4Name, startBranch.name].filter(Boolean).join(", ") + " \u092f\u0947\u0925\u0947 \u0906\u092a\u0932\u0947 \u0938\u094d\u0935\u093e\u0917\u0924 \u0906\u0939\u0947! \u0924\u0941\u092e\u091a\u094d\u092f\u093e \u092a\u093e\u0930\u094d\u091f\u0940\u092e\u0927\u094d\u092f\u0947 \u0915\u093f\u0924\u0940 \u0938\u0926\u0938\u094d\u092f \u0906\u0939\u0947\u0924? \u0967 \u0924\u0947 \u096b\u0966 \u092e\u0927\u0940\u0932 \u0938\u0902\u0916\u094d\u092f\u093e \u092a\u093e\u0920\u0935\u093e." : "Welcome to " + [bot3Settings.bot4Name, startBranch.name].filter(Boolean).join(", ") + "! How many members are in your party? Reply with a number from 1 to 50.";
+      bot4FlowReply = lang === "mr" ? [bot3Settings.bot4Name, branchLabel(startBranch, lang)].filter(Boolean).join(", ") + " \u092f\u0947\u0925\u0947 \u0906\u092a\u0932\u0947 \u0938\u094d\u0935\u093e\u0917\u0924 \u0906\u0939\u0947! \u0924\u0941\u092e\u091a\u094d\u092f\u093e \u092a\u093e\u0930\u094d\u091f\u0940\u092e\u0927\u094d\u092f\u0947 \u0915\u093f\u0924\u0940 \u0938\u0926\u0938\u094d\u092f \u0906\u0939\u0947\u0924? \u0967 \u0924\u0947 \u096b\u0966 \u092e\u0927\u0940\u0932 \u0938\u0902\u0916\u094d\u092f\u093e \u092a\u093e\u0920\u0935\u093e." : "Welcome to " + [bot3Settings.bot4Name, branchLabel(startBranch, lang)].filter(Boolean).join(", ") + "! How many members are in your party? Reply with a number from 1 to 50.";
       save(mobile);
     }
   } else if (chatbotOn && !unsubscribed && bot4Selected && hotelFlow?.step === "members") {
@@ -1423,7 +1424,7 @@ async function answer(mobile, sock, bot, config, msg, { chatbotOn = true } = {})
         const booking = { id: `${now.dateKey}-${branch.id}-${queueNo}-${Date.now()}`, jid, branchId: branch.id, branchName: branch.name, name: hotelFlow.name || contact.name || "WhatsApp customer", number: contact.number || hotelFlow.number || "", members, queueNo, dateKey: now.dateKey, date: now.date, time: displayTime(new Date(bookingAt)), distanceMeters: Number(hotelFlow.distanceMeters), estimatedWaitMinutes: waitMinutes, status: "Confirmed", createdAt: Date.now(), confirmedAt: Date.now() };
         bookings.push(booking);
         delete hotelFlows[jid];
-        bot4FlowReply = hotelConfirmationMessage(bot3Settings, booking, lang);
+        bot4FlowReply = hotelConfirmationMessage(bot3Settings, { ...booking, branchName: branchLabel(branch, lang) || booking.branchName }, lang);
         const branchLatitude = Number(branch.latitude), branchLongitude = Number(branch.longitude);
         if (Number.isFinite(branchLatitude) && Math.abs(branchLatitude) <= 90 && Number.isFinite(branchLongitude) && Math.abs(branchLongitude) <= 180) {
           bot4UrlButton = {
@@ -1790,6 +1791,12 @@ function hotelConfirmationMessage(settings = {}, booking = {}, lang = "en") {
   }
   if (lang === "mr") return `\u2705 *\u091f\u0947\u092c\u0932 \u092c\u0941\u0915\u093f\u0902\u0917 \u0928\u093f\u0936\u094d\u091a\u093f\u0924 \u091d\u093e\u0932\u0947!*\n\n\u0927\u0928\u094d\u092f\u0935\u093e\u0926, ${booking.name || "Guest"}! \u{1F64F}\n*${shop} - ${booking.branchName || "Branch"}* \u092f\u0947\u0925\u0947 \u0906\u092a\u0932\u0947 \u0938\u094d\u0935\u093e\u0917\u0924 \u0906\u0939\u0947.\n\n\u{1F465} \u0938\u0926\u0938\u094d\u092f: ${booking.members}\n\u{1F3AB} \u0930\u093e\u0902\u0917 \u0915\u094d\u0930\u092e\u093e\u0902\u0915: ${booking.queueNo}\n\u23F3 \u0905\u0902\u0926\u093e\u091c\u0947 \u092a\u094d\u0930\u0924\u0940\u0915\u094d\u0937\u093e: ${booking.estimatedWaitMinutes} \u092e\u093f\u0928\u093f\u091f\u0947\n\u{1F552} \u0905\u092a\u0947\u0915\u094d\u0937\u093f\u0924 \u0935\u0947\u0933: ${booking.time}\n\n\u0906\u092e\u094d\u0939\u0940 \u0906\u092a\u0932\u0940 \u0938\u0947\u0935\u093e \u0915\u0930\u0923\u094d\u092f\u093e\u0938 \u0909\u0924\u094d\u0938\u0941\u0915 \u0906\u0939\u094b\u0924!`;
   return `\u2705 *Table Booking Confirmed!*\n\nThank you, ${booking.name || "Guest"}! \u{1F64F}\nWelcome to *${shop} - ${booking.branchName || "Branch"}*.\n\n\u{1F465} Members: ${booking.members}\n\u{1F3AB} Queue number: ${booking.queueNo}\n\u23F3 Estimated wait: ${booking.estimatedWaitMinutes} minutes\n\u{1F552} Expected time: ${booking.time}\n\nWe look forward to serving you!`;
+}
+
+/** A branch's name for the customer: its Marathi name when Marathi was chosen and one is saved. */
+function branchLabel(branch, lang) {
+  const mr = String(branch?.nameMr || "").trim();
+  return lang === "mr" && mr ? mr : String(branch?.name || "");
 }
 
 function hotelBranches(mobile) {
