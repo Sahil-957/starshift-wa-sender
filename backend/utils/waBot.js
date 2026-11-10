@@ -105,7 +105,10 @@ function buildConfig(bot) {
 
 function salonMarathiText(value) {
   return String(value || "")
-    .replace(/Booking cancelled\. To start again, tap \*Book\* or send BOOK\./g, "बुकिंग रद्द झाले. पुन्हा सुरू करण्यासाठी *Book* दाबा किंवा BOOK पाठवा.")
+    .replace(/Thank you(, [^!\n]+)?! Your booking is cancelled\./g, "धन्यवाद$1! तुमचे बुकिंग रद्द झाले.")
+    .replace(/Please visit us again soon\./g, "कृपया पुन्हा नक्की भेट द्या.")
+    .replace(/Tap Book below whenever you want to book again\./g, "पुन्हा बुक करायचे असल्यास खालील बुक करा बटण दाबा.")
+    .replace(/^(→ )?Book$/g, "$1बुक करा")
     .replace(/There are no appointments linked to this WhatsApp number yet\. Send hi to see available services\./g, "या WhatsApp नंबरवर अजून कोणतीही अपॉइंटमेंट नाही. सेवा पाहण्यासाठी hi पाठवा.")
     .replace(/You have no confirmed appointments to cancel\./g, "रद्द करण्यासाठी कोणतीही निश्चित अपॉइंटमेंट नाही.")
     .replace(/I couldn't match that time\. Please choose one of the Cancel time buttons again:/g, "ती वेळ जुळली नाही. कृपया रद्द करण्याच्या बटणांपैकी एक पुन्हा निवडा:")
@@ -998,7 +1001,7 @@ function salonReply(bot, jid, text, contact, settings, ownerNumber = "") {
   // Marathi button labels (a tap can arrive as its label) -> the English words the steps below check.
   const marathiLabel = {
     "आणखी सेवा": "more services", "आणखी तारखा": "more dates", "आणखी वेळा": "more times", "पुढची तारीख": "next date",
-    "आणखी अपॉइंटमेंट्स": "more appointments", "नवीन बुकिंग": "new booking", "बुक करण्यासाठी येथे दाबा": "click here to book",
+    "आणखी अपॉइंटमेंट्स": "more appointments", "नवीन बुकिंग": "new booking", "बुक करण्यासाठी येथे दाबा": "click here to book", "बुक करा": "b2book",
     "अपॉइंटमेंट बुक करा": "b2book", "माझ्या अपॉइंटमेंट्स": "b2myappointments", "बुकिंग निश्चित करा": "confirm booking",
     "अपॉइंटमेंट ठेवा": "keep appointment", "हो, रद्द करा": "yes cancel", "हो रद्द करा": "yes cancel", "रद्द करा": "cancel",
   }[String(text).replace(/^\s*→\s*/, "").trim()];
@@ -1009,7 +1012,11 @@ function salonReply(bot, jid, text, contact, settings, ownerNumber = "") {
   const flow = (bot.bookingFlows || (bot.bookingFlows = {}))[jid];
   if (["cancel", "cancel booking", "b2cancel", "swas b2 cancel", "रद्द", "रद्द करा"].includes(input) && flow) {
     delete bot.bookingFlows[jid];
-    return "Booking cancelled. To start again, tap *Book* or send BOOK.";
+    const who = String(flow.customerName || contact?.name || "").trim();
+    return {
+      reply: `🙏 Thank you${who ? `, ${who}` : ""}! Your booking is cancelled.\nPlease visit us again soon. 💈\n\nTap Book below whenever you want to book again.`,
+      choices: [{ id: "swas_b2_start", title: salonForwardTitle("Book") }],
+    };
   }
   const asksToCancel = input.includes("cancel") || input.includes("रद्द");
   const manageIntent = ["b2myappointments", "status", "my booking", "my bookings", "my appointment", "my appointments", "appointment status", "booking status", "manage appointment", "माझी booking", "माझे booking", "माझी appointment"].includes(input)
@@ -1263,6 +1270,7 @@ async function answer(mobile, sock, bot, config, msg, { chatbotOn = true } = {})
   if (bot.config?.settings?.bot4Enabled) {
     const label = SwasBot.normalize(text);
     if (["my table booking", "\u092e\u093e\u091d\u0947 \u091f\u0947\u092c\u0932 \u092c\u0941\u0915\u093f\u0902\u0917"].includes(label)) text = "b4mybooking";
+    if (["book a table", "\u091f\u0947\u092c\u0932 \u092c\u0941\u0915 \u0915\u0930\u093e"].includes(label)) text = "b4open";
     const cancelQueue = /^(?:cancel|\u0930\u0926\u094d\u0926 \u0915\u0930\u093e) (\d+)$/.exec(label);
     if (cancelQueue) {
       const today = hotelBookingNow().dateKey;
@@ -1412,6 +1420,10 @@ async function answer(mobile, sock, bot, config, msg, { chatbotOn = true } = {})
         bot4FlowReply = mr
           ? `\u274c \u0924\u0941\u092e\u091a\u0947 \u091f\u0947\u092c\u0932 \u092c\u0941\u0915\u093f\u0902\u0917 #${booking.queueNo} (${shownBranch(booking)}) \u0930\u0926\u094d\u0926 \u091d\u093e\u0932\u0947.`
           : `\u274c Your table booking #${booking.queueNo} (${shownBranch(booking)}) is cancelled.`;
+        bot4FlowReply += mr
+          ? "\n\n\ud83d\ude4f \u0915\u0933\u0935\u0932\u094d\u092f\u093e\u092c\u0926\u094d\u0926\u0932 \u0927\u0928\u094d\u092f\u0935\u093e\u0926! \u0915\u0943\u092a\u092f\u093e \u092a\u0941\u0928\u094d\u0939\u093e \u0928\u0915\u094d\u0915\u0940 \u092d\u0947\u091f \u0926\u094d\u092f\u093e.\n\u092a\u0941\u0928\u094d\u0939\u093e \u092c\u0941\u0915 \u0915\u0930\u093e\u092f\u091a\u0947 \u0905\u0938\u0932\u094d\u092f\u093e\u0938 \u0916\u093e\u0932\u0940\u0932 \u092c\u091f\u0923 \u0926\u093e\u092c\u093e."
+          : "\n\n\ud83d\ude4f Thank you for letting us know! Please visit us again soon.\nTap the button below whenever you want to book again.";
+        bot4Choices = [{ id: "swas_start:b4open", title: mr ? "\u091f\u0947\u092c\u0932 \u092c\u0941\u0915 \u0915\u0930\u093e" : "Book a table" }];
         const branch = hotelBranchesForAccount.find((entry) => String(entry.id) === String(booking.branchId));
         const ownerNumber = settingsNumber(branch?.notifyNumber || bot3Settings.bot4NotifyNumber);
         if (ownerNumber) {
