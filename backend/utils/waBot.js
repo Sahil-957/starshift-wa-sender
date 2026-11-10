@@ -76,6 +76,20 @@ function save(mobile) {
   writeJsonAtomic(botFile(mobile), bots.get(mobile));
 }
 
+/**
+ * Campaign "start the bot" buttons. Some WhatsApp clients send a button tap as its label text
+ * instead of its id, so remember label -> bot keyword and translate it back on arrival.
+ */
+function rememberStartButton(mobile, title, startText) {
+  const key = SwasBot.normalize(title);
+  if (!key || !startText) return;
+  const bot = load(mobile);
+  bot.startButtons ||= {};
+  if (bot.startButtons[key] === startText) return;
+  bot.startButtons[key] = startText;
+  save(mobile);
+}
+
 function runtime(mobile) {
   if (!runtimes.has(mobile)) runtimes.set(mobile, { handled: new Set(), sent: new Map() });
   return runtimes.get(mobile);
@@ -135,6 +149,10 @@ function intendedBotId(mobile, bot, jid, text, config, chatbotOn, contact) {
   const visible = String(text || "").replace(/\u2063[\u200b\u200c]+\u2063/g, "").trim();
   if (allowed.has(4) && (bot.hotelBookingFlows?.[jid] || (settings.bot4Enabled && /^table\s+book\s+.+$/i.test(visible)))) return "4";
   if (allowed.has(4) && settings.bot4Enabled && (text === "b4open" || String(text).startsWith("b4branch:"))) return "4";
+  // A bot's own exact keyword wins over Bot 2's catch-all checks below.
+  if (allowed.has(6) && settings.bot6Enabled && bot6Keywords(settings).includes(normalized)) return "6";
+  if (allowed.has(5) && settings.bot5Enabled && (text === "b5continue" || SwasBot.keywordList(settings.bot5Keywords || "my details").includes(normalized))) return "5";
+  if (allowed.has(4) && settings.bot4Enabled && SwasBot.keywordList(settings.bot4Keywords).includes(normalized)) return "4";
   if (allowed.has(2) && bot.bookingFlows?.[jid]) return "2";
   if (allowed.has(3) && (bot.interestFlows?.[jid] || text === "b3interested" || normalized === SwasBot.normalize(settings.bot3InterestedLabel || "Interested") || SwasBot.keywordList(settings.bot3Keywords).includes(normalized))) return settings.bot3Enabled ? "3" : "";
   const salonName = SwasBot.normalize(settings.bot2SalonName || "");
@@ -145,9 +163,6 @@ function intendedBotId(mobile, bot, jid, text, config, chatbotOn, contact) {
     const probe = { ...bot, bookingFlows: structuredClone(bot.bookingFlows || {}), bookings: structuredClone(bot.bookings || []) };
     if (salonReply(probe, jid, text, contact, settings, mobile) !== null) return "2";
   }
-  if (allowed.has(6) && settings.bot6Enabled && bot6Keywords(settings).includes(normalized)) return "6";
-  if (allowed.has(5) && settings.bot5Enabled && (text === "b5continue" || SwasBot.keywordList(settings.bot5Keywords || "my details").includes(normalized))) return "5";
-  if (allowed.has(4) && settings.bot4Enabled && SwasBot.keywordList(settings.bot4Keywords).includes(normalized)) return "4";
   const last = bot.sessions?.[jid] || 0;
   const action = SwasBot.matchMessage(text, config, { inSession: !!last, idleMs: last ? Date.now() - last : null, lang: bot.langs?.[jid] || "" });
   return action ? "1" : "";
@@ -1178,6 +1193,9 @@ async function answer(mobile, sock, bot, config, msg, { chatbotOn = true } = {})
   if (rt.handled.size > MAX_HANDLED) rt.handled.delete(rt.handled.values().next().value);
 
   let text = messageText(msg, bot, jid);
+  // A campaign button tap that arrived as its label ("Book a table") -> the bot it starts.
+  const startButtonText = bot.startButtons?.[SwasBot.normalize(text)];
+  if (startButtonText) text = startButtonText;
   // Some WhatsApp clients send the Continue button tap as its plain label instead of its id.
   if (bot.config?.settings?.bot5Enabled && SwasBot.normalize(text) === "continue") text = "b5continue";
   const contact = { name: msg.pushName || "", number: await phoneOf(sock, msg.key) };
@@ -1277,7 +1295,8 @@ async function answer(mobile, sock, bot, config, msg, { chatbotOn = true } = {})
   const hotelOwnMessage = bot4Selected && (!!hotelFlow || hotelStartText || tableTap);
   const interestedLabel = SwasBot.normalize(bot3Settings.bot3InterestedLabel || "Interested");
   const interestedTap = text === "b3interested" || normalizedText === interestedLabel || normalizedText === "interested";
-  let salonAction = chatbotOn && !unsubscribed && !interestedTap && !hotelOwnMessage && bot2Selected ? salonReply(bot, jid, text, contact, bot3Settings, mobile) : null;
+  const otherBotChosen = ["3", "4", "5", "6"].includes(currentBotId); // never let the salon answer for them
+  let salonAction = chatbotOn && !unsubscribed && !interestedTap && !hotelOwnMessage && !otherBotChosen && bot2Selected ? salonReply(bot, jid, text, contact, bot3Settings, mobile) : null;
   if (lang === "mr" && salonAction) {
     if (typeof salonAction === "string") salonAction = salonMarathiText(salonAction);
     else salonAction = { ...salonAction, reply: salonMarathiText(salonAction.reply), choices: (salonAction.choices || []).map((choice) => ({ ...choice, title: salonMarathiText(choice.title) })), followUp: salonAction.followUp ? { ...salonAction.followUp, reply: salonMarathiText(salonAction.followUp.reply), choices: (salonAction.followUp.choices || []).map((choice) => ({ ...choice, title: salonMarathiText(choice.title) })) } : salonAction.followUp };
@@ -1804,4 +1823,4 @@ function giveAdminBotNames(mobile, ticked = []) {
   save(mobile);
 }
 
-module.exports = { giveAdminBotNames, botNames, callSettings, setCallSettings, sync, onMessages, current, appointments, interestedLeads, hotelBranches, hotelWelcomeTemplate, createHotelBooking, hotelBookings, defaults, isUnsubscribed };
+module.exports = { rememberStartButton, giveAdminBotNames, botNames, callSettings, setCallSettings, sync, onMessages, current, appointments, interestedLeads, hotelBranches, hotelWelcomeTemplate, createHotelBooking, hotelBookings, defaults, isUnsubscribed };

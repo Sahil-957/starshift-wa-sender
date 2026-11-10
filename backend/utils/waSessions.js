@@ -321,6 +321,7 @@ async function send(mobile, { target, message, attachment, quotedId, urlButton }
   // A quoted reply (WhatsApp's "replying to…") rebuilt from the stored message; ignored if we don't have it.
   const quoted = quotedId ? chatStore.buildQuoted(mobile, quotedId) : null;
   const opts = quoted ? { quoted } : {};
+  if (urlButton?.action === "start") waBot.rememberStartButton(mobile, urlButton.title, urlButton.text);
 
   if (attachment?.dataUrl) {
     // Same rule as the WhatsApp Web path: the caption, or the message when there is no caption.
