@@ -121,7 +121,7 @@ function salonMarathiText(value) {
 }
 
 function shouldAskLanguageOnEntry(bot, jid, botId, text, config) {
-  if (botId !== "1") return false; // link / QR entries (Bots 2-5) go straight to the bot's options
+  // Every bot asks the language when a customer starts it; taps inside a running flow don't re-ask.
   if (botId === "4") return !bot.hotelBookingFlows?.[jid];
   if (botId === "2") {
     const value = String(text || "").trim();
@@ -133,7 +133,8 @@ function shouldAskLanguageOnEntry(bot, jid, botId, text, config) {
     return !bot.bookingFlows?.[jid] && !internalSalonAction;
   }
   if (botId === "3") return !bot.interestFlows?.[jid];
-  if (botId === "5") return true;
+  if (botId === "5") return text !== "b5continue";
+  if (botId === "6") return true;
   if (botId !== "1") return false;
   // A saved language is only a fallback. Ask again at every new Bot 1 entry,
   // while keeping numbered menu picks and pagination inside the current flow.
@@ -157,6 +158,7 @@ function intendedBotId(mobile, bot, jid, text, config, chatbotOn, contact) {
   if (allowed.has(6) && settings.bot6Enabled && bot6Keywords(settings).includes(normalized)) return "6";
   if (allowed.has(5) && settings.bot5Enabled && (text === "b5continue" || SwasBot.keywordList(settings.bot5Keywords || "my details").includes(normalized))) return "5";
   if (allowed.has(4) && settings.bot4Enabled && SwasBot.keywordList(settings.bot4Keywords).includes(normalized)) return "4";
+  if (allowed.has(3) && settings.bot3Enabled && (text === "b3interested" || normalized === SwasBot.normalize(settings.bot3InterestedLabel || "Interested") || SwasBot.keywordList(settings.bot3Keywords).includes(normalized))) return "3";
   if (allowed.has(2) && bot.bookingFlows?.[jid]) return "2";
   if (allowed.has(3) && (bot.interestFlows?.[jid] || text === "b3interested" || normalized === SwasBot.normalize(settings.bot3InterestedLabel || "Interested") || SwasBot.keywordList(settings.bot3Keywords).includes(normalized))) return settings.bot3Enabled ? "3" : "";
   const salonName = SwasBot.normalize(settings.bot2SalonName || "");
@@ -1250,6 +1252,10 @@ async function answer(mobile, sock, bot, config, msg, { chatbotOn = true } = {})
     const isStop = (config.stopKeywords || []).includes(normalizedLanguageReply);
     const isStart = normalizedLanguageReply === "start";
     if (currentBotId && !isLanguageResume && shouldAskLanguageOnEntry(bot, jid, currentBotId, text, config) && !isStop && (!unsubscribed || isStart) && text.trim()) {
+      // Starting a bot ends any half-finished flow in another bot, so two bots never answer one message.
+      delete bot.bookingFlows?.[jid];
+      delete bot.interestFlows?.[jid];
+      delete bot.hotelBookingFlows?.[jid];
       bot.pendingLanguageMessages ||= {};
       bot.pendingLanguageMessages[jid] = { text, botId: currentBotId };
       bot.languagePrompt ||= {};
