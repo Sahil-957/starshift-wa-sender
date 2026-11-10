@@ -77,6 +77,14 @@ async function sendChoices(sock, jid, text, choices = [], urlButton = null, call
     text = [String(text || "").trim(), line].filter(Boolean).join("\n\n");
     callButton = null;
   }
+  // Reply buttons and a link button in one message also fail to load on WhatsApp Web, so send them as
+  // two messages: the text with its reply buttons, then the link button on its own.
+  const replyChoices = choices.filter((choice) => choice?.id);
+  if (replyChoices.length && urlButton?.url) {
+    const first = await sendChoices(sock, jid, text, replyChoices, null, null);
+    await sendChoices(sock, jid, String(urlButton.title || "Link"), [], urlButton, null);
+    return first;
+  }
   const userJid = sock.authState?.creds?.me?.id || sock.user?.id;
   const messageId = generateMessageIDV2(userJid);
   const message = generateWAMessageFromContent(jid, {
