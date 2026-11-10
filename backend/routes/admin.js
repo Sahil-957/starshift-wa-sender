@@ -104,10 +104,12 @@ router.patch("/users/:mobile", (req, res) => {
     const bots = botList(req.body.bots);
     if (!bots) return res.status(400).json({ message: "Tick at least one bot for this customer." });
     changes.bots = bots;
+    // Ticking bots means the customer should see them, so the Chatbot menu comes on with them.
+    changes.features = { ...user.features, chatbot: true };
     waBot.giveAdminBotNames(user.mobile, bots);
   }
   if (req.body.features && typeof req.body.features === "object") {
-    const features = { ...user.features };
+    const features = { ...(changes.features || user.features) };
     for (const key of FEATURES) {
       if (typeof req.body.features[key] === "boolean") features[key] = req.body.features[key];
     }
