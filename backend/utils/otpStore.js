@@ -3,7 +3,7 @@ const TTL_MS = (parseInt(process.env.OTP_TTL_MINUTES, 10) || 5) * 60 * 1000;
 const otps = new Map(); // mobile -> { otp, expiresAt, attempts }
 
 function generateOtp() {
-  return String(Math.floor(100000 + Math.random() * 900000));
+  return String(require("crypto").randomInt(100000, 1000000));
 }
 
 function issue(mobile) {

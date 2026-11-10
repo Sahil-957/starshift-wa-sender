@@ -178,7 +178,7 @@ body.locked .navrow, body.locked .wa-panel, body.locked .page { display: none !i
 /* ---------- Form controls ---------- */
 label { display: block; font-size: 12px; font-weight: 600; margin: 10px 0 4px; }
 
-input[type="text"], input[type="number"], input[type="date"],
+input[type="text"], input[type="password"], input:not([type]), input[type="number"], input[type="date"],
 input[type="time"], textarea, input[type="file"] {
   width: 100%;
   padding: 9px 11px;

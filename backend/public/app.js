@@ -159,8 +159,10 @@ $("reset-password").addEventListener("click", async () => {
   $("forgot-status").textContent = "Updating passwordâ€¦";
   try {
     await api("/auth/reset-password", "POST", { mobile: $("forgot-mobile").value.replace(/\D/g, ""), otp: $("forgot-otp").value.trim(), password: $("forgot-password").value });
-    $("forgot-status").textContent = "Password updated. Sign in with your new password.";
+    $("forgot-status").textContent = "";
     $("forgot-view").classList.add("hidden"); $("login-view").classList.remove("hidden");
+    $("mobile").value = $("forgot-mobile").value.replace(/\D/g, ""); $("password").value = "";
+    $("login-error").textContent = "Password updated. Sign in with your new password.";
   } catch (error) { $("forgot-status").textContent = error.message; }
 });
 

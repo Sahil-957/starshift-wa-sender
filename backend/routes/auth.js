@@ -3,6 +3,7 @@ const jwt = require("jsonwebtoken");
 const userStore = require("../utils/userStore");
 const activation = require("../utils/activation");
 const otpStore = require("../utils/otpStore");
+const adminStore = require("../utils/adminStore");
 const { sendOtp } = require("../utils/sms");
 const { verifyPassword, matchesPlain, hashPassword } = require("../utils/password");
 
@@ -17,6 +18,13 @@ const INACTIVE_MESSAGE = "Your account is not active. Please contact the seller.
 
 function isAdmin(mobile) {
   return !!process.env.ADMIN_MOBILE && mobile === process.env.ADMIN_MOBILE;
+}
+
+/** The admin password reset by OTP (data/admin.json) wins over ADMIN_PASSWORD in .env. */
+function adminPasswordOk(password) {
+  const saved = adminStore.get().passwordHash;
+  if (saved) return verifyPassword(password, saved);
+  return !!process.env.ADMIN_PASSWORD && matchesPlain(password, process.env.ADMIN_PASSWORD);
 }
 
 function roleOf(mobile) {
@@ -89,6 +97,9 @@ function requireAuth(req, res, next) {
     const changedAt = Math.floor(Date.parse(user.passwordChangedAt || 0) / 1000);
     if (changedAt > iat) return res.status(401).json({ message: "Your password was changed. Please log in again." });
     expiresAt = user.expiresAt || null;
+  } else {
+    const changedAt = Math.floor(Date.parse(adminStore.get().passwordChangedAt || 0) / 1000);
+    if (changedAt > iat) return res.status(401).json({ message: "Your password was changed. Please log in again." });
   }
   const features = isAdmin(mobile) ? featuresOf(null) : featuresOf(currentUser);
   req.auth = { mobile, role: roleOf(mobile), expiresAt, features, maxBots: isAdmin(mobile) ? 5 : maxBotsOf(currentUser), bots: isAdmin(mobile) ? ALL_BOTS : allowedBotsOf(currentUser) };
@@ -113,7 +124,7 @@ router.post("/login", (req, res) => {
 
   const user = userStore.get(mobile);
   const passwordOk = isAdmin(mobile)
-    ? !!process.env.ADMIN_PASSWORD && matchesPlain(password, process.env.ADMIN_PASSWORD)
+    ? adminPasswordOk(password)
     : verifyPassword(password, user?.passwordHash);
 
   if (!passwordOk) {
@@ -168,7 +179,7 @@ router.post("/forgot-password", async (req, res) => {
 
   const user = userStore.get(mobile);
   // The answer is the same either way, so this form can't be used to find out who has an account.
-  if (user && !accessProblem(user)) {
+  if (isAdmin(mobile) || (user && !accessProblem(user))) {
     try {
       await sendOtp(mobile, otpStore.issue(mobile));
     } catch (err) {
@@ -184,6 +195,14 @@ router.post("/reset-password", (req, res) => {
   const password = String(req.body.password || "");
   if (!MOBILE_RE.test(mobile)) return res.status(400).json({ message: "Enter your mobile number with country code." });
   if (!PASSWORD_RE.test(password)) return res.status(400).json({ message: "Password must be 6-64 characters with no spaces." });
+
+  if (isAdmin(mobile)) {
+    const check = otpStore.verify(mobile, otp);
+    if (!check.ok) return res.status(400).json({ message: check.message });
+    adminStore.update({ passwordHash: hashPassword(password), passwordChangedAt: new Date().toISOString() });
+    failures.delete(mobile);
+    return res.json({ ok: true });
+  }
 
   const user = userStore.get(mobile);
   if (!user) return res.status(404).json({ message: "No account for this number." });
