@@ -742,7 +742,7 @@ async function loadCampaignBotLinkInfo() {
       bot1: { name: String(settings.shopName || settings.botName || "Existing chatbot"), text: "hi", title: "Open chatbot" },
       bot2: { name: String(settings.bot2SalonName || "Bot 2"), text: "book", title: "Book" },
       bot3: { name: String(settings.bot3CompanyName || "Bot 3"), text: "Interested", title: "Interested" },
-      bot4: { name: String(settings.bot4Name || "Table booking"), text: "table", title: "Book a table", url: settings.bot4Enabled && settings.bot4Branches?.[0] ? `${window.location.origin}/table-booking.html?mobile=${number}&branch=${encodeURIComponent(settings.bot4Branches[0].id)}` : "" },
+      bot4: { name: String(settings.bot4Name || "Table booking"), text: String(settings.bot4Keywords || "table").split(",")[0].trim() || "table", title: "Book a table", url: settings.bot4Enabled && settings.bot4Branches?.[0] ? `${window.location.origin}/table-booking.html?mobile=${number}&branch=${encodeURIComponent(settings.bot4Branches[0].id)}` : "" },
       bot5: { name: String(settings.bot5Name || "Bot 5"), text: String(settings.bot5Keywords || "hi").split(",")[0].trim() || "hi", title: "Open Bot 5" },
       // Bot 6 is the website bot: in a campaign its button opens the website straight away.
       bot6: { name: String(settings.bot6Name || "Bot 6"), text: String(settings.bot6Keywords || settings.bot6Name || "").split(",")[0].trim() || "hi", title: (String(settings.bot6ButtonText || "").trim().length <= 20 && String(settings.bot6ButtonText || "").trim()) || "Visit Website", url: /^https?:\/\//i.test(String(settings.bot6Website || "").trim()) ? String(settings.bot6Website).trim() : "" },
@@ -765,8 +765,6 @@ function updateCampaignBotLinkStatus() {
   }
   $("cta-bot-select-status").textContent = $("cta-action").value === "lead"
     ? "Interested lead collection runs through Bot 3. Select Bot 3, or choose Open a bot link to use another bot."
-    : bot?.url ? `Button "${bot.title}" opens ${bot.url} directly.`
-    : $("cta-bot-select").value === "bot6" ? "Save the website link in Bot 6 first."
     : bot ? `Tapping "${bot.title}" starts ${bot.name} right in the chat, nothing to type.`
       : "Choose which bot's WhatsApp link to attach.";
 }
@@ -861,7 +859,7 @@ async function createCampaign(forceNow, overrideRecipients) {
     const { campaign } = await api("/campaigns", "POST", {
       name: $("campaign-name").value.trim() || `Campaign ${new Date().toLocaleString()}`,
       messageTemplate: template, caption: $("caption").value.trim(),
-      urlButton: $("cta-enabled").checked ? (ctaAction === "lead" ? { title: "Interested", action: "lead" } : ctaAction === "hotel" ? { title: "Book a table", url: campaignBotLinkInfo.bot4.url } : ctaAction === "botlink" ? (selectedBotLink.url ? { title: selectedBotLink.title, url: selectedBotLink.url } : { title: selectedBotLink.title, action: "start", text: selectedBotLink.text }) : { title: "Book", action: "book", locationUrl: $("cta-location-url").value.trim() }) : null,
+      urlButton: $("cta-enabled").checked ? (ctaAction === "lead" ? { title: "Interested", action: "lead" } : ctaAction === "hotel" ? { title: "Book a table", url: campaignBotLinkInfo.bot4.url } : ctaAction === "botlink" ? { title: selectedBotLink.title, action: "start", text: selectedBotLink.text } : { title: "Book", action: "book", locationUrl: $("cta-location-url").value.trim() }) : null,
       pacing: buildPacing(), attachment, scheduleAt, repeat, footer, contacts,
     });
     activeCampaignId = campaign.id;
