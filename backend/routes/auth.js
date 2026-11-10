@@ -61,7 +61,7 @@ function featuresOf(user) {
 function requireFeature(name) {
   return (req, res, next) => {
     if (req.auth.role === "admin" || req.auth.features?.[name]) return next();
-    res.status(403).json({ message: "This feature is not enabled on your plan. Please contact the seller." });
+    res.status(403).json({ message: "This feature is not enabled on your plan. Please contact the seller.", code: "feature_off" });
   };
 }
 

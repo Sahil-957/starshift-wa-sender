@@ -16,7 +16,8 @@ const api = async (path, method = "GET", body) => {
   });
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
-    if (response.status === 401 || response.status === 403) signOut();
+    // A feature switched off on this plan is not a reason to log out - only a dead login or inactive account is.
+    if (response.status === 401 || (response.status === 403 && data.code !== "feature_off")) signOut();
     throw new Error(data.message || `Request failed (${response.status})`);
   }
   return data;
@@ -105,7 +106,7 @@ function signedIn(mobile, role, feats, botLimit = 3, bots = null) {
   syncContacts(false);
   syncGroups(false);
   restoreWatches();
-  ensureBotState().then(syncCampaignMapLocation).catch(() => {});
+  if (role === "admin" || features.chatbot) ensureBotState().then(syncCampaignMapLocation).catch(() => {});
 }
 
 function signOut() {
