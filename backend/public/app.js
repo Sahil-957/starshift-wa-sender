@@ -743,7 +743,7 @@ async function loadCampaignBotLinkInfo() {
       bot2: { name: String(settings.bot2SalonName || "Bot 2"), text: "book", title: "Book" },
       bot3: { name: String(settings.bot3CompanyName || "Bot 3"), text: "Interested", title: "Interested" },
       bot4: { name: String(settings.bot4Name || "Table booking"), text: String(settings.bot4Keywords || "table").split(",")[0].trim() || "table", title: "Book a table", url: settings.bot4Enabled && settings.bot4Branches?.[0] ? `${window.location.origin}/table-booking.html?mobile=${number}&branch=${encodeURIComponent(settings.bot4Branches[0].id)}` : "" },
-      bot5: { name: String(settings.bot5Name || "Bot 5"), text: String(settings.bot5Keywords || "hi").split(",")[0].trim() || "hi", title: "Open Bot 5" },
+      bot5: { name: String(settings.bot5Name || "Bot 5"), text: String(settings.bot5Keywords || "hi").split(",")[0].trim() || "hi", title: "My Details" },
       // Bot 6 is the website bot: in a campaign its button opens the website straight away.
       bot6: { name: String(settings.bot6Name || "Bot 6"), text: String(settings.bot6Keywords || settings.bot6Name || "").split(",")[0].trim() || "hi", title: (String(settings.bot6ButtonText || "").trim().length <= 20 && String(settings.bot6ButtonText || "").trim()) || "Visit Website", url: /^https?:\/\//i.test(String(settings.bot6Website || "").trim()) ? String(settings.bot6Website).trim() : "" },
     };
@@ -1694,6 +1694,8 @@ function renderBotUI() {
   $("bot5-columns").value = s.bot5Columns || "";
   $("bot5-details-title").value = s.bot5DetailsTitle || "";
   $("bot5-not-found").value = s.bot5NotFound || "";
+  $("bot5-location-url").value = s.bot5LocationUrl || "";
+  $("bot5-contact").value = s.bot5Contact || "";
   if (!$("bot5-keywords").value) $("bot5-keywords").value = "my details";
   loadBot5Data();
   const selectedBot = "1";
@@ -2162,6 +2164,8 @@ function readBotUI() {
     bot5Columns: $("bot5-columns").value.trim(),
     bot5DetailsTitle: $("bot5-details-title").value.trim(),
     bot5NotFound: $("bot5-not-found").value.trim(),
+    bot5LocationUrl: $("bot5-location-url").value.trim(),
+    bot5Contact: $("bot5-contact").value.trim(),
     bot5Reply: $("bot5-reply").value.trim(),
     enabled: $("bot1-enabled").checked,
     bot1Name: $("bot1-name").value.trim(),

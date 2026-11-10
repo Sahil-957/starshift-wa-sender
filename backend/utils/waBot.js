@@ -1598,13 +1598,18 @@ async function answer(mobile, sock, bot, config, msg, { chatbotOn = true } = {})
   }
   if (bot5Reply) {
     const bot5Jid = `${jid}:bot5`;
+    // Bot 5's own Location / Contact (from its settings), else the account-wide ones.
+    const bot5MapUrl = String(bot3Settings.bot5LocationUrl || "").trim();
+    const bot5Phone = settingsNumber(bot3Settings.bot5Contact);
+    const bot5UrlButton = /^https:\/\//i.test(bot5MapUrl) ? { title: "\u{1F4CD} Location", url: bot5MapUrl } : finalUrlButton;
+    const bot5CallButton = bot5Phone ? { title: "\u{1F4DE} Contact", phoneNumber: `+${bot5Phone}` } : finalCallButton;
     if (withinRate(rt, bot5Jid, 20)) {
       rt.sent.get(bot5Jid).push(Date.now());
       if (bot5Reply.length > 1000) {
         // Interactive messages have a short body limit - send long details as text, buttons after.
         await sock.sendMessage(jid, { text: bot5Reply });
-        if (finalUrlButton || finalCallButton) await sendChoices(sock, jid, "\u{1F4CD} / \u{1F4DE}", [], finalUrlButton, finalCallButton);
-      } else if (bot5Choices.length || finalUrlButton || finalCallButton) await sendChoices(sock, jid, bot5Reply, bot5Choices, finalUrlButton, finalCallButton);
+        if (bot5UrlButton || bot5CallButton) await sendChoices(sock, jid, "\u{1F4CD} / \u{1F4DE}", [], bot5UrlButton, bot5CallButton);
+      } else if (bot5Choices.length || bot5UrlButton || bot5CallButton) await sendChoices(sock, jid, bot5Reply, bot5Choices, bot5UrlButton, bot5CallButton);
       else await sock.sendMessage(jid, { text: bot5Reply });
     }
   }
