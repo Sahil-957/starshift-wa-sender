@@ -271,12 +271,37 @@ async function numberJid(session, phone) {
   return found.jid;
 }
 
+// WhatsApp only plays MP4. A GIF sent as-is shows "your version of WhatsApp doesn't support it",
+// so convert it with ffmpeg (like WhatsApp itself does). A campaign reuses one GIF for every
+// recipient, so the last conversion is kept.
+let lastGif = { key: null, mp4: null };
+function gifToMp4(buffer) {
+  const key = require("crypto").createHash("sha1").update(buffer).digest("hex");
+  if (lastGif.key === key) return lastGif.mp4;
+  const os = require("os");
+  const { execFileSync } = require("child_process");
+  const base = path.join(os.tmpdir(), `gif-${key}`);
+  try {
+    fs.writeFileSync(`${base}.gif`, buffer);
+    execFileSync("ffmpeg", ["-y", "-loglevel", "error", "-i", `${base}.gif`, "-movflags", "faststart",
+      "-pix_fmt", "yuv420p", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-an", `${base}.mp4`], { timeout: 60000 });
+    const mp4 = fs.readFileSync(`${base}.mp4`);
+    lastGif = { key, mp4 };
+    return mp4;
+  } catch (err) {
+    throw new Error(err.code === "ENOENT" ? "GIF sending needs ffmpeg on the server." : `Could not convert the GIF: ${err.message}`);
+  } finally {
+    for (const ext of [".gif", ".mp4"]) fs.rmSync(base + ext, { force: true });
+  }
+}
+
 function mediaContent({ dataUrl, name, mimeType }, caption) {
   const buffer = Buffer.from(String(dataUrl).split(",")[1] || "", "base64");
   const mimetype = mimeType || "application/octet-stream";
-  if (mimetype.startsWith("image/") && mimetype !== "image/gif") return { image: buffer, mimetype, caption };
-  if (mimetype.startsWith("video/") || mimetype === "image/gif") {
-    return { video: buffer, mimetype, caption, gifPlayback: mimetype === "image/gif" };
+  if (mimetype === "image/gif") return { video: gifToMp4(buffer), mimetype: "video/mp4", caption, gifPlayback: true };
+  if (mimetype.startsWith("image/")) return { image: buffer, mimetype, caption };
+  if (mimetype.startsWith("video/")) {
+    return { video: buffer, mimetype, caption };
   }
   return { document: buffer, mimetype, fileName: name || "file", caption };
 }
@@ -310,7 +335,7 @@ async function send(mobile, { target, message, attachment, quotedId, urlButton }
       const media = mediaContent(attachment, undefined);
       const mediaKey = Object.keys(media).find((key) => ["image", "video", "document"].includes(key));
       if (!mediaKey) throw new Error("Link buttons are supported for image, video, PDF and document attachments.");
-      const prepared = await prepareWAMessageMedia({ [mediaKey]: media[mediaKey], mimetype: media.mimetype, fileName: media.fileName }, {
+      const prepared = await prepareWAMessageMedia({ [mediaKey]: media[mediaKey], mimetype: media.mimetype, fileName: media.fileName, gifPlayback: media.gifPlayback }, {
         upload: session.sock.waUploadToServer, logger: session.sock.logger, jid,
       });
       const mediaMessage = prepared[`${mediaKey}Message`];
