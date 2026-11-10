@@ -69,6 +69,14 @@ async function sendMenu(sock, jid, text, { language = false, lang = "mr", page =
 }
 
 async function sendChoices(sock, jid, text, choices = [], urlButton = null, callButton = null) {
+  // WhatsApp Web / Desktop can't show a message with a Call (cta_call) button ("This message couldn't
+  // load"). Put the number in the text instead: it is tappable on every device.
+  if (callButton?.phoneNumber) {
+    const label = String(callButton.title || "\u{1F4DE} Contact").trim();
+    const line = `${/^\u{1F4DE}/u.test(label) ? label : `\u{1F4DE} ${label}`}: ${callButton.phoneNumber}`;
+    text = [String(text || "").trim(), line].filter(Boolean).join("\n\n");
+    callButton = null;
+  }
   const userJid = sock.authState?.creds?.me?.id || sock.user?.id;
   const messageId = generateMessageIDV2(userJid);
   const message = generateWAMessageFromContent(jid, {
