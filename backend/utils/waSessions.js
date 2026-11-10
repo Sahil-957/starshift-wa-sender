@@ -331,7 +331,7 @@ async function send(mobile, { target, message, attachment, quotedId, urlButton }
     } else if (urlButton?.action === "book") {
       await session.sock.sendMessage(jid, mediaContent(attachment, caption), opts);
       await waInteractive.sendChoices(session.sock, jid, "", [{ id: "swas_b2_open_menu", title: urlButton.title || "Book" }], urlButton.locationUrl ? { title: "Location", url: urlButton.locationUrl } : null, { title: "Contact", phoneNumber: `+${String(mobile).replace(/\D/g, "")}` });
-    } else if (urlButton?.url) {
+    } else if (urlButton?.url || urlButton?.action === "start") {
       const media = mediaContent(attachment, undefined);
       const mediaKey = Object.keys(media).find((key) => ["image", "video", "document"].includes(key));
       if (!mediaKey) throw new Error("Link buttons are supported for image, video, PDF and document attachments.");
@@ -347,7 +347,9 @@ async function send(mobile, { target, message, attachment, quotedId, urlButton }
           body: { text: String(caption || "") },
           nativeFlowMessage: {
             messageVersion: 1,
-            buttons: [{ name: "cta_url", buttonParamsJson: JSON.stringify({ display_text: urlButton.title, url: urlButton.url }) }],
+            buttons: [urlButton.action === "start"
+              ? { name: "quick_reply", buttonParamsJson: JSON.stringify({ display_text: urlButton.title, id: `swas_start:${urlButton.text}` }) }
+              : { name: "cta_url", buttonParamsJson: JSON.stringify({ display_text: urlButton.title, url: urlButton.url }) }],
           },
         },
       }, { logger: session.sock.logger, userJid, messageId });
@@ -360,6 +362,7 @@ async function send(mobile, { target, message, attachment, quotedId, urlButton }
   } else {
     if (urlButton?.action === "lead") await waInteractive.sendChoices(session.sock, jid, String(message || ""), [{ id: "swas_b3_interested", title: urlButton.title || "Interested" }]);
     else if (urlButton?.action === "book") await waInteractive.sendChoices(session.sock, jid, String(message || ""), [{ id: "swas_b2_open_menu", title: urlButton.title || "Book" }], urlButton.locationUrl ? { title: "Location", url: urlButton.locationUrl } : null, { title: "Contact", phoneNumber: `+${String(mobile).replace(/\D/g, "")}` });
+    else if (urlButton?.action === "start") await waInteractive.sendChoices(session.sock, jid, String(message || ""), [{ id: `swas_start:${urlButton.text}`, title: urlButton.title }]);
     else if (urlButton?.url) await waInteractive.sendChoices(session.sock, jid, String(message || ""), [], urlButton);
     else await session.sock.sendMessage(jid, { text: message }, opts);
   }

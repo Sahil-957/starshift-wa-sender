@@ -767,7 +767,7 @@ function updateCampaignBotLinkStatus() {
     ? "Interested lead collection runs through Bot 3. Select Bot 3, or choose Open a bot link to use another bot."
     : bot?.url ? `Button "${bot.title}" opens ${bot.url} directly.`
     : $("cta-bot-select").value === "bot6" ? "Save the website link in Bot 6 first."
-    : bot ? `Button opens ${bot.name} on WhatsApp. The customer sends ?${bot.text}? to start that bot.`
+    : bot ? `Tapping "${bot.title}" starts ${bot.name} right in the chat, nothing to type.`
       : "Choose which bot's WhatsApp link to attach.";
 }
 async function loadCtaGroups() {
@@ -861,7 +861,7 @@ async function createCampaign(forceNow, overrideRecipients) {
     const { campaign } = await api("/campaigns", "POST", {
       name: $("campaign-name").value.trim() || `Campaign ${new Date().toLocaleString()}`,
       messageTemplate: template, caption: $("caption").value.trim(),
-      urlButton: $("cta-enabled").checked ? (ctaAction === "lead" ? { title: "Interested", action: "lead" } : ctaAction === "hotel" ? { title: "Book a table", url: campaignBotLinkInfo.bot4.url } : ctaAction === "botlink" ? { title: selectedBotLink.title, url: selectedBotLink.url || `https://wa.me/${campaignBotLinkInfo.number}?text=${encodeURIComponent(selectedBotLink.text)}` } : { title: "Book", action: "book", locationUrl: $("cta-location-url").value.trim() }) : null,
+      urlButton: $("cta-enabled").checked ? (ctaAction === "lead" ? { title: "Interested", action: "lead" } : ctaAction === "hotel" ? { title: "Book a table", url: campaignBotLinkInfo.bot4.url } : ctaAction === "botlink" ? (selectedBotLink.url ? { title: selectedBotLink.title, url: selectedBotLink.url } : { title: selectedBotLink.title, action: "start", text: selectedBotLink.text }) : { title: "Book", action: "book", locationUrl: $("cta-location-url").value.trim() }) : null,
       pacing: buildPacing(), attachment, scheduleAt, repeat, footer, contacts,
     });
     activeCampaignId = campaign.id;

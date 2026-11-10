@@ -273,6 +273,8 @@ function messageText(msg, bot, jid) {
   if (nativeReply?.paramsJson) {
     try {
       const selected = JSON.parse(nativeReply.paramsJson);
+      // Campaign "bot link" button: acts as if the customer typed the bot's keyword.
+      if (/^swas_start:./.test(String(selected.id || ""))) return String(selected.id).slice("swas_start:".length);
       const mappedMenuReply = menuButtonReply(selected.id);
       if (mappedMenuReply) return mappedMenuReply;
       if (selected.id === "swas_b4_start") return "b4start";

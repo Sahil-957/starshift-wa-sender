@@ -356,6 +356,12 @@ function create(mobile, input = {}) {
     const mapHost = /(^|\.)(maps\.app\.goo\.gl|goo\.gl|google\.com|google\.co\.in)$/.test(parsed.hostname);
     if (parsed.protocol !== "https:" || !mapHost || !/(maps|goo\.gl)/i.test(parsed.href)) throw Object.assign(new Error("Enter a valid Google Maps link."), { status: 400 });
     urlButton = { title, action: "book", locationUrl: parsed.toString() };
+  } else if (rawButton.action === "start") {
+    // Bot link: a reply button that starts the bot in the same chat, as if the customer sent its keyword.
+    const text = String(rawButton.text || "").trim().slice(0, 100);
+    if (!text) throw Object.assign(new Error("Choose which bot the button starts."), { status: 400 });
+    if (!buttonTitle || buttonTitle.length > 20) throw Object.assign(new Error("The button name must be 20 characters or fewer."), { status: 400 });
+    urlButton = { title: buttonTitle, action: "start", text };
   } else if (buttonUrl) {
     let parsed;
     try { parsed = new URL(buttonUrl); } catch { throw Object.assign(new Error("Enter a valid link starting with https:// or http://."), { status: 400 }); }
