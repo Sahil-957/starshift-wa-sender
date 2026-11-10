@@ -306,8 +306,27 @@ function mediaContent({ dataUrl, name, mimeType }, caption) {
   return { document: buffer, mimetype, fileName: name || "file", caption };
 }
 
+/**
+ * Campaigns saved before bot buttons started bots in the chat (drafts, scheduled / repeat runs,
+ * sheet jobs) still carry a link: this account's wa.me bot link or the table-booking page. Send those
+ * as an in-chat start button instead, so the customer never has to send pre-typed text.
+ */
+function inChatBotButton(mobile, urlButton) {
+  if (!urlButton?.url) return urlButton;
+  let parsed;
+  try { parsed = new URL(urlButton.url); } catch { return urlButton; }
+  const title = urlButton.title || "Open";
+  if (/\/table-booking\.html$/i.test(parsed.pathname)) return { title, action: "start", text: "b4open" };
+  const own = String(mobile).replace(/\D/g, "");
+  const waNumber = /^(?:www\.)?wa\.me$/i.test(parsed.hostname) ? parsed.pathname.replace(/\D/g, "") : "";
+  const text = String(parsed.searchParams.get("text") || "").trim();
+  if (waNumber && own.length >= 10 && waNumber.slice(-10) === own.slice(-10) && text) return { title, action: "start", text };
+  return urlButton;
+}
+
 /** target: { type: "number" | "group" | "contact" | "jid", phone?, name?, jid? }. quotedId replies to a message. */
 async function send(mobile, { target, message, attachment, quotedId, urlButton }) {
+  urlButton = inChatBotButton(mobile, urlButton);
   const session = openSocket(mobile);
   const jid =
     target.type === "group"
