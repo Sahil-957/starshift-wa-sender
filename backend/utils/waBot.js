@@ -134,6 +134,7 @@ function intendedBotId(mobile, bot, jid, text, config, chatbotOn, contact) {
   const normalized = SwasBot.normalize(text);
   const visible = String(text || "").replace(/\u2063[\u200b\u200c]+\u2063/g, "").trim();
   if (allowed.has(4) && (bot.hotelBookingFlows?.[jid] || (settings.bot4Enabled && /^table\s+book\s+.+$/i.test(visible)))) return "4";
+  if (allowed.has(4) && settings.bot4Enabled && (text === "b4open" || String(text).startsWith("b4branch:"))) return "4";
   if (allowed.has(2) && bot.bookingFlows?.[jid]) return "2";
   if (allowed.has(3) && (bot.interestFlows?.[jid] || text === "b3interested" || normalized === SwasBot.normalize(settings.bot3InterestedLabel || "Interested") || SwasBot.keywordList(settings.bot3Keywords).includes(normalized))) return settings.bot3Enabled ? "3" : "";
   const salonName = SwasBot.normalize(settings.bot2SalonName || "");
@@ -275,6 +276,7 @@ function messageText(msg, bot, jid) {
       const selected = JSON.parse(nativeReply.paramsJson);
       // Campaign "bot link" button: acts as if the customer typed the bot's keyword.
       if (/^swas_start:./.test(String(selected.id || ""))) return String(selected.id).slice("swas_start:".length);
+      if (/^swas_b4_branch_./.test(String(selected.id || ""))) return `b4branch:${String(selected.id).slice("swas_b4_branch_".length)}`;
       const mappedMenuReply = menuButtonReply(selected.id);
       if (mappedMenuReply) return mappedMenuReply;
       if (selected.id === "swas_b4_start") return "b4start";
@@ -1267,7 +1269,12 @@ async function answer(mobile, sock, bot, config, msg, { chatbotOn = true } = {})
   const hotelToken = hiddenTableValue || "";
   const hotelBookTap = false;
   const hotelConfirmTap = false;
-  const hotelOwnMessage = bot4Selected && (!!hotelFlow || hotelStartText);
+  // Campaign "Book a table" button: no location check, branch chosen by button (or the only branch).
+  const tableTap = bot4Selected && (text === "b4open" || text.startsWith("b4branch:"));
+  const tapBranch = !tableTap ? null
+    : text.startsWith("b4branch:") ? hotelBranchesForAccount.find((entry) => String(entry.id) === text.slice(9)) || null
+    : hotelBranchesForAccount.length === 1 ? hotelBranchesForAccount[0] : null;
+  const hotelOwnMessage = bot4Selected && (!!hotelFlow || hotelStartText || tableTap);
   const interestedLabel = SwasBot.normalize(bot3Settings.bot3InterestedLabel || "Interested");
   const interestedTap = text === "b3interested" || normalizedText === interestedLabel || normalizedText === "interested";
   let salonAction = chatbotOn && !unsubscribed && !interestedTap && !hotelOwnMessage && bot2Selected ? salonReply(bot, jid, text, contact, bot3Settings, mobile) : null;
@@ -1282,13 +1289,17 @@ async function answer(mobile, sock, bot, config, msg, { chatbotOn = true } = {})
   let bot4UrlButton = null;
   let bot4CallButton = null;
   let bot4RepeatConfirmation = false;
-  if (chatbotOn && !unsubscribed && bot4Selected && hotelStartText) {
-    const verified = hotelBranch && tableBookingTokens.consume(hotelToken, mobile, hotelBranch.id);
+  if (chatbotOn && !unsubscribed && tableTap && !tapBranch) {
+    bot4FlowReply = !hotelBranchesForAccount.length ? "Table booking is not set up yet." : lang === "mr" ? "शाखा निवडा:" : "Choose a branch:";
+    bot4Choices = hotelBranchesForAccount.slice(0, 3).map((entry) => ({ id: `swas_b4_branch_${entry.id}`, title: String(entry.name || "Branch").slice(0, 20) }));
+  } else if (chatbotOn && !unsubscribed && bot4Selected && (hotelStartText || tableTap)) {
+    const startBranch = tableTap ? tapBranch : hotelBranch;
+    const verified = tableTap ? { distanceMeters: null } : hotelBranch && tableBookingTokens.consume(hotelToken, mobile, hotelBranch.id);
     if (!verified) bot4FlowReply = lang === "mr" ? "\u0932\u094b\u0915\u0947\u0936\u0928 \u091a\u0947\u0915 \u0915\u093e\u0932\u092c\u093e\u0939\u094d\u092f \u091d\u093e\u0932\u093e. \u0915\u0943\u092a\u092f\u093e \u0936\u093e\u0916\u0947\u091a\u093e QR \u092a\u0941\u0928\u094d\u0939\u093e \u0938\u094d\u0915\u0945\u0928 \u0915\u0930\u093e." : "This location check has expired or is invalid. Please scan the branch QR again while at the branch.";
-    else if (!isBranchHotelOpen(hotelBranch)) bot4FlowReply = lang === "mr" ? [bot3Settings.bot4Name, hotelBranch.name].filter(Boolean).join(", ") + " \u092f\u0947\u0925\u0947 \u0938\u0927\u094d\u092f\u093e \u092c\u0941\u0915\u093f\u0902\u0917 \u092c\u0902\u0926 \u0906\u0939\u0947. \u0915\u0943\u092a\u092f\u093e \u0938\u0941\u0930\u0942 \u0905\u0938\u0924\u093e\u0928\u093e \u092a\u0941\u0928\u094d\u0939\u093e \u092a\u094d\u0930\u092f\u0924\u094d\u0928 \u0915\u0930\u093e." : "Bookings for " + hotelBranch.name + " are closed. Please try again during opening hours.";
+    else if (!isBranchHotelOpen(startBranch)) bot4FlowReply = lang === "mr" ? [bot3Settings.bot4Name, startBranch.name].filter(Boolean).join(", ") + " \u092f\u0947\u0925\u0947 \u0938\u0927\u094d\u092f\u093e \u092c\u0941\u0915\u093f\u0902\u0917 \u092c\u0902\u0926 \u0906\u0939\u0947. \u0915\u0943\u092a\u092f\u093e \u0938\u0941\u0930\u0942 \u0905\u0938\u0924\u093e\u0928\u093e \u092a\u0941\u0928\u094d\u0939\u093e \u092a\u094d\u0930\u092f\u0924\u094d\u0928 \u0915\u0930\u093e." : "Bookings for " + startBranch.name + " are closed. Please try again during opening hours.";
     else {
-      hotelFlows[jid] = { step: "members", branchId: hotelBranch.id, name: contact.name || "WhatsApp customer", number: contact.number || "", distanceMeters: verified.distanceMeters, startedAt: Date.now() };
-      bot4FlowReply = lang === "mr" ? [bot3Settings.bot4Name, hotelBranch.name].filter(Boolean).join(", ") + " \u092f\u0947\u0925\u0947 \u0906\u092a\u0932\u0947 \u0938\u094d\u0935\u093e\u0917\u0924 \u0906\u0939\u0947! \u0924\u0941\u092e\u091a\u094d\u092f\u093e \u092a\u093e\u0930\u094d\u091f\u0940\u092e\u0927\u094d\u092f\u0947 \u0915\u093f\u0924\u0940 \u0938\u0926\u0938\u094d\u092f \u0906\u0939\u0947\u0924? \u0967 \u0924\u0947 \u096b\u0966 \u092e\u0927\u0940\u0932 \u0938\u0902\u0916\u094d\u092f\u093e \u092a\u093e\u0920\u0935\u093e." : "Welcome to " + [bot3Settings.bot4Name, hotelBranch.name].filter(Boolean).join(", ") + "! How many members are in your party? Reply with a number from 1 to 50.";
+      hotelFlows[jid] = { step: "members", branchId: startBranch.id, name: contact.name || "WhatsApp customer", number: contact.number || "", distanceMeters: verified.distanceMeters, startedAt: Date.now() };
+      bot4FlowReply = lang === "mr" ? [bot3Settings.bot4Name, startBranch.name].filter(Boolean).join(", ") + " \u092f\u0947\u0925\u0947 \u0906\u092a\u0932\u0947 \u0938\u094d\u0935\u093e\u0917\u0924 \u0906\u0939\u0947! \u0924\u0941\u092e\u091a\u094d\u092f\u093e \u092a\u093e\u0930\u094d\u091f\u0940\u092e\u0927\u094d\u092f\u0947 \u0915\u093f\u0924\u0940 \u0938\u0926\u0938\u094d\u092f \u0906\u0939\u0947\u0924? \u0967 \u0924\u0947 \u096b\u0966 \u092e\u0927\u0940\u0932 \u0938\u0902\u0916\u094d\u092f\u093e \u092a\u093e\u0920\u0935\u093e." : "Welcome to " + [bot3Settings.bot4Name, startBranch.name].filter(Boolean).join(", ") + "! How many members are in your party? Reply with a number from 1 to 50.";
       save(mobile);
     }
   } else if (chatbotOn && !unsubscribed && bot4Selected && hotelFlow?.step === "members") {
