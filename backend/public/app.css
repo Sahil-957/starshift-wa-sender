@@ -1045,3 +1045,9 @@ button.primary:hover:not(:disabled), .btn-direct:hover { transform: translateY(-
   .selected-actions { width: 100%; justify-content: space-between; }
   .campaign-actions button { flex: 1 1 auto; }
 }
+
+/* Show/hide toggle on password boxes */
+.pw-wrap { position: relative; }
+.pw-wrap input { padding-right: 40px; }
+.pw-eye { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); background: none; border: none; padding: 4px 6px; cursor: pointer; font-size: 16px; line-height: 1; opacity: 0.6; }
+.pw-eye:hover { opacity: 1; }

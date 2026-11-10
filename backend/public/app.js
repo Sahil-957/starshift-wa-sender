@@ -137,6 +137,23 @@ $("login-form").addEventListener("submit", async (event) => {
   }
 });
 
+// Eye button on every password box to show/hide what was typed.
+document.querySelectorAll('input[type="password"]').forEach((input) => {
+  const wrap = document.createElement("div");
+  wrap.className = "pw-wrap";
+  input.parentNode.insertBefore(wrap, input);
+  wrap.appendChild(input);
+  const eye = document.createElement("button");
+  eye.type = "button"; eye.className = "pw-eye"; eye.textContent = "\u{1F441}"; eye.title = "Show password"; eye.setAttribute("aria-label", "Show password");
+  eye.addEventListener("click", () => {
+    const show = input.type === "password";
+    input.type = show ? "text" : "password";
+    eye.textContent = show ? "\u{1F648}" : "\u{1F441}";
+    eye.title = show ? "Hide password" : "Show password"; eye.setAttribute("aria-label", eye.title);
+  });
+  wrap.appendChild(eye);
+});
+
 $("forgot-open").addEventListener("click", () => {
   $("login-view").classList.add("hidden");
   $("forgot-view").classList.remove("hidden");
