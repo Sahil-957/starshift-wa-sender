@@ -122,7 +122,7 @@ function salonMarathiText(value) {
 
 function shouldAskLanguageOnEntry(bot, jid, botId, text, config) {
   // Every bot asks the language when a customer starts it; taps inside a running flow don't re-ask.
-  if (botId === "4") return !bot.hotelBookingFlows?.[jid];
+  if (botId === "4") return !bot.hotelBookingFlows?.[jid] && text !== "b4mybooking" && !String(text).startsWith("b4cancel:");
   if (botId === "2") {
     const value = String(text || "").trim();
     const normalized = SwasBot.normalize(value);
@@ -153,7 +153,7 @@ function intendedBotId(mobile, bot, jid, text, config, chatbotOn, contact) {
     || ["more branches", "आणखी शाखा"].includes(normalized)
     || hotelBranches(mobile).some((entry) => SwasBot.normalize(entry.name) === normalized))) return "4";
   if (allowed.has(4) && ((hotelStep && hotelStep !== "branch") || (settings.bot4Enabled && /^table\s+book\s+.+$/i.test(visible)))) return "4";
-  if (allowed.has(4) && settings.bot4Enabled && (text === "b4open" || String(text).startsWith("b4branch:"))) return "4";
+  if (allowed.has(4) && settings.bot4Enabled && (text === "b4open" || text === "b4mybooking" || String(text).startsWith("b4branch:") || String(text).startsWith("b4cancel:"))) return "4";
   // A bot's own exact keyword wins over Bot 2's catch-all checks below.
   if (allowed.has(6) && settings.bot6Enabled && bot6Keywords(settings).includes(normalized)) return "6";
   if (allowed.has(5) && settings.bot5Enabled && (text === "b5continue" || SwasBot.keywordList(settings.bot5Keywords || "my details").includes(normalized))) return "5";
@@ -298,6 +298,8 @@ function messageText(msg, bot, jid) {
       // Campaign "bot link" button: acts as if the customer typed the bot's keyword.
       if (/^swas_start:./.test(String(selected.id || ""))) return String(selected.id).slice("swas_start:".length);
       if (selected.id === "swas_b4_branches_more") return "b4branchesmore";
+      if (selected.id === "swas_b4_mybooking") return "b4mybooking";
+      if (/^swas_b4_cancel_./.test(String(selected.id || ""))) return `b4cancel:${String(selected.id).slice("swas_b4_cancel_".length)}`;
       if (/^swas_b4_branch_./.test(String(selected.id || ""))) return `b4branch:${String(selected.id).slice("swas_b4_branch_".length)}`;
       const mappedMenuReply = menuButtonReply(selected.id);
       if (mappedMenuReply) return mappedMenuReply;
@@ -1203,6 +1205,17 @@ async function answer(mobile, sock, bot, config, msg, { chatbotOn = true } = {})
   // A campaign button tap that arrived as its label ("Book a table") -> the bot it starts.
   const startButtonText = bot.startButtons?.[SwasBot.normalize(text)];
   if (startButtonText) text = startButtonText;
+  // Bot 4 "My table booking" / "Cancel 3" taps that arrived as their label.
+  if (bot.config?.settings?.bot4Enabled) {
+    const label = SwasBot.normalize(text);
+    if (["my table booking", "\u092e\u093e\u091d\u0947 \u091f\u0947\u092c\u0932 \u092c\u0941\u0915\u093f\u0902\u0917"].includes(label)) text = "b4mybooking";
+    const cancelQueue = /^(?:cancel|\u0930\u0926\u094d\u0926 \u0915\u0930\u093e) (\d+)$/.exec(label);
+    if (cancelQueue) {
+      const today = hotelBookingNow().dateKey;
+      const match = (bot.hotelBookings || []).filter((entry) => entry.jid === jid && entry.dateKey === today && Number(entry.queueNo) === Number(cancelQueue[1]) && ["Pending", "Confirmed"].includes(entry.status)).pop();
+      if (match) text = `b4cancel:${match.id}`;
+    }
+  }
   // Some WhatsApp clients send the Continue button tap as its plain label instead of its id.
   if (bot.config?.settings?.bot5Enabled && SwasBot.normalize(text) === "continue") text = "b5continue";
   const contact = { name: msg.pushName || "", number: await phoneOf(sock, msg.key) };
@@ -1309,7 +1322,8 @@ async function answer(mobile, sock, bot, config, msg, { chatbotOn = true } = {})
     : branchByName ? branchByName
     : text.startsWith("b4branch:") ? hotelBranchesForAccount.find((entry) => String(entry.id) === text.slice(9)) || null
     : hotelBranchesForAccount.length === 1 ? hotelBranchesForAccount[0] : null;
-  const hotelOwnMessage = bot4Selected && (!!hotelFlows[jid] || hotelStartText || tableTap);
+  const myTableTap = bot4Selected && (text === "b4mybooking" || text.startsWith("b4cancel:"));
+  const hotelOwnMessage = bot4Selected && (!!hotelFlows[jid] || hotelStartText || tableTap || myTableTap);
   const interestedLabel = SwasBot.normalize(bot3Settings.bot3InterestedLabel || "Interested");
   const interestedTap = text === "b3interested" || normalizedText === interestedLabel || normalizedText === "interested";
   const otherBotChosen = ["3", "4", "5", "6"].includes(currentBotId); // never let the salon answer for them
@@ -1325,7 +1339,38 @@ async function answer(mobile, sock, bot, config, msg, { chatbotOn = true } = {})
   let bot4UrlButton = null;
   let bot4CallButton = null;
   let bot4RepeatConfirmation = false;
-  if (chatbotOn && !unsubscribed && tableTap && !tapBranch) {
+  if (chatbotOn && !unsubscribed && myTableTap) {
+    // "My table booking": today's active bookings with a Cancel button each; a Cancel tap cancels it.
+    const today = hotelBookingNow().dateKey;
+    const mine = (bot.hotelBookings || []).filter((entry) => (entry.jid === jid || (contact.number && entry.number === contact.number)) && entry.dateKey === today && ["Pending", "Confirmed"].includes(entry.status));
+    const mr = lang === "mr";
+    if (text.startsWith("b4cancel:")) {
+      const booking = mine.find((entry) => entry.id === text.slice(9));
+      if (!booking) bot4FlowReply = mr ? "\u0939\u0947 \u092c\u0941\u0915\u093f\u0902\u0917 \u0906\u0927\u0940\u091a \u0930\u0926\u094d\u0926 \u091d\u093e\u0932\u0947 \u0906\u0939\u0947 \u0915\u093f\u0902\u0935\u093e \u0938\u093e\u092a\u0921\u0932\u0947 \u0928\u093e\u0939\u0940." : "This booking is already cancelled or could not be found.";
+      else {
+        booking.status = "Cancelled";
+        booking.cancelledAt = Date.now();
+        save(mobile);
+        bot4FlowReply = mr
+          ? `\u274c \u0924\u0941\u092e\u091a\u0947 \u091f\u0947\u092c\u0932 \u092c\u0941\u0915\u093f\u0902\u0917 #${booking.queueNo} (${booking.branchName}) \u0930\u0926\u094d\u0926 \u091d\u093e\u0932\u0947.`
+          : `\u274c Your table booking #${booking.queueNo} (${booking.branchName}) is cancelled.`;
+        const branch = hotelBranchesForAccount.find((entry) => String(entry.id) === String(booking.branchId));
+        const ownerNumber = settingsNumber(branch?.notifyNumber || bot3Settings.bot4NotifyNumber);
+        if (ownerNumber) {
+          const ownerMessage = `Table booking CANCELLED - ${[bot3Settings.bot4Name, booking.branchName].filter(Boolean).join(", ")}\nName: ${booking.name}\nMobile: ${booking.number}\nMembers: ${booking.members}\nQueue number: ${booking.queueNo}`;
+          try { await require("./waSessions").sendText(mobile, ownerNumber, ownerMessage); }
+          catch (error) { console.warn(`[bot ${mobile}] owner cancel alert failed:`, error.message || error); }
+        }
+      }
+    } else if (!mine.length) {
+      bot4FlowReply = mr ? "\u0906\u091c \u0924\u0941\u092e\u091a\u0947 \u0915\u094b\u0923\u0924\u0947\u0939\u0940 \u091f\u0947\u092c\u0932 \u092c\u0941\u0915\u093f\u0902\u0917 \u0928\u093e\u0939\u0940." : "You have no table booking today.";
+    } else {
+      const shown = mine.slice(-3);
+      bot4FlowReply = (mr ? "\u{1F4CB} *\u0924\u0941\u092e\u091a\u0947 \u0906\u091c\u091a\u0947 \u091f\u0947\u092c\u0932 \u092c\u0941\u0915\u093f\u0902\u0917*" : "\u{1F4CB} *Your table booking today*") + "\n\n"
+        + shown.map((entry) => `#${entry.queueNo} \u00b7 ${entry.branchName} \u00b7 ${entry.members} ${mr ? "\u0938\u0926\u0938\u094d\u092f" : "members"} \u00b7 ${entry.time}`).join("\n");
+      bot4Choices = shown.map((entry) => ({ id: `swas_b4_cancel_${entry.id}`, title: `${mr ? "\u0930\u0926\u094d\u0926 \u0915\u0930\u093e" : "Cancel"} ${entry.queueNo}` }));
+    }
+  } else if (chatbotOn && !unsubscribed && tableTap && !tapBranch) {
     // WhatsApp shows at most 3 buttons: up to 3 branches fit; more go 2 per page + "More branches" (wraps round).
     const all = hotelBranchesForAccount;
     const pages = all.length <= 3 ? 1 : Math.ceil(all.length / 2);
@@ -1387,6 +1432,7 @@ async function answer(mobile, sock, bot, config, msg, { chatbotOn = true } = {})
         if (!bot4UrlButton) bot4UrlButton = finalUrlButton;
         bot4CallButton = finalCallButton;
         if (branchPhone) bot4CallButton = { title: lang === "mr" ? "\u0938\u0902\u092a\u0930\u094d\u0915" : "Contact", phoneNumber: `+${branchPhone}` };
+        bot4Choices = [{ id: "swas_b4_mybooking", title: lang === "mr" ? "\u092e\u093e\u091d\u0947 \u091f\u0947\u092c\u0932 \u092c\u0941\u0915\u093f\u0902\u0917" : "My table booking" }];
         save(mobile);
         const ownerNumber = settingsNumber(branch.notifyNumber || bot3Settings.bot4NotifyNumber);
         if (ownerNumber) {
