@@ -1221,7 +1221,7 @@ function salonReply(bot, jid, text, contact, settings, ownerNumber = "") {
     const salonName = settings.bot2SalonName || "our salon";
     const thankYou = salonMessageTemplate(settings.bot2ThankYouMessage || "Thank you, {{name}}! 🙏", booking, salonName);
     const welcome = salonMessageTemplate(settings.bot2WelcomeMessage || "Welcome to {{salon}} — we look forward to seeing you.", booking, salonName);
-    return { reply: `✅ *Appointment Confirmed!*\n\n${thankYou}\n${welcome}\n\n✂️ ${booking.service}\n📅 ${booking.date}\n⏰ ${booking.time}`, choices: [{ id: "swas_b2_rebook_menu", title: salonForwardTitle("New booking") }, { id: "swas_b2_my_appointments", title: salonForwardTitle("My appointments") }], urlButton: /^https:\/\//i.test(String(settings.bot2GoogleMapsUrl || "").trim()) ? { title: "📍 Location", url: String(settings.bot2GoogleMapsUrl).trim() } : null, callButton: String(ownerNumber || "").replace(/\D/g, "") ? { title: "📞 Contact", phoneNumber: `+${String(ownerNumber).replace(/\D/g, "")}` } : null, booking };
+    return { reply: `✅ *Appointment Confirmed!*\n\n${thankYou}\n${welcome}\n\n✂️ ${booking.service}\n📅 ${booking.date}\n⏰ ${booking.time}`, choices: [{ id: "swas_b2_my_appointments", title: salonForwardTitle("My appointments") }], urlButton: /^https:\/\//i.test(String(settings.bot2GoogleMapsUrl || "").trim()) ? { title: "📍 Location", url: String(settings.bot2GoogleMapsUrl).trim() } : null, callButton: String(ownerNumber || "").replace(/\D/g, "") ? { title: "📞 Contact", phoneNumber: `+${String(ownerNumber).replace(/\D/g, "")}` } : null, booking };
   }
   delete bot.bookingFlows[jid];
   return null;
@@ -1696,7 +1696,7 @@ async function answer(mobile, sock, bot, config, msg, { chatbotOn = true } = {})
     if (withinRate(rt, bot2Jid, 20)) {
       rt.sent.get(bot2Jid).push(Date.now());
       if (salonAction.booking || salonAction.persist) save(mobile);
-      if (salonAction.choices || salonAction.urlButton) await sendChoices(sock, jid, salonAction.reply, salonAction.choices || [], salonAction.urlButton || salonAction.callButton ? finalUrlButton : null, salonAction.callButton ? finalCallButton : null);
+      if (salonAction.choices || salonAction.urlButton) await sendChoices(sock, jid, salonAction.reply, salonAction.choices || [], salonAction.urlButton || salonAction.callButton ? finalUrlButton : null, salonAction.callButton ? finalCallButton : null, { together: !!salonAction.booking });
       else await sock.sendMessage(jid, { text: typeof salonAction === "string" ? salonAction : salonAction.reply });
       if (salonAction.followUp?.choices?.length) await sendChoices(sock, jid, salonAction.followUp.reply, salonAction.followUp.choices);
       const cancelledBooking = salonAction.persist ? (bot.bookings || []).find((entry) => entry.status === "cancelled" && String(entry.number || "").replace(/\D/g, "") === String(contact.number || "").replace(/\D/g, "") && Date.now() - Number(entry.cancelledAt || 0) < 10000) : null;

@@ -75,11 +75,11 @@ const BUTTON_NODES = [{
  * Reply buttons and link/call buttons in one message fail to load on WhatsApp Web, so when both are
  * present the text goes with its reply buttons first, then the link/call buttons in a second message.
  */
-async function sendChoices(sock, jid, text, choices = [], urlButton = null, callButton = null) {
+async function sendChoices(sock, jid, text, choices = [], urlButton = null, callButton = null, { together = false } = {}) {
   const urlButtons = (Array.isArray(urlButton) ? urlButton : [urlButton]).filter((button) => button?.url);
   const call = callButton?.phoneNumber ? callButton : null;
   const replyChoices = choices.filter((choice) => choice?.id);
-  if (replyChoices.length && (urlButtons.length || call)) {
+  if (!together && replyChoices.length && (urlButtons.length || call)) {
     const first = await sendChoices(sock, jid, text, replyChoices, null, null);
     const label = [call, ...urlButtons].map((button) => String(button.title || "").trim()).filter(Boolean).join("  |  ");
     await sendChoices(sock, jid, label || "Contact", [], urlButtons, call);
