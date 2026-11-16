@@ -180,6 +180,12 @@ async function connect(mobile, opts = {}) {
       catch (error) { console.warn(`[calls ${mobile}] chat-only note failed:`, error.message || error); }
     }
   });
+  // WhatsApp refuses a sent message asynchronously (an error ack) - log it, otherwise it vanishes silently.
+  sock.ev.on("messages.update", (updates) => {
+    for (const { key, update } of updates || []) {
+      if (key?.fromMe && update?.status === 0) console.warn(`[wa ${mobile}] message ${key.id} to ${key.remoteJid} REJECTED by WhatsApp:`, JSON.stringify(update.messageStubParameters || update));
+    }
+  });
   sock.ev.on("contacts.upsert", remember);
   sock.ev.on("contacts.update", remember);
   sock.ev.on("messaging-history.set", ({ contacts, messages }) => {

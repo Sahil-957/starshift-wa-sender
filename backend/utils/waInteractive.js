@@ -112,6 +112,7 @@ async function sendChoices(sock, jid, text, choices = [], urlButton = null, call
   }];
   if (!isJidGroup(jid)) additionalNodes.push({ tag: "bot", attrs: { biz_bot: "1" } });
   await sock.relayMessage(jid, message.message, { messageId: message.key.id, additionalNodes });
+  console.log(`[buttons] sent ${message.key.id} to ${jid} (${replyChoices.length} reply${urlButton?.url ? " + link" : ""})`);
   return message;
 }
 
