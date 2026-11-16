@@ -1298,7 +1298,15 @@ async function answer(mobile, sock, bot, config, msg, { chatbotOn = true } = {})
   const sendLanguagePrompt = async () => {
     if (!withinRate(rt, jid, 20)) return;
     rt.sent.get(jid).push(Date.now());
-    await sendChoices(sock, jid, "\u092d\u093e\u0937\u093e \u0928\u093f\u0935\u0921\u093e / Please choose your language:", [
+    // Bot 4: greet with the hotel name above the language question.
+    const s = bot.config?.settings || {};
+    const pendingBot = bot.pendingLanguageMessages?.[jid]?.botId;
+    const hotelEn = String(s.bot4Name || "").trim();
+    const hotelMr = String(s.bot4NameMr || "").trim() || hotelEn;
+    const welcome = pendingBot === "4" && hotelEn
+      ? `\u{1F37D}\ufe0f *${hotelMr}* \u092e\u0927\u094d\u092f\u0947 \u0906\u092a\u0932\u0947 \u0938\u094d\u0935\u093e\u0917\u0924 \u0906\u0939\u0947!\nWelcome to *${hotelEn}*!\n\n`
+      : "";
+    await sendChoices(sock, jid, welcome + "\u092d\u093e\u0937\u093e \u0928\u093f\u0935\u0921\u093e / Please choose your language:", [
       { id: "swas_lang_1", title: marathiWord }, { id: "swas_lang_2", title: "English" },
     ]);
   };
