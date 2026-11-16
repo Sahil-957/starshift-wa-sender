@@ -1221,7 +1221,7 @@ function salonReply(bot, jid, text, contact, settings, ownerNumber = "") {
     const salonName = settings.bot2SalonName || "our salon";
     const thankYou = salonMessageTemplate(settings.bot2ThankYouMessage || "Thank you, {{name}}! 🙏", booking, salonName);
     const welcome = salonMessageTemplate(settings.bot2WelcomeMessage || "Welcome to {{salon}} — we look forward to seeing you.", booking, salonName);
-    return { reply: `✅ *Appointment Confirmed!*\n\n${thankYou}\n${welcome}\n\n✂️ ${booking.service}\n📅 ${booking.date}\n⏰ ${booking.time}`, choices: [{ id: "swas_b2_rebook_menu", title: salonForwardTitle("New booking") }], urlButton: /^https:\/\//i.test(String(settings.bot2GoogleMapsUrl || "").trim()) ? { title: "📍 Location", url: String(settings.bot2GoogleMapsUrl).trim() } : null, callButton: String(ownerNumber || "").replace(/\D/g, "") ? { title: "📞 Contact", phoneNumber: `+${String(ownerNumber).replace(/\D/g, "")}` } : null, booking };
+    return { reply: `✅ *Appointment Confirmed!*\n\n${thankYou}\n${welcome}\n\n✂️ ${booking.service}\n📅 ${booking.date}\n⏰ ${booking.time}`, choices: [{ id: "swas_b2_rebook_menu", title: salonForwardTitle("New booking") }, { id: "swas_b2_my_appointments", title: salonForwardTitle("My appointments") }], urlButton: /^https:\/\//i.test(String(settings.bot2GoogleMapsUrl || "").trim()) ? { title: "📍 Location", url: String(settings.bot2GoogleMapsUrl).trim() } : null, callButton: String(ownerNumber || "").replace(/\D/g, "") ? { title: "📞 Contact", phoneNumber: `+${String(ownerNumber).replace(/\D/g, "")}` } : null, booking };
   }
   delete bot.bookingFlows[jid];
   return null;
