@@ -68,7 +68,7 @@ async function sendMenu(sock, jid, text, { language = false, lang = "mr", page =
   return message;
 }
 
-async function sendChoices(sock, jid, text, choices = [], urlButton = null, callButton = null) {
+async function sendChoices(sock, jid, text, choices = [], urlButton = null, callButton = null, variant = "") {
   // WhatsApp Web / Desktop can't show a message with a Call (cta_call) button ("This message couldn't
   // load"). Put the number in the text instead: it is tappable on every device.
   if (callButton?.phoneNumber) {
@@ -87,8 +87,7 @@ async function sendChoices(sock, jid, text, choices = [], urlButton = null, call
   }
   const userJid = sock.authState?.creds?.me?.id || sock.user?.id;
   const messageId = generateMessageIDV2(userJid);
-  const message = generateWAMessageFromContent(jid, {
-    interactiveMessage: {
+  const interactiveMessage = {
       body: { text: String(text || "Choose an option") },
       nativeFlowMessage: {
         messageVersion: 1,
@@ -104,15 +103,20 @@ async function sendChoices(sock, jid, text, choices = [], urlButton = null, call
           }] : []),
         ],
       },
-    },
-  }, { logger: sock.logger, userJid, messageId });
+  };
+  // TEMP (diagnosing silently dropped buttons): variant picks how the message is wrapped / tagged.
+  const viewOnce = variant.includes("viewonce");
+  const content = viewOnce
+    ? { viewOnceMessage: { message: { messageContextInfo: { deviceListMetadata: {}, deviceListMetadataVersion: 2 }, interactiveMessage } } }
+    : { interactiveMessage };
+  const message = generateWAMessageFromContent(jid, content, { logger: sock.logger, userJid, messageId });
   const additionalNodes = [{
     tag: "biz", attrs: {},
     content: [{ tag: "interactive", attrs: { type: "native_flow", v: "1" }, content: [{ tag: "native_flow", attrs: { v: "9", name: "mixed" } }] }],
   }];
-  if (!isJidGroup(jid)) additionalNodes.push({ tag: "bot", attrs: { biz_bot: "1" } });
+  if (!isJidGroup(jid) && !variant.includes("nobot")) additionalNodes.push({ tag: "bot", attrs: { biz_bot: "1" } });
   await sock.relayMessage(jid, message.message, { messageId: message.key.id, additionalNodes });
-  console.log(`[buttons] sent ${message.key.id} to ${jid} (${replyChoices.length} reply${urlButton?.url ? " + link" : ""})`);
+  console.log(`[buttons] sent ${message.key.id} to ${jid} (${replyChoices.length} reply${urlButton?.url ? " + link" : ""}) variant=${variant || "default"}`);
   return message;
 }
 
