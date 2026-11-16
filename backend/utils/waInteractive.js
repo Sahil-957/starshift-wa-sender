@@ -70,21 +70,19 @@ const BUTTON_NODES = [{
   content: [{ tag: "interactive", attrs: { type: "native_flow", v: "1" }, content: [{ tag: "native_flow", attrs: { v: "9", name: "mixed" } }] }],
 }];
 
+/**
+ * urlButton: one link button or an array of them (e.g. Location + Website). callButton: a real Call button.
+ * Reply buttons and link/call buttons in one message fail to load on WhatsApp Web, so when both are
+ * present the text goes with its reply buttons first, then the link/call buttons in a second message.
+ */
 async function sendChoices(sock, jid, text, choices = [], urlButton = null, callButton = null) {
-  // WhatsApp Web / Desktop can't show a message with a Call (cta_call) button ("This message couldn't
-  // load"). Put the number in the text instead: it is tappable on every device.
-  if (callButton?.phoneNumber) {
-    const label = String(callButton.title || "\u{1F4DE} Contact").trim();
-    const line = `${/^\u{1F4DE}/u.test(label) ? label : `\u{1F4DE} ${label}`}: ${callButton.phoneNumber}`;
-    text = [String(text || "").trim(), line].filter(Boolean).join("\n\n");
-    callButton = null;
-  }
-  // Reply buttons and a link button in one message also fail to load on WhatsApp Web, so send them as
-  // two messages: the text with its reply buttons, then the link button on its own.
+  const urlButtons = (Array.isArray(urlButton) ? urlButton : [urlButton]).filter((button) => button?.url);
+  const call = callButton?.phoneNumber ? callButton : null;
   const replyChoices = choices.filter((choice) => choice?.id);
-  if (replyChoices.length && urlButton?.url) {
+  if (replyChoices.length && (urlButtons.length || call)) {
     const first = await sendChoices(sock, jid, text, replyChoices, null, null);
-    await sendChoices(sock, jid, String(urlButton.title || "Link"), [], urlButton, null);
+    const label = [call, ...urlButtons].map((button) => String(button.title || "").trim()).filter(Boolean).join("  |  ");
+    await sendChoices(sock, jid, label || "Contact", [], urlButtons, call);
     return first;
   }
   const userJid = sock.authState?.creds?.me?.id || sock.user?.id;
@@ -94,21 +92,21 @@ async function sendChoices(sock, jid, text, choices = [], urlButton = null, call
       nativeFlowMessage: {
         messageVersion: 1,
         buttons: [
-          ...choices.slice(0, Math.max(0, 3 - (urlButton ? 1 : 0) - (callButton ? 1 : 0))).map(({ id, title }) => quickReply(title, id)),
-          ...(callButton?.phoneNumber ? [{
+          ...replyChoices.slice(0, 3).map(({ id, title }) => quickReply(title, id)),
+          ...(call ? [{
             name: "cta_call",
-            buttonParamsJson: JSON.stringify({ display_text: callButton.title || "Call", phone_number: callButton.phoneNumber }),
+            buttonParamsJson: JSON.stringify({ display_text: call.title || "Call", phone_number: call.phoneNumber }),
           }] : []),
-          ...(urlButton?.url ? [{
+          ...urlButtons.map((button) => ({
             name: "cta_url",
-            buttonParamsJson: JSON.stringify({ display_text: urlButton.title || "Click here", url: urlButton.url }),
-          }] : []),
+            buttonParamsJson: JSON.stringify({ display_text: button.title || "Click here", url: button.url }),
+          })),
         ],
       },
   };
   const message = generateWAMessageFromContent(jid, { interactiveMessage }, { logger: sock.logger, userJid, messageId });
   await sock.relayMessage(jid, message.message, { messageId: message.key.id, additionalNodes: BUTTON_NODES });
-  console.log(`[buttons] sent ${message.key.id} to ${jid} (${replyChoices.length} reply${urlButton?.url ? " + link" : ""})`);
+  console.log(`[buttons] sent ${message.key.id} to ${jid} (${replyChoices.length} reply${call ? " + call" : ""}${urlButtons.length ? ` + ${urlButtons.length} link` : ""})`);
   return message;
 }
 

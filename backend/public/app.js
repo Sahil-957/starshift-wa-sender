@@ -1673,6 +1673,10 @@ function renderBotUI() {
   };
   $("bot2-salon-name").value = s.bot2SalonName || "";
   $("bot2-map-location").value = s.bot2GoogleMapsUrl || "";
+  $("bot2-website").value = s.bot2WebsiteUrl || "";
+  $("bot2-btn-call").checked = s.bot2ShowCall !== false;
+  $("bot2-btn-location").checked = s.bot2ShowLocation !== false;
+  $("bot2-btn-website").checked = !!s.bot2ShowWebsite;
   syncCampaignMapLocation();
   updateBot2NameDisplay();
   $("bot2-salon-services").value = s.bot2SalonServices || "";
@@ -2142,6 +2146,10 @@ function readBotUI() {
     bot2SalonEnabled: $("bot2-enabled").checked,
     bot2SalonName: $("bot2-salon-name").value.trim(),
     bot2GoogleMapsUrl: $("bot2-map-location").value.trim(),
+    bot2WebsiteUrl: $("bot2-website").value.trim(),
+    bot2ShowCall: $("bot2-btn-call").checked,
+    bot2ShowLocation: $("bot2-btn-location").checked,
+    bot2ShowWebsite: $("bot2-btn-website").checked,
     bot2SalonServices: $("bot2-salon-services").value.trim(),
     bot2SalonHours: `${$("bot2-salon-days").value.trim()}, ${timeLabel($("bot2-open-time").value)}-${timeLabel($("bot2-close-time").value)}`.replace(/^,\s*/, ""),
     bot2BreakFrom: $("bot2-break-from").value,

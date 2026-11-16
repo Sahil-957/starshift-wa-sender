@@ -1360,8 +1360,15 @@ async function answer(mobile, sock, bot, config, msg, { chatbotOn = true } = {})
   const finalPhone = String(sock.user?.id || sock.authState?.creds?.me?.id || "").split(/[:@]/)[0].replace(/\D/g, "") || String(mobile || "").replace(/\D/g, "");
   const locationTitle = lang === "mr" ? "\u{1F4CD} \u0932\u094b\u0915\u0947\u0936\u0928" : "\u{1F4CD} Location";
   const contactTitle = lang === "mr" ? "\u{1F4DE} \u0938\u0902\u092a\u0930\u094d\u0915" : "\u{1F4DE} Contact";
-  const finalUrlButton = /^https:\/\//i.test(finalMapUrl) ? { title: locationTitle, url: finalMapUrl } : null;
-  const finalCallButton = finalPhone ? { title: contactTitle, phoneNumber: `+${finalPhone}` } : null;
+  // Call / Location / Website buttons: only the ones ticked in the bot settings (Call + Location default on).
+  const showCall = rawBotSettings.bot2ShowCall !== false;
+  const finalWebsite = String(rawBotSettings.bot2WebsiteUrl || "").trim();
+  const finalLinks = [
+    rawBotSettings.bot2ShowLocation !== false && /^https:\/\//i.test(finalMapUrl) ? { title: locationTitle, url: finalMapUrl } : null,
+    rawBotSettings.bot2ShowWebsite && /^https?:\/\//i.test(finalWebsite) ? { title: lang === "mr" ? "\u{1F310} वेबसाइट" : "\u{1F310} Website", url: finalWebsite } : null,
+  ].filter(Boolean);
+  const finalUrlButton = finalLinks.length ? finalLinks : null;
+  const finalCallButton = showCall && finalPhone ? { title: contactTitle, phoneNumber: `+${finalPhone}` } : null;
   const leadFlows = bot.interestFlows || (bot.interestFlows = {});
   const leadFlow = leadFlows[jid];
   const hotelFlows = bot.hotelBookingFlows || (bot.hotelBookingFlows = {});
@@ -1501,7 +1508,7 @@ async function answer(mobile, sock, bot, config, msg, { chatbotOn = true } = {})
         const branchPhone = settingsNumber(branch.notifyNumber || bot3Settings.bot4NotifyNumber);
         if (!bot4UrlButton) bot4UrlButton = finalUrlButton;
         bot4CallButton = finalCallButton;
-        if (branchPhone) bot4CallButton = { title: lang === "mr" ? "\u0938\u0902\u092a\u0930\u094d\u0915" : "Contact", phoneNumber: `+${branchPhone}` };
+        if (branchPhone && showCall) bot4CallButton = { title: lang === "mr" ? "\u0938\u0902\u092a\u0930\u094d\u0915" : "Contact", phoneNumber: `+${branchPhone}` };
         bot4Choices = [{ id: "swas_b4_mybooking", title: lang === "mr" ? "\u092e\u093e\u091d\u0947 \u091f\u0947\u092c\u0932 \u092c\u0941\u0915\u093f\u0902\u0917" : "My table booking" }];
         save(mobile);
         const ownerNumber = settingsNumber(branch.notifyNumber || bot3Settings.bot4NotifyNumber);
@@ -1684,8 +1691,7 @@ async function answer(mobile, sock, bot, config, msg, { chatbotOn = true } = {})
     if (withinRate(rt, bot2Jid, 20)) {
       rt.sent.get(bot2Jid).push(Date.now());
       if (salonAction.booking || salonAction.persist) save(mobile);
-      const salonMr = (button) => (button && lang === "mr" ? { ...button, title: salonMarathiText(button.title) } : button);
-      if (salonAction.choices || salonAction.urlButton) await sendChoices(sock, jid, salonAction.reply, salonAction.choices || [], salonMr(salonAction.urlButton), salonAction.callButton ? finalCallButton || salonMr(salonAction.callButton) : null);
+      if (salonAction.choices || salonAction.urlButton) await sendChoices(sock, jid, salonAction.reply, salonAction.choices || [], salonAction.urlButton || salonAction.callButton ? finalUrlButton : null, salonAction.callButton ? finalCallButton : null);
       else await sock.sendMessage(jid, { text: typeof salonAction === "string" ? salonAction : salonAction.reply });
       if (salonAction.followUp?.choices?.length) await sendChoices(sock, jid, salonAction.followUp.reply, salonAction.followUp.choices);
       const cancelledBooking = salonAction.persist ? (bot.bookings || []).find((entry) => entry.status === "cancelled" && String(entry.number || "").replace(/\D/g, "") === String(contact.number || "").replace(/\D/g, "") && Date.now() - Number(entry.cancelledAt || 0) < 10000) : null;
@@ -1725,7 +1731,7 @@ async function answer(mobile, sock, bot, config, msg, { chatbotOn = true } = {})
     const bot5MapUrl = String(bot3Settings.bot5LocationUrl || "").trim();
     const bot5Phone = settingsNumber(bot3Settings.bot5Contact);
     const bot5UrlButton = /^https:\/\//i.test(bot5MapUrl) ? { title: locationTitle, url: bot5MapUrl } : finalUrlButton;
-    const bot5CallButton = bot5Phone ? { title: contactTitle, phoneNumber: `+${bot5Phone}` } : finalCallButton;
+    const bot5CallButton = bot5Phone && showCall ? { title: contactTitle, phoneNumber: `+${bot5Phone}` } : finalCallButton;
     if (withinRate(rt, bot5Jid, 20)) {
       rt.sent.get(bot5Jid).push(Date.now());
       if (bot5Reply.length > 1000) {
@@ -1988,4 +1994,17 @@ function giveAdminBotNames(mobile, ticked = []) {
   save(mobile);
 }
 
-module.exports = { rememberStartButton, giveAdminBotNames, botNames, callSettings, setCallSettings, sync, onMessages, current, appointments, interestedLeads, hotelBranches, hotelWelcomeTemplate, createHotelBooking, hotelBookings, defaults, isUnsubscribed };
+/** Campaign "Book" message: the Call / Location / Website buttons ticked in the Bot 2 settings. */
+function bookButtons(mobile, locationUrl = "") {
+  const s = load(mobile).config?.settings || {};
+  const map = String(locationUrl || s.bot2GoogleMapsUrl || "").trim();
+  const website = String(s.bot2WebsiteUrl || "").trim();
+  const links = [
+    s.bot2ShowLocation !== false && /^https?:\/\//i.test(map) ? { title: "\u{1F4CD} Location", url: map } : null,
+    s.bot2ShowWebsite && /^https?:\/\//i.test(website) ? { title: "\u{1F310} Website", url: website } : null,
+  ].filter(Boolean);
+  const phone = String(mobile || "").replace(/\D/g, "");
+  return { links: links.length ? links : null, call: s.bot2ShowCall !== false && phone ? { title: "\u{1F4DE} Call", phoneNumber: `+${phone}` } : null };
+}
+
+module.exports = { bookButtons, rememberStartButton, giveAdminBotNames, botNames, callSettings, setCallSettings, sync, onMessages, current, appointments, interestedLeads, hotelBranches, hotelWelcomeTemplate, createHotelBooking, hotelBookings, defaults, isUnsubscribed };

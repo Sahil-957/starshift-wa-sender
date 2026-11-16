@@ -532,6 +532,10 @@
         <p class="hint">Edit this name to update the Bot 2 heading, bot replies, booking QR and linked WhatsApp profile.</p>
         <label for="bot2-map-location">Google Maps location link (save once)</label><input id="bot2-map-location" type="url" placeholder="https://maps.app.goo.gl/..." />
         <p class="hint">Saved Campaign and Auto Broadcast messages use this link for their Location button.</p>
+        <label for="bot2-website">Website link (optional)</label><input id="bot2-website" type="url" placeholder="https://www.example.com" />
+        <label>Buttons to show (in bot replies and Book campaigns)</label>
+        <div class="row" style="gap:16px;flex-wrap:wrap"><label class="switch"><input type="checkbox" id="bot2-btn-call" /> 📞 Call</label><label class="switch"><input type="checkbox" id="bot2-btn-location" /> 📍 Location</label><label class="switch"><input type="checkbox" id="bot2-btn-website" /> 🌐 Website</label></div>
+        <p class="hint">Only ticked buttons are shown. Call uses this WhatsApp number; Location uses the Maps link above; Website uses the website link. The Call button opens on phones - WhatsApp Web may show "This message couldn't load" for it.</p>
         <label>Services and prices (one per line or comma-separated, e.g. Haircut-300, Facial-500)</label><textarea id="bot2-salon-services" rows="4"></textarea>
         <label>Opening days</label><input id="bot2-salon-days" placeholder="Mon-Sat" />
         <label>First available booking date</label><input id="bot2-start-date" type="date" />
