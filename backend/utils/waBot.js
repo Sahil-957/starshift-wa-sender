@@ -1020,7 +1020,7 @@ function salonReply(bot, jid, text, contact, settings, ownerNumber = "") {
   }
   const asksToCancel = input.includes("cancel") || input.includes("रद्द");
   const manageIntent = ["b2myappointments", "status", "my booking", "my bookings", "my appointment", "my appointments", "appointment status", "booking status", "manage appointment", "माझी booking", "माझे booking", "माझी appointment"].includes(input)
-    || (asksToCancel && (input.includes("appointment") || input.includes("booking")));
+    || (asksToCancel && !input.startsWith("b2") && (input.includes("appointment") || input.includes("booking"))); // not the b2cancelbooking:<id> button code
   if (manageIntent) {
     const bookings = salonCustomerBookings(bot, contact.number);
     if (!bookings.length) return "There are no appointments linked to this WhatsApp number yet. Send hi to see available services.";
@@ -1050,6 +1050,11 @@ function salonReply(bot, jid, text, contact, settings, ownerNumber = "") {
     if (!services.length) return "The salon has not added its services yet. Please contact the salon directly.";
     bot.bookingFlows[jid] = { step: "service", services, name: "", number: contact.number, servicePage: 0 };
     return salonChoicePage(services, 0, "service", salonServiceButtonLabel, `💈 ${settings.bot2SalonName || "Salon"}`);
+  }
+  // A Cancel <time> button tapped from an older appointments list (the flow has moved on / expired).
+  if (/^b2cancelbooking:/.test(String(text)) && flow?.step !== "manage") {
+    bot.bookingFlows[jid] = { step: "manage", managePage: 0 };
+    return salonReply(bot, jid, text, contact, settings, ownerNumber);
   }
   if (!flow) return null;
   if (flow.step === "manage") {
