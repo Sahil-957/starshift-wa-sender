@@ -621,6 +621,10 @@ Welcome! Choose an option below."></textarea>
         <p class="hint">Message placeholders: {{shop}}, {{branch}}, {{queue}}, {{name}}, and {{members}}.</p>
         <label>Thank-you message after confirmation</label><textarea id="bot4-thankyou-message" rows="2" placeholder="Thank you, {{name}}! 🙏"></textarea>
         <label>Welcome message after confirmation</label><textarea id="bot4-welcome-message" rows="2" placeholder="Welcome to *{{shop}} - {{branch}}*."></textarea>
+        <label>WhatsApp welcome (first message when a customer sends "table" / "Table book")</label><textarea id="bot4-chat-welcome" rows="3" placeholder="🍽️ Welcome to *{{shop}}*! We serve fresh home-style food."></textarea>
+        <p class="hint">Shown above the language question and the branch buttons. Placeholders: {{shop}}, {{branch}}, {{name}}. Leave empty for the default welcome.</p>
+        <label>Final booking message (replaces the whole confirmation)</label><textarea id="bot4-confirm-message" rows="6" placeholder="✅ Table booked, {{name}}!&#10;{{shop}} - {{branch}}&#10;Members: {{members}}&#10;Queue number: {{queue}}&#10;Wait: {{wait}} minutes&#10;Time: {{time}}"></textarea>
+        <p class="hint">Placeholders: {{name}}, {{shop}}, {{branch}}, {{members}}, {{queue}}, {{wait}}, {{time}}. Leave empty to use the standard confirmation.</p>
         <p class="hint">Placeholders: {{name}}, {{shop}}, {{branch}}, {{members}}, {{queue}}, {{wait}}, {{time}}.</p>
         <p class="hint">Add one entry per branch. Customers must be within 50 metres of that branch to book. Use the exact map pin coordinates and include the country code in the WhatsApp number.</p>
         <div id="bot4-branches"></div>

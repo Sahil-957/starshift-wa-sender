@@ -1303,8 +1303,11 @@ async function answer(mobile, sock, bot, config, msg, { chatbotOn = true } = {})
     const pendingBot = bot.pendingLanguageMessages?.[jid]?.botId;
     const hotelEn = String(s.bot4Name || "").trim();
     const hotelMr = String(s.bot4NameMr || "").trim() || hotelEn;
-    const welcome = pendingBot === "4" && hotelEn
-      ? `\u{1F37D}\ufe0f *${hotelMr}* \u092e\u0927\u094d\u092f\u0947 \u0906\u092a\u0932\u0947 \u0938\u094d\u0935\u093e\u0917\u0924 \u0906\u0939\u0947!\nWelcome to *${hotelEn}*!\n\n`
+    const customEn = hotelChatWelcome(s, { shop: hotelEn, name: contact.name });
+    const customMr = hotelChatWelcome({ bot4ChatWelcome: s.bot4ChatWelcomeMr }, { shop: hotelMr, name: contact.name });
+    const welcome = pendingBot !== "4" ? ""
+      : customEn ? [customMr && customMr !== customEn ? customMr : "", customEn].filter(Boolean).join("\n\n") + "\n\n"
+      : hotelEn ? `\u{1F37D}\ufe0f *${hotelMr}* \u092e\u0927\u094d\u092f\u0947 \u0906\u092a\u0932\u0947 \u0938\u094d\u0935\u093e\u0917\u0924 \u0906\u0939\u0947!\nWelcome to *${hotelEn}*!\n\n`
       : "";
     await sendChoices(sock, jid, welcome + "\u092d\u093e\u0937\u093e \u0928\u093f\u0935\u0921\u093e / Please choose your language:", [
       { id: "swas_lang_1", title: marathiWord }, { id: "swas_lang_2", title: "English" },
@@ -1469,8 +1472,10 @@ async function answer(mobile, sock, bot, config, msg, { chatbotOn = true } = {})
     const page = moreBranches ? ((Number(branchStep.page) || 0) + 1) % pages : 0;
     const shown = all.length <= 3 ? all : all.slice(page * 2, page * 2 + 2);
     const hotelName = String((lang === "mr" && String(bot3Settings.bot4NameMr || "").trim()) || bot3Settings.bot4Name || "").trim();
+    const customWelcome = hotelChatWelcome(bot3Settings, { shop: hotelName, name: contact.name });
     bot4FlowReply = !all.length ? "Table booking is not set up yet."
-      : lang === "mr" ? `${hotelName ? `🍽️ *${hotelName}* मध्ये आपले स्वागत आहे!\n\n` : ""}शाखा निवडा:`
+      : customWelcome ? `${customWelcome}\n\n${lang === "mr" ? "शाखा निवडा:" : "Choose a branch:"}`
+      : lang === "mr" ?`${hotelName ? `🍽️ *${hotelName}* मध्ये आपले स्वागत आहे!\n\n` : ""}शाखा निवडा:`
       : `${hotelName ? `🍽️ Welcome to *${hotelName}*!\n\n` : ""}Choose a branch:`;
     bot4Choices = shown.map((entry) => ({ id: `swas_b4_branch_${entry.id}`, title: (branchLabel(entry, lang) || "Branch").slice(0, 20) }));
     if (pages > 1) bot4Choices.push({ id: "swas_b4_branches_more", title: lang === "mr" ? "आणखी शाखा" : "More branches" });
@@ -1482,7 +1487,9 @@ async function answer(mobile, sock, bot, config, msg, { chatbotOn = true } = {})
     else if (!isBranchHotelOpen(startBranch)) bot4FlowReply = lang === "mr" ? [(lang === "mr" && String(bot3Settings.bot4NameMr || "").trim()) || bot3Settings.bot4Name, branchLabel(startBranch, lang)].filter(Boolean).join(", ") + " \u092f\u0947\u0925\u0947 \u0938\u0927\u094d\u092f\u093e \u092c\u0941\u0915\u093f\u0902\u0917 \u092c\u0902\u0926 \u0906\u0939\u0947. \u0915\u0943\u092a\u092f\u093e \u0938\u0941\u0930\u0942 \u0905\u0938\u0924\u093e\u0928\u093e \u092a\u0941\u0928\u094d\u0939\u093e \u092a\u094d\u0930\u092f\u0924\u094d\u0928 \u0915\u0930\u093e." : "Bookings for " + startBranch.name + " are closed. Please try again during opening hours.";
     else {
       hotelFlows[jid] = { step: "members", branchId: startBranch.id, name: contact.name || "WhatsApp customer", number: contact.number || "", distanceMeters: verified.distanceMeters, startedAt: Date.now() };
-      bot4FlowReply = lang === "mr" ? [(lang === "mr" && String(bot3Settings.bot4NameMr || "").trim()) || bot3Settings.bot4Name, branchLabel(startBranch, lang)].filter(Boolean).join(", ") + " \u092f\u0947\u0925\u0947 \u0906\u092a\u0932\u0947 \u0938\u094d\u0935\u093e\u0917\u0924 \u0906\u0939\u0947! \u0924\u0941\u092e\u091a\u094d\u092f\u093e \u092a\u093e\u0930\u094d\u091f\u0940\u092e\u0927\u094d\u092f\u0947 \u0915\u093f\u0924\u0940 \u0938\u0926\u0938\u094d\u092f \u0906\u0939\u0947\u0924? \u0967 \u0924\u0947 \u096b\u0966 \u092e\u0927\u0940\u0932 \u0938\u0902\u0916\u094d\u092f\u093e \u092a\u093e\u0920\u0935\u093e." : "Welcome to " + [(lang === "mr" && String(bot3Settings.bot4NameMr || "").trim()) || bot3Settings.bot4Name, branchLabel(startBranch, lang)].filter(Boolean).join(", ") + "! How many members are in your party? Reply with a number from 1 to 50.";
+      const customStart = hotelChatWelcome(bot3Settings, { shop: (lang === "mr" && String(bot3Settings.bot4NameMr || "").trim()) || bot3Settings.bot4Name, branch: branchLabel(startBranch, lang), name: contact.name });
+      bot4FlowReply = customStart ? `${customStart}\n\n${lang === "mr" ? "\u0924\u0941\u092e\u091a\u094d\u092f\u093e \u092a\u093e\u0930\u094d\u091f\u0940\u092e\u0927\u094d\u092f\u0947 \u0915\u093f\u0924\u0940 \u0938\u0926\u0938\u094d\u092f \u0906\u0939\u0947\u0924? \u0967 \u0924\u0947 \u096b\u0966 \u092e\u0927\u0940\u0932 \u0938\u0902\u0916\u094d\u092f\u093e \u092a\u093e\u0920\u0935\u093e." : "How many members are in your party? Reply with a number from 1 to 50."}`
+        : lang === "mr" ? [(lang === "mr" && String(bot3Settings.bot4NameMr || "").trim()) || bot3Settings.bot4Name, branchLabel(startBranch, lang)].filter(Boolean).join(", ") + " \u092f\u0947\u0925\u0947 \u0906\u092a\u0932\u0947 \u0938\u094d\u0935\u093e\u0917\u0924 \u0906\u0939\u0947! \u0924\u0941\u092e\u091a\u094d\u092f\u093e \u092a\u093e\u0930\u094d\u091f\u0940\u092e\u0927\u094d\u092f\u0947 \u0915\u093f\u0924\u0940 \u0938\u0926\u0938\u094d\u092f \u0906\u0939\u0947\u0924? \u0967 \u0924\u0947 \u096b\u0966 \u092e\u0927\u0940\u0932 \u0938\u0902\u0916\u094d\u092f\u093e \u092a\u093e\u0920\u0935\u093e." : "Welcome to " + [(lang === "mr" && String(bot3Settings.bot4NameMr || "").trim()) || bot3Settings.bot4Name, branchLabel(startBranch, lang)].filter(Boolean).join(", ") + "! How many members are in your party? Reply with a number from 1 to 50.";
       save(mobile);
     }
   } else if (chatbotOn && !unsubscribed && bot4Selected && hotelFlow?.step === "members") {
@@ -1863,6 +1870,14 @@ function hotelWelcomeTemplate(settings = {}) {
   return /\{\{\s*branch\s*\}\}/i.test(template) ? template : template.replace(/\{\{\s*shop\s*\}\}/i, "{{shop}}, {{branch}}");
 }
 
+/** Bot 4 "WhatsApp welcome" typed in the dashboard, placeholders filled; "" when not set. */
+function hotelChatWelcome(settings = {}, { shop = "", branch = "", name = "" } = {}) {
+  const values = { shop: String(shop || "").trim(), branch: String(branch || "").trim(), name: String(name || "").trim() };
+  return String(settings.bot4ChatWelcome || "").trim()
+    .replace(/\{\{\s*(\w+)\s*\}\}/g, (match, key) => (key.toLowerCase() in values ? values[key.toLowerCase()] : match))
+    .replace(/,\s*([!.])/g, "$1").trim();
+}
+
 function hotelConfirmationMessage(settings = {}, booking = {}, lang = "en") {
   const shop = (lang === "mr" && String(settings.bot4NameMr || "").trim()) || settings.bot4Name || "";
   const custom = String(settings.bot4ConfirmMessage || "").trim();
@@ -1887,7 +1902,7 @@ function hotelConfirmationMessage(settings = {}, booking = {}, lang = "en") {
 /** Bot texts the owner can also write in Marathi (saved as <key>Mr). */
 const MR_TEXT_KEYS = ["bot2SalonName", "bot2SalonServices", "bot2StartMessage", "bot2ThankYouMessage", "bot2WelcomeMessage",
   "bot3Reply", "bot3CityQuestion", "bot3ThankYou", "bot3DuplicateReply", "bot3FinalThankYou", "bot3FinalWelcome",
-  "bot4Name", "bot4Welcome", "bot4ThankYouMessage", "bot4WelcomeMessage",
+  "bot4Name", "bot4Welcome", "bot4ThankYouMessage", "bot4WelcomeMessage", "bot4ChatWelcome", "bot4ConfirmMessage",
   "bot5Name", "bot5Reply", "bot5DetailsTitle", "bot5NotFound", "bot6Name", "bot6Welcome", "bot6ButtonText"];
 /** Settings as the customer should see them: the Marathi text wherever one is saved and Marathi was chosen. */
 function localizedSettings(settings = {}, lang = "") {

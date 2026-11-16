@@ -1639,6 +1639,7 @@ const MR_TEXT_FIELDS = {
   "bot3-reply": "bot3Reply", "bot3-city-question": "bot3CityQuestion", "bot3-thankyou": "bot3ThankYou",
   "bot3-duplicate-reply": "bot3DuplicateReply", "bot3-final-thankyou": "bot3FinalThankYou", "bot3-final-welcome": "bot3FinalWelcome",
   "bot4-welcome": "bot4Welcome", "bot4-thankyou-message": "bot4ThankYouMessage", "bot4-welcome-message": "bot4WelcomeMessage",
+  "bot4-chat-welcome": "bot4ChatWelcome", "bot4-confirm-message": "bot4ConfirmMessage",
   "bot5-name": "bot5Name", "bot5-reply": "bot5Reply", "bot5-details-title": "bot5DetailsTitle", "bot5-not-found": "bot5NotFound",
   "bot6-name": "bot6Name", "bot6-welcome": "bot6Welcome", "bot6-button-text": "bot6ButtonText",
 };
@@ -1709,6 +1710,8 @@ function renderBotUI() {
   $("bot3-final-welcome").value = s.bot3FinalWelcome || "";
   $("bot4-thankyou-message").value = s.bot4ThankYouMessage || "";
   $("bot4-welcome-message").value = s.bot4WelcomeMessage || "";
+  $("bot4-chat-welcome").value = s.bot4ChatWelcome || "";
+  $("bot4-confirm-message").value = s.bot4ConfirmMessage || "";
   $("bot3-thankyou").value = s.bot3ThankYou || "à¤§à¤¨à¥à¤¯à¤µà¤¾à¤¦! {{shop}} à¤šà¥‡ à¤ªà¥à¤°à¤¤à¤¿à¤¨à¤¿à¤§à¥€ 24 à¤¤à¤¾à¤¸à¤¾à¤‚à¤šà¥à¤¯à¤¾ à¤†à¤¤ à¤¤à¥à¤®à¤šà¥à¤¯à¤¾à¤¶à¥€ à¤¸à¤‚à¤ªà¤°à¥à¤• à¤•à¤°à¤¤à¥€à¤².";
   for (const number of [4, 5, 6]) {
     const nameInput = number === 4 ? $("bot4-shop-name") : $(`bot${number}-name`);
@@ -2185,6 +2188,8 @@ function readBotUI() {
     bot4ConfirmMessage: "",
     bot4ThankYouMessage: $("bot4-thankyou-message").value.trim(),
     bot4WelcomeMessage: $("bot4-welcome-message").value.trim(),
+    bot4ChatWelcome: $("bot4-chat-welcome").value.trim(),
+    bot4ConfirmMessage: $("bot4-confirm-message").value.trim(),
     bot4OpenTime: readBot4Branches()[0]?.openTime || "10:00",
     bot4CloseTime: readBot4Branches()[0]?.closeTime || "23:00",
     bot4WaitMinutes: readBot4Branches()[0]?.waitMinutes || 15,
