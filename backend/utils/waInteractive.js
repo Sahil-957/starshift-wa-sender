@@ -58,17 +58,19 @@ async function sendMenu(sock, jid, text, { language = false, lang = "mr", page =
     },
     { logger: sock.logger, userJid, messageId },
   );
-  const additionalNodes = [{
-    tag: "biz",
-    attrs: {},
-    content: [{ tag: "interactive", attrs: { type: "native_flow", v: "1" }, content: [{ tag: "native_flow", attrs: { v: "9", name: "mixed" } }] }],
-  }];
-  if (!isJidGroup(jid)) additionalNodes.push({ tag: "bot", attrs: { biz_bot: "1" } });
-  await sock.relayMessage(jid, message.message, { messageId: message.key.id, additionalNodes });
+  await sock.relayMessage(jid, message.message, { messageId: message.key.id, additionalNodes: BUTTON_NODES });
   return message;
 }
 
-async function sendChoices(sock, jid, text, choices = [], urlButton = null, callButton = null, variant = "") {
+// Only the "biz" native_flow node. Since 2026-11-16 WhatsApp silently drops button messages that also
+// carry the old <bot biz_bot="1"> node (no error ack, not even shown on the sender's own phone).
+const BUTTON_NODES = [{
+  tag: "biz",
+  attrs: {},
+  content: [{ tag: "interactive", attrs: { type: "native_flow", v: "1" }, content: [{ tag: "native_flow", attrs: { v: "9", name: "mixed" } }] }],
+}];
+
+async function sendChoices(sock, jid, text, choices = [], urlButton = null, callButton = null) {
   // WhatsApp Web / Desktop can't show a message with a Call (cta_call) button ("This message couldn't
   // load"). Put the number in the text instead: it is tappable on every device.
   if (callButton?.phoneNumber) {
@@ -104,19 +106,9 @@ async function sendChoices(sock, jid, text, choices = [], urlButton = null, call
         ],
       },
   };
-  // TEMP (diagnosing silently dropped buttons): variant picks how the message is wrapped / tagged.
-  const viewOnce = variant.includes("viewonce");
-  const content = viewOnce
-    ? { viewOnceMessage: { message: { messageContextInfo: { deviceListMetadata: {}, deviceListMetadataVersion: 2 }, interactiveMessage } } }
-    : { interactiveMessage };
-  const message = generateWAMessageFromContent(jid, content, { logger: sock.logger, userJid, messageId });
-  const additionalNodes = [{
-    tag: "biz", attrs: {},
-    content: [{ tag: "interactive", attrs: { type: "native_flow", v: "1" }, content: [{ tag: "native_flow", attrs: { v: "9", name: "mixed" } }] }],
-  }];
-  if (!isJidGroup(jid) && !variant.includes("nobot")) additionalNodes.push({ tag: "bot", attrs: { biz_bot: "1" } });
-  await sock.relayMessage(jid, message.message, { messageId: message.key.id, additionalNodes });
-  console.log(`[buttons] sent ${message.key.id} to ${jid} (${replyChoices.length} reply${urlButton?.url ? " + link" : ""}) variant=${variant || "default"}`);
+  const message = generateWAMessageFromContent(jid, { interactiveMessage }, { logger: sock.logger, userJid, messageId });
+  await sock.relayMessage(jid, message.message, { messageId: message.key.id, additionalNodes: BUTTON_NODES });
+  console.log(`[buttons] sent ${message.key.id} to ${jid} (${replyChoices.length} reply${urlButton?.url ? " + link" : ""})`);
   return message;
 }
 
