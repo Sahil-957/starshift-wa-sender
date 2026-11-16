@@ -1696,7 +1696,7 @@ async function answer(mobile, sock, bot, config, msg, { chatbotOn = true } = {})
     if (withinRate(rt, bot2Jid, 20)) {
       rt.sent.get(bot2Jid).push(Date.now());
       if (salonAction.booking || salonAction.persist) save(mobile);
-      if (salonAction.choices || salonAction.urlButton) await sendChoices(sock, jid, salonAction.reply, salonAction.choices || [], salonAction.urlButton || salonAction.callButton ? finalUrlButton : null, salonAction.callButton ? finalCallButton : null, { together: !!salonAction.booking });
+      if (salonAction.choices || salonAction.urlButton) await sendChoices(sock, jid, salonAction.reply, salonAction.choices || [], salonAction.urlButton || salonAction.callButton ? finalUrlButton : null, salonAction.callButton ? finalCallButton : null);
       else await sock.sendMessage(jid, { text: typeof salonAction === "string" ? salonAction : salonAction.reply });
       if (salonAction.followUp?.choices?.length) await sendChoices(sock, jid, salonAction.followUp.reply, salonAction.followUp.choices);
       const cancelledBooking = salonAction.persist ? (bot.bookings || []).find((entry) => entry.status === "cancelled" && String(entry.number || "").replace(/\D/g, "") === String(contact.number || "").replace(/\D/g, "") && Date.now() - Number(entry.cancelledAt || 0) < 10000) : null;
