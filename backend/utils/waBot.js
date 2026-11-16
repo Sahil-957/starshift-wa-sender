@@ -1276,7 +1276,8 @@ async function answer(mobile, sock, bot, config, msg, { chatbotOn = true } = {})
     const label = SwasBot.normalize(text);
     if (["my table booking", "\u092e\u093e\u091d\u0947 \u091f\u0947\u092c\u0932 \u092c\u0941\u0915\u093f\u0902\u0917"].includes(label)) text = "b4mybooking";
     // Typed "Table book" etc. too - otherwise the word "book" sends it to Bot 2 (salon).
-    if (["book a table", "table book", "book table", "table booking", "book my table", "\u091f\u0947\u092c\u0932 \u092c\u0941\u0915 \u0915\u0930\u093e", "\u091f\u0947\u092c\u0932 \u092c\u0941\u0915", "\u091f\u0947\u092c\u0932 \u092c\u0941\u0915\u093f\u0902\u0917"].includes(label)) text = "b4open";
+    if (["book a table", "table book", "book table", "table booking", "book my table", "\u091f\u0947\u092c\u0932 \u092c\u0941\u0915 \u0915\u0930\u093e", "\u091f\u0947\u092c\u0932 \u092c\u0941\u0915", "\u091f\u0947\u092c\u0932 \u092c\u0941\u0915\u093f\u0902\u0917"].includes(label)
+      || SwasBot.keywordList(bot.config.settings.bot4Keywords || "table").includes(label)) text = "b4open";
     const cancelQueue = /^(?:cancel|\u0930\u0926\u094d\u0926 \u0915\u0930\u093e) (\d+)$/.exec(label);
     if (cancelQueue) {
       const today = hotelBookingNow().dateKey;
@@ -1459,7 +1460,10 @@ async function answer(mobile, sock, bot, config, msg, { chatbotOn = true } = {})
     const pages = all.length <= 3 ? 1 : Math.ceil(all.length / 2);
     const page = moreBranches ? ((Number(branchStep.page) || 0) + 1) % pages : 0;
     const shown = all.length <= 3 ? all : all.slice(page * 2, page * 2 + 2);
-    bot4FlowReply = !all.length ? "Table booking is not set up yet." : lang === "mr" ? "शाखा निवडा:" : "Choose a branch:";
+    const hotelName = String((lang === "mr" && String(bot3Settings.bot4NameMr || "").trim()) || bot3Settings.bot4Name || "").trim();
+    bot4FlowReply = !all.length ? "Table booking is not set up yet."
+      : lang === "mr" ? `${hotelName ? `🍽️ *${hotelName}* मध्ये आपले स्वागत आहे!\n\n` : ""}शाखा निवडा:`
+      : `${hotelName ? `🍽️ Welcome to *${hotelName}*!\n\n` : ""}Choose a branch:`;
     bot4Choices = shown.map((entry) => ({ id: `swas_b4_branch_${entry.id}`, title: (branchLabel(entry, lang) || "Branch").slice(0, 20) }));
     if (pages > 1) bot4Choices.push({ id: "swas_b4_branches_more", title: lang === "mr" ? "आणखी शाखा" : "More branches" });
     if (all.length) { hotelFlows[jid] = { step: "branch", page, startedAt: Date.now() }; save(mobile); }
