@@ -1275,7 +1275,8 @@ async function answer(mobile, sock, bot, config, msg, { chatbotOn = true } = {})
   if (bot.config?.settings?.bot4Enabled) {
     const label = SwasBot.normalize(text);
     if (["my table booking", "\u092e\u093e\u091d\u0947 \u091f\u0947\u092c\u0932 \u092c\u0941\u0915\u093f\u0902\u0917"].includes(label)) text = "b4mybooking";
-    if (["book a table", "\u091f\u0947\u092c\u0932 \u092c\u0941\u0915 \u0915\u0930\u093e"].includes(label)) text = "b4open";
+    // Typed "Table book" etc. too - otherwise the word "book" sends it to Bot 2 (salon).
+    if (["book a table", "table book", "book table", "table booking", "book my table", "\u091f\u0947\u092c\u0932 \u092c\u0941\u0915 \u0915\u0930\u093e", "\u091f\u0947\u092c\u0932 \u092c\u0941\u0915", "\u091f\u0947\u092c\u0932 \u092c\u0941\u0915\u093f\u0902\u0917"].includes(label)) text = "b4open";
     const cancelQueue = /^(?:cancel|\u0930\u0926\u094d\u0926 \u0915\u0930\u093e) (\d+)$/.exec(label);
     if (cancelQueue) {
       const today = hotelBookingNow().dateKey;
