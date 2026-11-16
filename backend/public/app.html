@@ -562,6 +562,16 @@ Welcome! Choose an option below."></textarea>
         <label>Thank-you message after confirmation</label><textarea id="bot2-thankyou-message" rows="2" placeholder="Thank you, {{name}}! 🙏"></textarea>
         <label>Welcome message after confirmation</label><textarea id="bot2-welcome-message" rows="2" placeholder="Welcome to {{salon}} — we look forward to seeing you."></textarea>
         <p class="hint">Placeholders: {{name}}, {{salon}}, {{service}}, {{date}}, {{time}}.</p>
+        <h3 style="margin-top:20px">Hairstyle ideas (face shape from selfie)</h3>
+        <label class="row" style="align-items:center;gap:8px"><input id="bot2-hairstyle-enabled" type="checkbox" style="width:auto" /> Show a "Hairstyle ideas" button in the Bot 2 menu</label>
+        <p class="hint">The customer sends a selfie; the server works out their face shape (free, no API) and sends your photos for that shape with a Book button. Add up to 6 JPG/PNG photos per shape. Shapes without photos get your Oval photos.</p>
+        <div class="row" style="align-items:center;gap:8px;flex-wrap:wrap">
+          <select id="bot2-hairstyle-shape" style="width:auto"><option value="oval">Oval</option><option value="round">Round</option><option value="square">Square</option><option value="long">Long</option><option value="heart">Heart</option></select>
+          <input id="bot2-hairstyle-name" placeholder="Style name (optional), e.g. Side part" style="flex:1;min-width:180px" />
+          <input id="bot2-hairstyle-file" type="file" accept="image/jpeg,image/png" multiple style="width:auto" />
+        </div>
+        <div id="bot2-hairstyle-status" class="hint" aria-live="polite"></div>
+        <div id="bot2-hairstyle-list"></div>
         <label>Customer booking link</label>
         <div class="row" style="align-items:center;gap:8px">
           <input id="bot2-chat-link" type="url" readonly placeholder="Save and enable Bot 2, then generate the booking link" style="flex:1;min-width:220px" />

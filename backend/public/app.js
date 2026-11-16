@@ -1659,6 +1659,93 @@ function addMarathiTextFields() {
 }
 addMarathiTextFields();
 
+// ---- Bot 2 hairstyle photos (by face shape) ----
+const HAIRSTYLE_SHAPES = { oval: "Oval", round: "Round", square: "Square", long: "Long", heart: "Heart" };
+const hairstylePreviews = new Map(); // photo id -> blob URL (the photo route needs the login header)
+async function hairstylePreview(id) {
+  if (!hairstylePreviews.has(id)) {
+    const response = await fetch(`/api/wa/bot/hairstyles/${id}.jpg`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+    hairstylePreviews.set(id, response.ok ? URL.createObjectURL(await response.blob()) : "");
+  }
+  return hairstylePreviews.get(id);
+}
+function renderHairstyles(items) {
+  const list = $("bot2-hairstyle-list");
+  list.replaceChildren();
+  for (const [shape, label] of Object.entries(HAIRSTYLE_SHAPES)) {
+    const mine = items.filter((item) => item.shape === shape);
+    const group = document.createElement("div");
+    group.style.margin = "10px 0";
+    const title = document.createElement("strong");
+    title.textContent = `${label} (${mine.length})`;
+    const row = document.createElement("div");
+    row.className = "row";
+    row.style.cssText = "gap:8px;flex-wrap:wrap;margin-top:6px";
+    for (const item of mine) {
+      const card = document.createElement("div");
+      card.style.cssText = "width:96px;text-align:center;font-size:12px";
+      const img = document.createElement("img");
+      img.alt = item.name || `${label} hairstyle`;
+      img.style.cssText = "width:96px;height:96px;object-fit:cover;border-radius:8px;display:block";
+      hairstylePreview(item.id).then((url) => { if (url) img.src = url; });
+      const name = document.createElement("div");
+      name.textContent = item.name || "";
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.className = "btn-secondary";
+      remove.textContent = "Remove";
+      remove.style.cssText = "padding:2px 8px;margin-top:4px";
+      remove.addEventListener("click", async () => {
+        try { renderHairstyles((await api(`/wa/bot/hairstyles/${item.id}`, "DELETE")).items || []); }
+        catch (error) { $("bot2-hairstyle-status").textContent = error.message || String(error); }
+      });
+      card.append(img, name, remove);
+      row.append(card);
+    }
+    group.append(title, row);
+    list.append(group);
+  }
+}
+async function loadHairstyles() {
+  try { renderHairstyles((await api("/wa/bot/hairstyles")).items || []); }
+  catch { /* chatbot add-on off - the section just stays empty */ }
+}
+/** Any picked image -> JPEG data URL, longest side at most 1080px (WhatsApp shrinks bigger ones anyway). */
+function hairstyleJpeg(file) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, 1080 / Math.max(img.width, img.height));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(url);
+      resolve(canvas.toDataURL("image/jpeg", 0.85));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error(`${file.name} is not a readable image.`)); };
+    img.src = url;
+  });
+}
+$("bot2-hairstyle-file").addEventListener("change", async (event) => {
+  const files = [...event.target.files];
+  const status = $("bot2-hairstyle-status");
+  const shape = $("bot2-hairstyle-shape").value;
+  const name = $("bot2-hairstyle-name").value.trim();
+  let added = 0;
+  for (const file of files) {
+    status.textContent = `Uploading ${file.name}…`;
+    try {
+      renderHairstyles((await api("/wa/bot/hairstyles", "POST", { shape, name, dataUrl: await hairstyleJpeg(file) })).items || []);
+      added += 1;
+    } catch (error) { status.textContent = error.message || String(error); event.target.value = ""; return; }
+  }
+  status.textContent = `${added} photo${added === 1 ? "" : "s"} added to ${HAIRSTYLE_SHAPES[shape]}.`;
+  $("bot2-hairstyle-name").value = "";
+  event.target.value = "";
+});
+
 function renderBotUI() {
   const s = botSettings || {};
   for (const [id, key] of Object.entries(MR_TEXT_FIELDS)) if ($(`${id}-mr`)) $(`${id}-mr`).value = s[`${key}Mr`] || "";
@@ -1738,6 +1825,8 @@ function renderBotUI() {
   const selectedBot = "1";
   $("bot1-enabled").checked = !!s.enabled;
   $("bot2-enabled").checked = !!s.bot2SalonEnabled;
+  $("bot2-hairstyle-enabled").checked = !!s.bot2HairstyleEnabled;
+  loadHairstyles();
   $("bot3-enabled").checked = !!s.bot3Enabled;
   setSelectedBot(selectedBot);
   $("bot1-name").value = s.bot1Name === undefined ? "Starshift WA Sender" : s.bot1Name;
@@ -2147,6 +2236,7 @@ function readBotUI() {
   botSettings = {
     ...(botSettings || {}),
     bot2SalonEnabled: $("bot2-enabled").checked,
+    bot2HairstyleEnabled: $("bot2-hairstyle-enabled").checked,
     bot2SalonName: $("bot2-salon-name").value.trim(),
     bot2GoogleMapsUrl: $("bot2-map-location").value.trim(),
     bot2WebsiteUrl: $("bot2-website").value.trim(),

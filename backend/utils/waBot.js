@@ -149,6 +149,8 @@ function salonMarathiText(value) {
     .replace(/^(→ )?New booking$/g, "$1नवीन बुकिंग")
     .replace(/^(→ )?Click here to book$/g, "$1बुक करण्यासाठी येथे दाबा")
     .replace(/^(→ )?More appointments$/g, "$1आणखी अपॉइंटमेंट्स")
+    .replace(/^(→ )?Hairstyle ideas$/g, "$1हेअरस्टाइल सुचवा")
+    .replace(/📸 Send one clear front-facing selfie \(face straight, good light, hair off the face\)\. We'll suggest hairstyles that suit your face shape\./g, "📸 एक स्पष्ट समोरून काढलेला सेल्फी पाठवा (चेहरा सरळ, चांगला प्रकाश, केस चेहऱ्यावर नको). तुमच्या चेहऱ्याच्या आकाराला शोभतील अशा हेअरस्टाइल आम्ही सुचवू.")
     .replace(/^📍 Location$/g, "📍 लोकेशन")
     .replace(/^📞 Contact$/g, "📞 संपर्क")
     .replace(/Welcome! Choose an option below\./g, "\\u0938\\u094d\\u0935\\u093e\\u0917\\u0924 \\u0906\\u0939\\u0947! \\u0916\\u093e\\u0932\\u0940\\u0932 \\u092a\\u0930\\u094d\\u092f\\u093e\\u092f \\u0928\\u093f\\u0935\\u0921\\u093e.")
@@ -209,7 +211,7 @@ function intendedBotId(mobile, bot, jid, text, config, chatbotOn, contact) {
   if (allowed.has(2) && bot.bookingFlows?.[jid]) return "2";
   if (allowed.has(3) && (bot.interestFlows?.[jid] || text === "b3interested" || normalized === SwasBot.normalize(settings.bot3InterestedLabel || "Interested") || SwasBot.keywordList(settings.bot3Keywords).includes(normalized))) return settings.bot3Enabled ? "3" : "";
   const salonName = SwasBot.normalize(settings.bot2SalonName || "");
-  const salonStart = [salonName, salonName.split(/\s+/)[0], "book", "b2book", "b2startmenu", "new booking", "click here to book", "click here to book again", "b2myappointments", "status", "my booking", "my bookings", "my appointment", "my appointments", "appointment status", "booking status", "manage appointment"].filter(Boolean).includes(normalized)
+  const salonStart = [salonName, salonName.split(/\s+/)[0], "book", "b2book", "b2startmenu", "new booking", "click here to book", "click here to book again", "b2myappointments", "b2hairstyle", "hairstyle ideas", "status", "my booking", "my bookings", "my appointment", "my appointments", "appointment status", "booking status", "manage appointment"].filter(Boolean).includes(normalized)
     || ((normalized.includes("cancel")) && (normalized.includes("appointment") || normalized.includes("booking")));
   if (allowed.has(2) && settings.bot2SalonEnabled) {
     if (salonStart) return "2";
@@ -306,6 +308,7 @@ function messageText(msg, bot, jid) {
       swas_b2_open_menu: "b2startmenu",
       swas_b2_start: "b2book",
       swas_b2_my_appointments: "b2myappointments",
+      swas_b2_hairstyle: "b2hairstyle",
       swas_b2_rebook_menu: "b2startmenu",
       swas_b2_manage_more: "b2managemore",
       swas_b2_cancel_confirm: "b2cancelconfirm",
@@ -1004,6 +1007,7 @@ function salonReply(bot, jid, text, contact, settings, ownerNumber = "") {
     "आणखी अपॉइंटमेंट्स": "more appointments", "नवीन बुकिंग": "new booking", "बुक करण्यासाठी येथे दाबा": "click here to book", "बुक करा": "b2book",
     "अपॉइंटमेंट बुक करा": "b2book", "माझ्या अपॉइंटमेंट्स": "b2myappointments", "बुकिंग निश्चित करा": "confirm booking",
     "अपॉइंटमेंट ठेवा": "keep appointment", "हो, रद्द करा": "yes cancel", "हो रद्द करा": "yes cancel", "रद्द करा": "cancel",
+    "हेअरस्टाइल सुचवा": "b2hairstyle", "Hairstyle ideas": "b2hairstyle",
   }[String(text).replace(/^\s*→\s*/, "").trim()];
   if (marathiLabel) text = marathiLabel;
   if (!settings?.bot2SalonEnabled) return null;
@@ -1042,7 +1046,12 @@ function salonReply(bot, jid, text, contact, settings, ownerNumber = "") {
       { id: "swas_b2_start", title: salonForwardTitle("Book Appointment") },
       { id: "swas_b2_my_appointments", title: salonForwardTitle("My appointments") },
     ];
+    if (settings.bot2HairstyleEnabled) choices.push({ id: "swas_b2_hairstyle", title: salonForwardTitle("Hairstyle ideas") });
     return { reply: String(settings.bot2StartMessage || "").trim() ? String(settings.bot2StartMessage).replace(/\{\{\s*(salon|shop)\s*\}\}/gi, settings.bot2SalonName || "Salon") : `💈 *${settings.bot2SalonName || "Salon"}*\nWelcome! Choose an option below.`, choices };
+  }
+  if (settings.bot2HairstyleEnabled && ["b2hairstyle", "hairstyle ideas", "hairstyle", "हेअरस्टाइल", "हेअरस्टाइल सुचवा"].includes(input)) {
+    bot.bookingFlows[jid] = { step: "hairstyle", startedAt: Date.now() };
+    return { reply: "📸 Send one clear front-facing selfie (face straight, good light, hair off the face). We'll suggest hairstyles that suit your face shape.", persist: true };
   }
   const wantsBooking = flow?.step !== "confirm" && (/((^| )(book|booking)( |$))/.test(input) || input === "b2book" || input.includes("\u0905\u092a\u0949\u0907\u0902\u091f\u092e\u0947\u0902\u091f") || input.includes("\u092c\u0941\u0915\u093f\u0902\u0917") || input.includes("\u092c\u0941\u0915 \u0915\u0930\u093e"));
   if (wantsBooking) {
@@ -1056,7 +1065,7 @@ function salonReply(bot, jid, text, contact, settings, ownerNumber = "") {
     bot.bookingFlows[jid] = { step: "manage", managePage: 0 };
     return salonReply(bot, jid, text, contact, settings, ownerNumber);
   }
-  if (!flow) return null;
+  if (!flow || flow.step === "hairstyle") return null;
   if (flow.step === "manage") {
     const bookings = salonCustomerBookings(bot, contact.number);
     if (input === "b2managemore" || input === "more appointments") {
@@ -1255,6 +1264,53 @@ function withinRate(rt, jid, limit = SwasBot.LIMITS.repliesPerMinute) {
   return recent.length < limit;
 }
 
+const SHAPE_TEXT = {
+  oval: { en: "Oval", mr: "अंडाकृती", tipEn: "Lucky you - almost every style suits an oval face.", tipMr: "छान! अंडाकृती चेहऱ्याला जवळजवळ प्रत्येक स्टाइल शोभते." },
+  round: { en: "Round", mr: "गोल", tipEn: "Styles with height on top and shorter sides make a round face look longer.", tipMr: "वर उंची आणि बाजूने छोटे केस असलेल्या स्टाइल गोल चेहऱ्याला लांबट दाखवतात." },
+  square: { en: "Square", mr: "चौकोनी", tipEn: "Soft layers and textured styles balance a strong jawline.", tipMr: "सॉफ्ट लेयर्स आणि टेक्स्चर स्टाइल मजबूत जबड्याला संतुलित करतात." },
+  long: { en: "Long", mr: "लांबट", tipEn: "Fringes and volume at the sides suit a long face; avoid too much height on top.", tipMr: "फ्रिंज आणि बाजूने व्हॉल्यूम लांबट चेहऱ्याला शोभतात; वर जास्त उंची टाळा." },
+  heart: { en: "Heart", mr: "हृदयाकृती", tipEn: "Side-swept fringes and fuller length near the chin balance a heart-shaped face.", tipMr: "बाजूला वळवलेली फ्रिंज आणि हनुवटीजवळ व्हॉल्यूम हृदयाकृती चेहऱ्याला संतुलित करतात." },
+};
+
+/** Selfie -> face shape (on this server) -> the salon's hairstyle photos for that shape + a Book button. */
+async function hairstyleReply(mobile, sock, bot, msg, jid, lang) {
+  const rt = runtime(mobile);
+  if (!withinRate(rt, jid, 20)) return;
+  rt.sent.get(jid).push(Date.now());
+  const mr = lang === "mr";
+  const bookChoice = [{ id: "swas_b2_start", title: salonForwardTitle(mr ? "अपॉइंटमेंट बुक करा" : "Book Appointment") }];
+  let result;
+  try {
+    const { downloadMediaMessage } = require("@whiskeysockets/baileys");
+    const buffer = await downloadMediaMessage(msg, "buffer", {}, { reuploadRequest: sock.updateMediaMessage, logger: require("pino")({ level: "silent" }) });
+    result = await require("./faceShape").detect(buffer);
+  } catch (error) {
+    console.warn(`[bot ${mobile}] hairstyle check failed:`, error.message || error);
+    result = { shape: null, reason: "error" };
+  }
+  if (!result.shape) {
+    // Keep the step open so the next photo is checked too.
+    await sock.sendMessage(jid, { text: mr
+      ? "😕 फोटोमध्ये चेहरा स्पष्ट दिसला नाही. कृपया समोरून काढलेला, चांगल्या प्रकाशातील एकच सेल्फी पुन्हा पाठवा."
+      : "😕 I couldn't see a face clearly in that photo. Please send one front-facing selfie in good light." });
+    return;
+  }
+  delete bot.bookingFlows[jid];
+  save(mobile);
+  const info = SHAPE_TEXT[result.shape];
+  const photos = require("./hairstyles").forShape(mobile, result.shape).slice(0, 4);
+  await sock.sendMessage(jid, { text: mr
+    ? `✨ तुमच्या चेहऱ्याचा आकार: *${info.mr}*\n${info.tipMr}${photos.length ? "\n\nतुम्हाला शोभतील अशा स्टाइल 👇" : ""}`
+    : `✨ Your face shape: *${info.en}*\n${info.tipEn}${photos.length ? "\n\nStyles that suit you 👇" : ""}` });
+  for (const item of photos) {
+    try { await sock.sendMessage(jid, { image: require("./hairstyles").photo(mobile, item.id), caption: item.name || "" }); }
+    catch (error) { console.warn(`[bot ${mobile}] hairstyle photo ${item.id} failed:`, error.message || error); }
+  }
+  await sendChoices(sock, jid, mr
+    ? (photos.length ? "स्टाइल आवडली? अपॉइंटमेंट बुक करा 👇" : "आमचे स्टायलिस्ट तुमच्यासाठी योग्य स्टाइल सुचवतील. अपॉइंटमेंट बुक करा 👇")
+    : (photos.length ? "Like a style? Book your appointment 👇" : "Our stylist will suggest the best style for you. Book your appointment 👇"), bookChoice);
+}
+
 async function answer(mobile, sock, bot, config, msg, { chatbotOn = true } = {}) {
   const jid = msg.key?.remoteJid;
   if (!jid || msg.key.fromMe || isJidGroup(jid) || isJidBroadcast(jid) || isJidNewsletter(jid)) return;
@@ -1290,6 +1346,14 @@ async function answer(mobile, sock, bot, config, msg, { chatbotOn = true } = {})
   const contact = { name: msg.pushName || "", number: await phoneOf(sock, msg.key) };
   const who = contact.number || contact.name || jid;
   const unsubscribed = bot.unsubscribers.some((entry) => SwasBot.isSameContact(entry, contact));
+  // Bot 2 "Hairstyle ideas": the selfie the customer was asked for.
+  if (chatbotOn && !unsubscribed && bot.bookingFlows?.[jid]?.step === "hairstyle" && normalizeMessageContent(msg.message)?.imageMessage) {
+    const salonSettings = bot.config?.settings || {};
+    if (accountBots(mobile).has(2) && salonSettings.bot2SalonEnabled && salonSettings.bot2HairstyleEnabled) {
+      await hairstyleReply(mobile, sock, bot, msg, jid, bot.botLanguages?.[jid]?.["2"] || bot.langs?.[jid] || "en");
+      return;
+    }
+  }
   const normalizedLanguageReply = SwasBot.normalize(text);
   const currentBotId = intendedBotId(mobile, bot, jid, text, config, chatbotOn, contact);
   const marathiWord = "\u092e\u0930\u093e\u0920\u0940";

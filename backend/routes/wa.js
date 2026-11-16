@@ -2,6 +2,7 @@ const express = require("express");
 const wa = require("../utils/waSessions");
 const bot = require("../utils/waBot");
 const botData = require("../utils/botData");
+const hairstyles = require("../utils/hairstyles");
 const QRCode = require("qrcode");
 const { requireFeature } = require("./auth");
 
@@ -132,6 +133,18 @@ router.post("/bot/bot5-data", needChatbot, (req, res) => {
   catch (err) { res.status(err.status || 400).json({ message: err.message || String(err) }); }
 });
 router.delete("/bot/bot5-data", needChatbot, (req, res) => res.json(botData.bot5Clear(req.auth.mobile)));
+
+// ---- Bot 2 hairstyle photos, by face shape ----
+router.get("/bot/hairstyles", needChatbot, (req, res) => res.json({ items: hairstyles.list(req.auth.mobile) }));
+router.get("/bot/hairstyles/:id.jpg", needChatbot, (req, res) => {
+  try { res.type("jpg").send(hairstyles.photo(req.auth.mobile, req.params.id)); }
+  catch { res.status(404).end(); }
+});
+router.post("/bot/hairstyles", needChatbot, (req, res) => {
+  try { res.json({ items: hairstyles.add(req.auth.mobile, req.body || {}) }); }
+  catch (err) { res.status(400).json({ message: err.message || String(err) }); }
+});
+router.delete("/bot/hairstyles/:id", needChatbot, (req, res) => res.json({ items: hairstyles.remove(req.auth.mobile, req.params.id) }));
 
 // Current stored chatbot config + unsubscribers, and the built-in defaults, for the web app's Chatbot page.
 router.get("/bot", needChatbot, (req, res) => res.json(bot.current(req.auth.mobile)));
